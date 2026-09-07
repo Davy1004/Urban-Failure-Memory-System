@@ -1,229 +1,233 @@
-# REPORT — can we predict the size of the night?
+# REPORT — is reporting growth about to invalidate Proof Two?
 
-Task: NEXT.md "can we predict the size of the night?", plus the six answers to
-the previous report's §5. Completed 2026-09-08. Written for the reader who
-decides what happens next; assumes no access to the conversation.
+Task: NEXT.md "is reporting growth about to invalidate Proof Two?". Completed
+2026-09-08. Written for the reader who decides what happens next; assumes no
+access to the conversation.
 
-**Answer, against the bar you set in advance: the first criterion is missed
-decisively, the second is marginal. R² on the target as specified is −0.03.
-On a detrended target it is 0.196 (95% CI 0.082–0.278), and 3-class accuracy is
-50.0% against a 39.6% majority — +10.5 points, but the CI on that gap includes
-zero.**
+**Yes, and worse than the brief anticipated. On raw event counts 7 wards show a
+significant rising trend. After normalising by each ward's own complaint volume,
+that number is 0 — under any of three denominators — while 10 wards show
+significant declines. The naive emerging-hotspot test would have been entirely
+false positives.**
 
-**The defensible claim is narrow: weather reliably flags the handful of worst
-nights and is near-chance in the middle. Nine of the ten nights it was most
-confident about were genuinely severe.** I would report this as an advisory
-secondary output and not promote it further.
+**And the correction does not rescue it. After normalising there is no emerging
+signal at ward level at all: zero wards rise at p < 0.10, closest p = 0.139, in
+a test that finds ten significant declines. Proof Two has no positive result to
+report.**
 
-Full write-up: profile §20 (magnitude) and §21 (label ceiling). Evaluation
-rules updated with Proof One restated and five settled decisions recorded.
+That is the headline and it needs a project-level decision, not a doc edit.
+Full write-up: profile §22. Options in §22.6 and in §6 below.
 
 ---
 
-## 1. The specified target fails, and the reason is not weather
+## 1. Growth is not uniform (your question 1)
 
-The brief named the target as "the count of distinct wards with a strict event,
-per rain day". That target is not stationary:
+Citywide, all categories: 103,504 (2021) → 207,016 (2024) = **2.00×**. Only
+complete years used; 2020 starts 8 Feb and 2025 ends 19 Jun.
 
-| Year | Rain days | Mean events/rain day | Total complaints |
-|---|---:|---:|---:|
-| 2020 | 121 | 3.99 | 91,620 |
-| 2021 | 126 | 3.90 | 103,504 |
-| 2022 | 114 | 6.94 | 118,394 |
-| 2023 | 86 | 4.33 | 119,140 |
-| 2024 | 107 | 7.84 | 207,016 |
-| 2025 | 29 | 15.52 | 126,974 |
+Per-ward growth ratios, n = 198:
 
-Train mean 4.78, test mean 9.48. Correlation with time 0.243; with city
-rainfall 0.214. **The reporting trend is as strong as the weather signal.**
+| p0 | p10 | p25 | p50 | p75 | p90 | p100 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0.87× | 1.42× | 1.66× | 2.00× | 2.44× | 3.00× | 4.81× |
 
-| Model | R² | MAE |
+Mean 2.11×, sd 0.65, **p90/p10 = 2.12×**. Two wards shrank; twenty more than
+tripled. Fastest: Siddapura 4.81×, Doddanekkundi 4.32×, Banashankari Temple Ward
+3.67×. Slowest: Moodalapalya 0.87×, Nayandanahalli 0.89×.
+
+**Answer: wards diverge widely.** This is not a uniform multiplier that cancels
+out of a per-ward trend test. It is fatal to a naive one, which §4 confirms
+directly.
+
+## 2. It does not track socioeconomics (your question 2)
+
+I found better data than expected: the OpenCity **BBMP 2014 delimitation CSV**
+carries total population, male/female, **SC population and ST population** per
+ward. SC+ST share is a meaningful marginalisation proxy in this context. Saved
+as `data/reference/ward_socioeconomic.csv` (198 rows, all matched).
+
+Spearman ρ against the 2021→2024 growth ratio:
+
+| Proxy | ρ | p |
 |---|---:|---:|
-| Mean baseline (train mean) | −0.136 | 6.65 |
-| Rainfall-threshold baseline (4 buckets) | −0.065 | 6.48 |
-| **Linear regression, weather only** | **−0.032** | 6.31 |
-| Poisson GLM, weather only | −0.033 | 6.30 |
-| Linear + explicit time trend | 0.090 | 6.28 |
-| Time trend alone, no weather | −0.055 | 6.64 |
+| Total population | −0.109 | 0.125 |
+| Ward area | −0.021 | 0.771 |
+| Population density | 0.014 | 0.839 |
+| **SC + ST population share** | **−0.057** | **0.423** |
+| Centroid elevation | 0.055 | 0.439 |
+| **Elevation range** | **−0.231** | **0.001** |
+| **Complaints per 1,000 residents, 2021** | **−0.147** | **0.039** |
 
-Every R² is at or below zero. Weather models beat the mean baseline but all are
-worse than predicting the test mean.
+By zone: periphery 1.96× vs core 2.01×, Mann-Whitney p = 0.708 — **no
+core/periphery effect**, which surprised me.
 
-## 2. What I changed, and why — flagging this as a deviation
+**Answer: the growth is idiosyncratic, not an equity gradient.** The
+marginalisation proxy is flat. Two weak real effects: flatter wards grew faster
+(plausibly new peripheral development), and already-loud wards grew less
+(saturation).
 
-I re-ran against a **detrended target**: events divided by the trailing 90-day
-mean events per rain day, computed from prior days only so no model sees the
-future trend.
+This is genuinely good news and worth saying in the paper: the reporting-growth
+confound is a **noise** problem, not a **bias** problem, so correcting for it
+does not itself introduce a social distortion. It does not weaken the
+cross-sectional reporting-propensity concern — only the claim about growth.
 
-This is a change to the specified target and you should weigh it as one. My
-reasoning: the absolute target is dominated by BBMP's reporting-channel growth
-(§9.7), so measuring it answers "did complaint volume grow" rather than "does
-weather predict severity". The relative question is also the one an operations
-desk actually asks. But it is a weaker operational claim than the absolute one
-would have been, and it requires maintaining a trailing baseline in production
-that drifts with reporting channels rather than weather.
+## 3. The normalisation (your question 3)
 
-## 3. Results on the fair target
+Strict event-days as a share of the ward's own complaints, per quarter, 20
+complete quarters (2020Q2 → 2025Q1).
 
-| Model | R² | MAE |
+Citywide:
+
+| Denominator | First 4 quarters | Last 4 quarters |
 |---|---:|---:|
-| Mean baseline | −0.007 | 0.880 |
-| **Linear regression, weather only** | **0.196** | **0.788** |
+| All complaints | 0.854% | 0.667% |
+| Categories present in all 6 years | 0.854% | 0.680% |
+| Solid-waste complaints only | 3.297% | 2.447% |
 
-Bootstrap, 1,000 resamples of test nights: R² **0.187, 95% CI [0.082, 0.278]**.
-Excludes zero; excludes 0.4.
+**The share is flat-to-declining while volume doubles.** That is the signature.
 
-Single-feature models, since the multivariate coefficients are badly collinear
-(rain_max_cell +0.809 against city_rain −0.645):
+I checked the obvious objection — BBMP added whole categories mid-window (§9.4),
+which would inflate the denominator for unrelated reasons. It does not bite: the
+eleven mid-window categories are **0.7%** of rows in this window, and the three
+denominators agree at ρ = 0.995 (all vs stable) and 0.85 (vs solid-waste-only).
 
-| Feature(s) | R² | Binary AUC | 3-class acc |
+I also moved from a two-point annual ratio to **Theil–Sen slopes with
+Mann-Kendall on 20 quarterly points**. A two-point ratio is too fragile to
+support a ranking claim, and the choice matters: annual gives Spearman 0.923
+between raw and normalised rankings, quarterly gives **0.394**. The fragile
+version would have understated the problem substantially.
+
+## 4. Raw vs normalised (your question 4)
+
+103 wards with ≥15 strict event-days across the window.
+
+| Series | Significantly rising | Significantly declining |
+|---|---:|---:|
+| **Raw event count** | **7** | 3 |
+| **Normalised (all complaints)** | **0** | 10 |
+| Normalised (stable categories) | 0 | 9 |
+| Normalised (solid-waste denominator) | 0 | 10 |
+
+Top-20 overlap: **11/20**. Spearman on slopes: **0.394**.
+
+**Drop out when normalised** — the apparent rise was volume:
+
+| Ward | Raw rank | Norm rank | Volume growth |
 |---|---:|---:|---:|
-| city rainfall alone | 0.123 | 0.715 | **51.5%** |
-| max-cell rainfall alone | 0.137 | 0.735 | 50.0% |
-| rain percentile alone | 0.122 | 0.710 | 47.0% |
-| antecedent 7d alone | 0.095 | 0.610 | 41.7% |
-| spread (max cell − city mean) | 0.075 | 0.706 | 47.7% |
-| all six | **0.196** | **0.749** | 50.0% |
+| Chikpete | 6 | 76 | 3.30× |
+| **Bellandur** | **7** | 91 | 2.60× |
+| Gandhi Nagar | 8 | 32 | 2.12× |
+| Kuvempu Nagar | 9 | 29 | 3.25× |
+| **Varthur** | **11** | 85 | 2.51× |
+| Hemmigepura | 12 | 59 | 2.98× |
+| Kodigehalli | 16 | 71 | 3.69× |
+| Ejipura | 19 | 97 | 1.84× |
+| Aramane Nagar | 20 | 39 | 1.85× |
 
-Most of the signal is simply how much rain fell. The six-feature model doubles
-R² over city rainfall alone and does not improve classification at all.
+**Enter when normalised** — real relative rise, masked by flat volume:
+Puttenahalli (7 / raw 87), Yelahanka old Satellite Town (8 / 89), K.R.Market
+(12 / 63), Chamrajpet (13 / 32), Benniganahalli (14 / 36), Basavanagudi
+(15 / 39), Hebbal (16 / 43), BTM Layout (19 / 31), Cottonpet (20 / 23).
 
-### Operational version
+Bellandur and Varthur are the two most notorious flooding wards in Bengaluru and
+both sit in the raw top 11. On a raw test they would be reported as *newly
+emerging*, which is obviously wrong and is the cleanest illustration of the
+problem for the paper.
 
-Terciles of the **training** ratio distribution. Test: quiet 48, moderate 49,
-severe 35. Majority baseline **39.6%** (bootstrap).
+## 5. The four register-absent wards (your named check)
 
-3-class classifier, **accuracy 50.0%**:
+Your caution was right.
 
-| true \ predicted | quiet | moderate | severe |
-|---|---:|---:|---:|
-| **quiet** | 32 | 8 | 8 |
-| **moderate** | 26 | 12 | 11 |
-| **severe** | 8 | 5 | 22 |
+| Ward | Raw rank | Norm rank | Volume growth | Norm slope | p |
+|---|---:|---:|---:|---:|---:|
+| **Jakkur** | **1** | 4 | 3.11× | +0.00026 | 0.183 |
+| Basavanapura | 37 | 60 | 1.82× | −0.00008 | 0.586 |
+| Someshwara | 81 | 84 | 2.18× | −0.00048 | 0.074 |
+| **Hoodi** | 54 | 101 | **3.06×** | **−0.00099** | **0.007** |
 
-Quiet 32/48 and severe 22/35 are called reasonably. The middle collapses — 26 of
-49 moderate nights called quiet. **The extremes are separable, the middle is
-not.**
+**Jakkur ranks first in the city on raw event growth**, and is exactly the
+rapid-development corridor you predicted — 3.11× volume growth. It survives
+normalisation better than the others at 4th, but p = 0.183.
 
-Gap over majority: **+10.5 points, 95% CI [−0.8, +20.5]**; the model wins in
-96.1% of resamples. Positive, not comfortably significant.
+**Hoodi is significantly declining** in normalised share (p = 0.007) despite
+3.06× volume growth. On the raw test it would have looked like rising hazard.
 
-### Where it is genuinely useful
+This forces a distinction §21 ran together and I should have caught then:
+*absent from the register with high total events* means **the register is out of
+date**; *rising share* means **getting worse**. Different claims, different
+tests. For these four only the first is supported.
 
-Binary "is tonight in the worst third of recent rain nights", base rate 26.5%:
-**ROC-AUC 0.749 (CI 0.650–0.841)**, accuracy 79.3% vs 73.5% majority.
+## 6. The part that needs your decision
 
-| Flagged | Genuinely severe | Precision |
-|---|---|---:|
-| top 5 | 5/5 | 100% |
-| top 10 | 9/10 | **90%** |
-| top 15 | 11/15 | 73% |
-| top 20 | 11/20 | 55% |
-| top 40 | 20/40 | 50% |
+**After correct normalisation there is no emerging signal at ward level.** Zero
+wards rising at p < 0.10 against ten declining, and the test demonstrably has
+power.
 
-Over 18 months, the ten nights the model was most confident about contained
-nine genuinely severe ones, against a 26.5% base rate. Small counts at the top —
-read with care — but the ordering is monotone and the AUC interval excludes
-chance.
+The most likely cause is granularity. A ward averages 3.7 km² and thousands of
+complaints a year; an emerging hotspot is a junction contributing perhaps a
+dozen. Ward aggregation dilutes exactly what Proof Two is looking for — and the
+complaint data carries no sub-ward geography (§8), so location-level detection
+is not possible with this source. Same wall §19 hit from the other direction.
 
-## 4. Verdict against your pre-set bar
+**Both proofs are now negative-shaped.** Proof One is a measured ceiling; Proof
+Two is a measured confound. Three options, in §22.6:
 
-| Criterion | Result | Met? |
-|---|---|---|
-| R² > ~0.4 | 0.196, CI [0.082, 0.278] | **No, decisively** |
-| 3-class meaningfully above majority | 50.0% vs 39.6%, CI on gap [−0.8, +20.5] | **Marginal** |
-| (unplanned) binary AUC | 0.749, CI [0.650, 0.841] | Clearly above chance |
+1. **Reframe Proof Two as a methodological result too.** "Naive trend detection
+   on civic-complaint counts yields seven spurious emerging hotspots over five
+   years, every one explained by reporting growth; after normalisation none
+   survives." Real, citable, honest — and not a working detector.
+2. **Move the positive contribution to intervention effectiveness.** It is the
+   third Learn output and has an **independent data source** — BBMP ward work
+   orders 2013–2022, already in `docs/00-build-plan.md` and never yet touched.
+   It does not depend on detecting a trend in complaint counts.
+3. **Acquire sub-ward geography.** Nothing in current sources has it. New data
+   acquisition, not analysis.
 
-Your rule said above the bar means "a real weather-driven output and the honest
-product statement becomes *predictable in magnitude, not in location*"; below
-means "weather contributes nothing anywhere".
+**My read: option 2, with option 1 as the write-up of Proof Two.** The ten
+significant *declines* point the same way — waterlogging is becoming a smaller
+share of BBMP's complaint mix, which is consistent with drainage works actually
+working. That is an intervention-effectiveness finding sitting in plain sight,
+and it would give the project a positive result that neither proof can currently
+supply. It is also the only one of the three outputs with an independent data
+source, which matters a great deal now that two outputs have turned negative.
 
-**Neither branch is quite right, and I am not going to talk it into one.** The
-honest position: *unpredictable in location, weakly predictable in magnitude,
-and reliable only for the worst nights.* That is a real but secondary output.
-It does not rescue triage, and the project still rests mainly on the Learn
-outputs — but "weather contributes nothing anywhere" would be too strong, since
-an AUC of 0.749 with a CI excluding 0.5 is not nothing.
-
-## 5. The label-ceiling bound (your answer 2)
-
-The frozen top-20 against BBMP's agency-observed register:
-
-| | |
-|---|---:|
-| Top-20 wards on the register | **16 / 20 (80%)** |
-| Register coverage, all 198 wards | 52% |
-| Expected under independence | 10.3 / 20 |
-| Hypergeometric p | **0.0060** |
-| Spearman ρ, events vs register points | **0.334** (p = 1.5e-06) |
-| Overlap of the two top-20 lists | 9 / 20 |
-| Mean events, register vs non-register wards | 24.7 vs 13.4 (p = 0.0001) |
-
-**The label finds real places.** Four fifths of the wards the complaints rank
-worst are independently listed as flood-prone by BBMP — significant enrichment
-over the 52% base. But ρ = 0.334 and 9/20 list overlap are not a clean proxy:
-the two agree on *which wards are flood-prone* far more than on *how bad each
-is*.
-
-Reading: **the label's error is concentrated in timing and degree, not in
-place** — which is exactly what §19.6 found independently (place is saturated at
-1.58 of 23.64 points; the rest is when). Two separate analyses converging is the
-strongest evidence in the report.
-
-A bonus worth noting: the four top-20 wards *not* on the register are Hoodi,
-Someshwara, Jakkur and Basavanapura. Under the §12.5 framing those are precisely
-the emerging-hotspot candidates — places failing repeatedly that the official
-list has not caught up with. Proof Two's population, surfaced unprompted.
-
-## 6. Your other answers — what I did
-
-- **0. Corrected the rules file.** The FMI section no longer reads as a plan
-  with a caveat; it is headed "ASSERTED, THEN MEASURED, AND WRONG" and states
-  the r = 0.853 explanation. The original text is kept in full so the negative
-  result reads as a decision.
-- **1. Proof One restated**, in your words, as the live text. The original is
-  kept below a "Superseded" heading. Practical consequences spelled out: do not
-  promise to beat the static baseline; the deliverable is the bound.
-- **2. Label ceiling** — §21 above, plus a standing note in the rules file with
-  the sentence to put in the limitations.
-- **3. Location-level join** — recorded as an untested expectation in the rules
-  file, explicitly not to be built.
-- **4. Terrain** — `ward_elevation.csv` kept; a note says do not chase
-  `imperviousness` or `drain_distance_m` for triage.
-- **5. Pooled-AUC trap** — recorded as a paper contribution in its own right,
-  not only a rule, with the variance-decomposition explanation.
+**But this is a project-level call.** It changes what the mid-review demos and
+what the paper claims, and it should not be made inside a profile document.
 
 ## 7. What I want a second opinion on
 
-1. **Whether the detrending is acceptable.** It is the difference between "no
-   signal" and "a weak one". I think it is necessary and I have flagged it, but
-   an examiner could reasonably say the absolute count is the operational
-   quantity and it failed. If you want the headline to be the absolute-target
-   failure with the relative result as a footnote, say so — it is a framing
-   choice, not a re-analysis.
-2. **Whether to build the magnitude output at all.** AUC 0.749 and 9/10 on the
-   top flagged nights is product-shaped, but it needs a maintained trailing
-   baseline and it only works at the extremes. It is perhaps two days of work.
-   My inclination is to build it *after* the Learn outputs, not before.
-3. **The housekeeping bundle has fallen off the queue.** The previous round
-   agreed two jobs — restate §12–§14 headlines on IFS, and baseline Alembic then
-   add `weather_cells.model`. Neither is in the current NEXT.md. The IFS one
-   matters: the profile now quotes ERA5 figures in §12–§14 and IFS figures in
-   §17–§21, so the inconsistency you wanted closed is now *internal to the
-   document*. I did not do it unasked because the current task was explicitly
-   one session's work, but it should go back on the queue.
-4. **Whether §20 belongs in the paper at all.** A marginal magnitude result may
-   dilute a clean negative headline. It could equally strengthen it — "we
-   checked whether weather helps anywhere, and here is the one place it
-   slightly does". Your call on the narrative.
+1. **Whether to go to the work-orders data next.** It is the untested third
+   output and now carries the project. It is also the one dataset in the build
+   plan nobody has looked at — it could have its own fatal flaw, and finding
+   that out in December would be much worse than finding it out now. I would
+   promote it above the complaints loader.
+2. **Whether "no emerging signal at ward level" is a finding or a null.** I have
+   written it as a finding, because the test has power and the confound
+   explanation is specific. An examiner could reasonably call it an
+   underpowered null on a 5-year window. The ten significant declines are the
+   defence; I would like a second view on whether that defence holds.
+3. **Whether the declines are real or another artefact.** Ten wards declining in
+   normalised share is currently interpreted as "possibly drainage works". It
+   could equally be that the *other* complaint categories grew faster for
+   channel reasons. I did not test that and it needs testing before anyone
+   claims improvement.
+4. **The housekeeping bundle is now duplicated in the queue** as items 0 and 1
+   (you restored it while my copy was already there). Cosmetic, but I have
+   deduplicated it in this pass.
 
 ## 8. Verification
 
-57 tests pass (unchanged — this task added analysis, not pipeline code).
-Database unchanged: `locations` 596, `weather_observations` 1,309,896,
-`weather_daily` 54,579.
+57 tests pass (unchanged — analysis, not pipeline code). Database unchanged.
 
-Temporal discipline: models fit on rain days ≤ 2023-12-31, evaluated on the 136
-rain days of 2024-01-01 → 2025-06-19. The trailing baseline uses a 90-day window
-of strictly prior rain days. Class edges come from the training distribution,
-never the test. Bootstrap CIs resample test nights, 1,000 draws.
+New committed artifacts:
+- `data/reference/ward_socioeconomic.csv` — 198 wards, population, SC/ST counts,
+  density, area, assembly constituency, complaints per 1k, growth ratio.
+- `data/reference/ward_growth_trends.csv` — per-ward Theil–Sen slopes and
+  Mann-Kendall p-values for raw event count, normalised share, and volume.
+- `data/raw/bbmp_ward_delimitation_2014.csv` and `bbmp_ward_reservation_2015.csv`
+  (gitignored) — sources for the above.
+
+Method: complete quarters only (2020Q2 → 2025Q1) to avoid the partial first and
+last years. Theil–Sen slope with Mann-Kendall significance, 20 points per ward,
+minimum 15 strict event-days for eligibility (103 of 198 wards). Growth ratios
+use complete calendar years 2021 and 2024 with +1 smoothing.

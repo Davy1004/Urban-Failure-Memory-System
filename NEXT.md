@@ -25,55 +25,62 @@ before starting anything here.
 
 ---
 
-## Current task — `data/reference/hazard_categories.yaml`
+## Current task — housekeeping bundle
 
-Hand-curated map from exact source category and sub-category strings to
-`WATERLOG` / `GARBAGE`, and within waterlogging to `event` vs `maintenance`.
-Preserve source strings byte-exactly; note the double space in
-`Storm  Water Drain(SWD)`. Record the row count beside each entry so vocabulary
-drift shows in a diff. A citable methodological artifact, not a config file.
+One afternoon, two jobs, agreed three rounds ago and repeatedly deferred.
 
-Profile §10.1 has the counts and the parent-category table; §12.4 has the
-event/maintenance evidence (rain lift 3.07x for `water stagnation` against
-1.33x for `Road side drains`).
+**(a) Restate the §12-§14 headlines on IFS** so the profile stops quoting two
+weather sources in one document: 13.55% -> 14.08% static baseline, 37.36% ->
+37.72% ceiling, 4.72% -> 4.79% random. Keep the ERA5 figures as an explicitly
+labelled before/after, not as the headline. §17-§22 already use IFS, so the
+inconsistency is internal to `docs/02-data-profile.md`.
+
+**(b) Baseline Alembic, then add `weather_cells.model`.** Generate the baseline
+against an **empty** database so migrations build the schema from scratch (Phase
+7 needs that), hand-add the three views with `op.execute`, verify a fresh
+`alembic upgrade head` gives an `information_schema` identical to loading
+`ufms_schema.sql`, then `alembic stamp head` on dev. Then add `model` to
+`weather_cells` as the project's first real migration, backfill it (cells 1-9
+`era5`, 10-23 `ecmwf_ifs`), and update `ufms_schema.sql` to match.
 
 ---
 
 ## Queue
 
-**1. Housekeeping bundle — fell off the queue, put it back.** Agreed two rounds
-ago, never scheduled. (a) Restate the §12-§14 headlines on IFS: 13.55% -> 14.08%
-static baseline, 37.36% -> 37.72% ceiling, 4.72% -> 4.79% random, keeping ERA5
-as a labelled before/after. The seam is now *internal to the profile* - §12-§14
-quote ERA5 while §17-§21 quote IFS. (b) Baseline Alembic against an empty
-database, hand-add the three views with `op.execute`, verify a fresh
-`alembic upgrade head` matches loading `ufms_schema.sql`, `alembic stamp head`
-on dev, then add `weather_cells.model` as the first real migration and backfill
-it (cells 1-9 `era5`, 10-23 `ecmwf_ifs`).
+**1. BBMP ward work orders 2013-2022 — inspect before committing to it.**
+Promoted, because intervention effectiveness is now the only Learn output with
+a positive result available and an independent data source, and it is the one
+dataset in `docs/00-build-plan.md` nobody has opened. Profile it the way
+`02-data-profile.md` profiled the grievances: headers, coverage, ward
+identifier, date range, whether desilting/drain work is separable, and whether
+it joins to the ward crosswalk. **Find its fatal flaw now, not in December.**
 
-**2. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by the
-hazard YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE
-deliberately. Applies the crosswalk, keeps `in_flood_register=false` wards in
-the panel, logs excluded counts unconditionally.
+**2. `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
+source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
+waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly;
+note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
+each entry so vocabulary drift shows in a diff.
 
-**3. Hotspot register dedup decision.** Three KML layers already loaded
+**3. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
+YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE deliberately.
+Applies the crosswalk, keeps `in_flood_register=false` wards in the panel, logs
+excluded counts unconditionally.
+
+**4. Decide what Proof Two becomes.** Profile §22.6 gives three options and
+REPORT.md §6 recommends one. Project-level call, same as the Proof One
+restatement was.
+
+**5. Hotspot register dedup decision.** Three KML layers already loaded
 unmerged (398 points, `hotspot_source` per layer). Establish what each layer
 represents before choosing a threshold.
 
-**4. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
+**6. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
 All four landing near 14% against a 37.72% ceiling is the result. Report
 within-night AUC or precision@k, never a pooled AUC.
 
-**5. Learn outputs — emerging detection and intervention effectiveness.**
-These now carry the project (Proof One restated). Untouched by the §19 result:
-they use accumulated ward history, not nightly ordering. Profile §21 notes that
-Hoodi, Someshwara, Jakkur and Basavanapura are top-20 complaint wards *absent*
-from the official register - emerging candidates surfaced unprompted.
-
-**6. Magnitude advisory output (optional, after the Learn outputs).** Profile
-§20: AUC 0.749 on "is tonight in the worst third", 9 of the top 10 flagged
-nights genuinely severe. Needs a maintained trailing baseline. Weak in the
-middle of the distribution. Build only if the Learn outputs land early.
+**7. Magnitude advisory badge (Phase 4, half a day).** Profile §20: AUC 0.749
+on "is tonight in the worst third", 9 of the top 10 flagged nights genuinely
+severe. A dashboard badge, not an ML pipeline.
 
 ## Done log
 
@@ -164,3 +171,24 @@ middle of the distribution. Build only if the Learn outputs land early.
   The label finds real places; its error is in **timing and degree, not place** —
   converging independently with §19.6. Proof One restated in the rules file;
   five settled decisions recorded. 57 tests pass.
+- **2026-09-08 — Reporting growth would have made Proof Two all false
+  positives.** Complaint volume doubled 2021-2024 (2.00x citywide) and ward
+  growth is **not uniform**: p10 1.42x, p50 2.00x, p90 3.00x, range 0.87x-4.81x,
+  p90/p10 = 2.12x. Theil-Sen + Mann-Kendall on 20 quarters, 103 eligible wards:
+  **raw event counts give 7 significantly rising wards; normalised by each
+  ward's own complaint volume, 0** — under all three denominators tested (all
+  complaints / stable categories / solid-waste-only, agreeing at rho 0.85-0.995)
+  — while **10 decline significantly**. Raw-vs-normalised slope correlation is
+  only 0.394; top-20 overlap 11/20. **Bellandur and Varthur sit in the raw top
+  11 purely on volume growth.** Growth is **not socially patterned** (SC+ST share
+  rho = -0.057, p = 0.42; no core/periphery effect) — a noise problem, not an
+  equity one. The four register-absent wards checked by name: **Jakkur ranks #1
+  on raw growth** (3.11x volume, p = 0.183 normalised) and **Hoodi is
+  significantly *declining*** (p = 0.007) despite 3.06x volume growth — so
+  "absent from the register" means the register is stale, not that the ward is
+  worsening. **After correct normalisation there is no emerging signal at ward
+  level at all** (closest p = 0.139, in a test that finds ten declines) — likely
+  a granularity wall, since the complaints carry no sub-ward geography.
+  **Both proofs are now negative-shaped; see REPORT.md §6 for the options.**
+  New: `ward_socioeconomic.csv` (population, SC/ST, density from the BBMP 2014
+  delimitation file), `ward_growth_trends.csv`. 57 tests pass.

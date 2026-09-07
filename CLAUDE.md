@@ -77,6 +77,21 @@ Done:
   are on BBMP's agency-observed register against a 52% base rate (p = 0.006),
   but severity agreement is only moderate (Spearman 0.334). The label finds real
   places; its error is in timing and degree. Say this in the limitations.
+- **PROOF TWO'S NAIVE TEST IS ALL FALSE POSITIVES** (profile §22). Complaint
+  volume doubled 2021-2024 and ward growth is not uniform (0.87x-4.81x). Raw
+  event counts: **7 wards significantly rising**. Normalised by each ward's own
+  complaint volume: **0** - under any of three denominators - while 10 decline.
+  **Normalisation is mandatory**, and after it there is no emerging signal at
+  ward level at all (closest p = 0.139). Likely a granularity wall: a ward is
+  3.7 km2, an emerging hotspot is a junction, and the complaints carry no
+  sub-ward geography. Do not report Bellandur, Varthur or Hoodi as emerging.
+- **Reporting growth is idiosyncratic, not an equity gradient** (§22.2). SC+ST
+  share vs growth rho = -0.057 (p = 0.42); no core/periphery effect. A noise
+  problem, not a bias problem.
+- **Both proofs are now negative-shaped.** Proof One is a measured ceiling,
+  Proof Two a measured confound. The positive contribution has to come from
+  intervention effectiveness, which has an independent data source (BBMP ward
+  work orders 2013-2022). **This is a project-level decision - see REPORT.md.**
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,

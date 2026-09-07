@@ -70,7 +70,44 @@ What this means in practice:
   memorising the register.
 - **Due Phase 3, before the mid-review**, so there is time to adapt if it fails.
 
-## Proof Two — emerging detection finds real additions
+## Proof Two — THE NAIVE TEST IS ALL FALSE POSITIVES (profile §22)
+
+**Measured 8 Sep 2026. Read before writing any emerging-detection code.**
+
+Complaint volume doubled 2021→2024 and ward growth is **not** uniform
+(p10 1.42×, p50 2.00×, p90 3.00×, range 0.87×–4.81×). A trend test on raw
+complaint counts finds app adoption, not hazard:
+
+| Series (Theil–Sen + Mann-Kendall, 20 quarters, 103 eligible wards) | Rising | Declining |
+|---|---:|---:|
+| **Raw event count** | **7** | 3 |
+| **Normalised by the ward's own complaint volume** | **0** | 10 |
+
+**Normalisation is mandatory.** Divide by the ward's own total complaints per
+period. The denominator choice barely matters — all complaints, categories
+present in every year, and solid-waste-only agree at ρ = 0.85–0.995, and all
+three give zero rising wards.
+
+**And after normalising there is no emerging signal at ward level.** Zero wards
+rise at p < 0.10; the closest is p = 0.139. The test has power — it finds ten
+significant declines. The likely cause is granularity: a ward is 3.7 km² and
+thousands of complaints a year, while an emerging hotspot is a junction. The
+complaint data has no sub-ward geography (§8), so location-level detection is
+not possible with this source.
+
+**Do not report Bellandur or Varthur as emerging.** They sit in the raw top 11
+purely on volume growth; their share of flooding complaints is not rising. Nor
+Hoodi, which is significantly *declining* in share (p = 0.007) despite 3.06×
+volume growth.
+
+**Distinguish two claims that §21 ran together.** "Absent from the register with
+high total events" means *the register is out of date*. "Rising share" means
+*getting worse*. Different tests; for Hoodi, Someshwara, Jakkur and Basavanapura
+only the first is supported.
+
+See profile §22.6 for the three options on what Proof Two becomes.
+
+### Superseded: Proof Two as originally written
 
 - Mann-Kendall / CUSUM on per-location complaint rate normalised by rainfall.
 - Validate: train through year *n*, check flagged sites show sustained
@@ -78,7 +115,27 @@ What this means in practice:
 - Delhi upside if the RTI lands: predict which sites PWD *adds* to next year's
   list, using the municipality's own revisions as ground truth.
 
-## Reporting bias
+## Reporting bias — measured, and it is not socially patterned
+
+Ward-level complaint growth 2021→2024 was tested against every proxy available
+(profile §22.2). **The marginalisation proxy shows nothing**: SC+ST population
+share, ρ = −0.057, p = 0.42. Population ρ = −0.109, density ρ = 0.014, area
+ρ = −0.021, all n.s. By zone, periphery 1.96× vs core 2.01× (p = 0.708).
+
+Two weak real effects: flatter wards grew faster (elevation range ρ = −0.231,
+p = 0.001), and already-loud wards grew less (complaints per 1,000 residents
+ρ = −0.147, p = 0.039 — saturation).
+
+**So reporting growth is idiosyncratic, not an equity gradient.** That is worth
+stating in the paper: it makes the confound a noise problem rather than a bias
+problem, and it means correcting for it does not itself introduce social bias.
+It does **not** weaken the cross-sectional reporting-propensity concern below —
+only the claim about *growth*.
+
+`data/reference/ward_socioeconomic.csv` carries population, SC/ST counts,
+density and area per ward, from the BBMP 2014 delimitation file.
+
+### The original cross-sectional concern, unchanged
 
 The label is a complaint, not a flood. Complaint propensity tracks income and
 civic awareness, so a model can learn *which wards complain* rather than

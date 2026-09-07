@@ -65,6 +65,13 @@ Generated 7 Sep 2026 from the files as downloaded from
 > BBMP's own agency-observed register against a 52% base rate (p = 0.006),
 > while severity agreement is only moderate (ρ = 0.334) — the label finds real
 > places, and its error is in timing and degree (§21).
+>
+> **§22 is the one to read before touching Proof Two.** Complaint volume doubled
+> and ward growth is not uniform (0.87×–4.81×). On raw event counts **7 wards
+> show a significant rising trend; after normalising by each ward's own complaint
+> volume, 0 do** — under any of three denominators — while 10 decline. The naive
+> emerging-hotspot test would be **entirely false positives**, and after
+> correcting it there is no emerging signal at ward level at all.
 
 ---
 
@@ -2016,3 +2023,196 @@ p = 0.006) but correlates only moderately with agency severity (ρ = 0.334), and
 that consequently an unknown share of the irreducible variance in §19 is
 reporting behaviour rather than hydrology. Do not let a reader assume the 22
 points are physics.
+
+---
+
+## 22. Reporting growth and Proof Two: the naive trend test would be all false positives
+
+Added 8 Sep 2026. Complaint volume doubled between 2021 and 2024 (§9.7, §20.1).
+Proof Two looks for wards whose failure rate is *rising*. This section asks
+whether such a test would find hazard or merely find app adoption.
+
+**It would find app adoption. On raw event counts, 7 wards show a significant
+rising trend. After normalising by each ward's own complaint volume, that
+number is 0 — under any of three denominators — while 10 wards show significant
+*declines*. The test has power; it simply finds nothing rising.**
+
+### 22.1 Growth is not uniform across wards
+
+Citywide, all categories: 103,504 complaints in 2021 → 207,016 in 2024, **2.00×**.
+Per-ward growth ratios over the same pair of complete years (n = 198):
+
+| p0 | p10 | p25 | p50 | p75 | p90 | p100 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0.87× | 1.42× | 1.66× | 2.00× | 2.44× | 3.00× | 4.81× |
+
+Mean 2.11×, sd 0.65. **p90/p10 = 2.12×.** Two wards shrank; twenty more than
+tripled. Fastest: Siddapura 4.81×, Doddanekkundi 4.32×, Banashankari Temple Ward
+3.67×. Slowest: Moodalapalya 0.87×, Nayandanahalli 0.89×.
+
+So the growth is emphatically **not** a uniform multiplier that cancels out of a
+per-ward trend test. A ward growing 4.8× while the city grows 2.0× will look
+like a ward whose hazard is worsening.
+
+### 22.2 But it is not socioeconomically patterned — which is the good news
+
+Spearman ρ of ward growth ratio against every proxy available:
+
+| Proxy | ρ | p |
+|---|---:|---:|
+| Total population (2014 delimitation) | −0.109 | 0.125 |
+| Ward area | −0.021 | 0.771 |
+| Population density | 0.014 | 0.839 |
+| **SC + ST population share** | **−0.057** | **0.423** |
+| Centroid elevation | 0.055 | 0.439 |
+| Elevation range | **−0.231** | **0.001** |
+| Complaints per 1,000 residents, 2021 | **−0.147** | **0.039** |
+
+By zone, the periphery grew at 1.96× against the core's 2.01× — **no difference**
+(Mann-Whitney p = 0.708). Mahadevapura is highest at 2.48× and West lowest at
+1.69×, but the pattern does not line up with the core/periphery split.
+
+Two weak effects are real. Flatter wards grew faster (ρ = −0.231 on elevation
+range), plausibly because flat land is where the new peripheral development is.
+And wards that were already loud in 2021 grew less (ρ = −0.147), a saturation
+effect.
+
+**The marginalisation proxy shows nothing** (SC+ST share, ρ = −0.057, p = 0.42).
+That matters for the reporting-bias section of `docs/01-evaluation-rules.md`: the
+*growth* in reporting is not concentrated in richer or poorer wards. It is
+idiosyncratic — which makes it a noise problem rather than an equity problem,
+and means correcting for it will not itself introduce a social bias.
+
+### 22.3 The normalisation, and why the denominator barely matters
+
+For each ward-quarter, strict event-days as a share of that ward's own
+complaints. Citywide, over 20 complete quarters (2020Q2 → 2025Q1):
+
+| Denominator | First 4 quarters | Last 4 quarters |
+|---|---:|---:|
+| All complaints | 0.854% | 0.667% |
+| Categories present in all 6 years | 0.854% | 0.680% |
+| Solid-waste complaints only | 3.297% | 2.447% |
+
+**The share is flat-to-declining while volume doubles.** That is the signature of
+a denominator effect: raw event counts rise because complaints rise, not because
+flooding rises.
+
+The obvious objection — that BBMP added whole categories mid-window (§9.4), so
+the denominator inflates for unrelated reasons — was checked and does not bite.
+The eleven mid-window categories account for **0.7%** of rows in this window, and
+slopes computed on the three denominators agree at ρ = 0.995 (all vs stable) and
+0.85 (against solid-waste-only).
+
+### 22.4 Raw vs normalised: 7 rising wards become 0
+
+Theil–Sen slope with a Mann-Kendall test, on 20 quarterly points per ward,
+restricted to the 103 wards with ≥15 strict event-days across the window:
+
+| Series | Significantly rising | Significantly declining |
+|---|---:|---:|
+| **Raw event count** | **7** | 3 |
+| **Normalised share** (all complaints) | **0** | 10 |
+| Normalised (stable categories) | 0 | 9 |
+| Normalised (solid-waste denominator) | 0 | 10 |
+
+**The zero is not a power failure.** The same test detects ten significant
+declines. The closest any ward comes to a significant rise is p = 0.139
+(Bharathi Nagar); no ward reaches p < 0.10 in the rising direction under any
+denominator.
+
+Spearman ρ between the raw and normalised slopes is only **0.394**, and the two
+top-20 lists share **11 of 20**. Wards that fall out when normalised — their
+apparent rise was volume:
+
+| Ward | Raw rank | Normalised rank | Volume growth |
+|---|---:|---:|---:|
+| Chikpete | 6 | 76 | 3.30× |
+| Bellandur | 7 | 91 | 2.60× |
+| Gandhi Nagar | 8 | 32 | 2.12× |
+| Kuvempu Nagar | 9 | 29 | 3.25× |
+| Varthur | 11 | 85 | 2.51× |
+| Hemmigepura | 12 | 59 | 2.98× |
+| Kodigehalli | 16 | 71 | 3.69× |
+| Ejipura | 19 | 97 | 1.84× |
+| Aramane Nagar | 20 | 39 | 1.85× |
+
+And wards that enter — a genuine relative rise masked by flat volume:
+Puttenahalli (norm 7, raw 87), Yelahanka old Satellite Town (8, 89),
+K.R.Market (12, 63), Chamrajpet (13, 32), Benniganahalli (14, 36),
+Basavanagudi (15, 39), Hebbal (16, 43), BTM Layout (19, 31), Cottonpet (20, 23).
+
+**This table is the concrete demonstration.** Bellandur and Varthur are the two
+most notorious flooding wards in Bengaluru and both sit in the raw top 11 — but
+their *share* of flooding complaints is not rising, so on the raw test they
+would be reported as newly emerging when they are simply long-standing and
+increasingly well-reported.
+
+### 22.5 The four register-absent wards, checked by name
+
+§21 noted that Hoodi, Someshwara, Jakkur and Basavanapura are top-20 complaint
+wards absent from BBMP's register, and flagged them as emerging candidates. The
+caution in `NEXT.md` — that fast-growing areas are also where reporting grows
+fastest — was well placed:
+
+| Ward | Raw rank | Norm rank | Volume growth | Normalised slope | p |
+|---|---:|---:|---:|---:|---:|
+| **Jakkur** | **1** | 4 | 3.11× | +0.00026 | 0.183 |
+| Basavanapura | 37 | 60 | 1.82× | −0.00008 | 0.586 |
+| Someshwara | 81 | 84 | 2.18× | −0.00048 | 0.074 |
+| **Hoodi** | 54 | 101 | **3.06×** | **−0.00099** | **0.007** |
+
+**Jakkur ranks first in the city on raw event growth and is a rapid-development
+corridor with 3.11× volume growth.** It survives normalisation better than the
+others — 4th — but at p = 0.183 it is not significant.
+
+**Hoodi is significantly *declining*** in normalised share (p = 0.007) despite
+3.06× volume growth. On a raw trend test it would have looked like a rising
+hazard.
+
+This forces a distinction §21 did not make. Being *absent from the register with
+high total events* means **the register is out of date** about that ward. It does
+not mean the ward is **getting worse**. Those are two different claims needing
+two different tests, and only the first is supported for these four.
+
+### 22.6 What this means for Proof Two
+
+**As specified, Proof Two would report seven emerging hotspots, all of them
+artefacts.** The normalisation in §22.3 is mandatory, not an refinement.
+
+But applying it leaves a harder problem: **after correct normalisation there is
+no detectable emerging signal at ward level in this window at all.** Not a weak
+one — zero wards rising at p < 0.10, against ten declining.
+
+The most likely explanation is granularity. A BBMP ward averages 3.7 km² and
+generates thousands of complaints a year; a genuinely emerging hotspot is a
+junction or a stretch of road contributing perhaps a dozen. Ward aggregation
+dilutes exactly the signal Proof Two is looking for. **The complaint data carries
+no sub-ward geography (§8), so location-level emerging detection is not possible
+with this source** — which is the same wall §19 hit from the other side.
+
+Three honest options, in order of how much they preserve:
+
+1. **Reframe Proof Two as a methodological result, matching restated Proof One.**
+   "Naive trend detection on civic-complaint counts yields seven spurious
+   emerging hotspots over five years, every one explained by reporting growth;
+   after normalisation none survives." That is a real, citable finding about
+   complaint-derived hazard data, and it is honest. It is not a working detector.
+2. **Move the positive contribution to intervention effectiveness.** That is the
+   third Learn output and it has an independent data source — BBMP ward work
+   orders 2013–2022 (`docs/00-build-plan.md`) — which does not depend on
+   detecting a trend in complaint counts at all.
+3. **Find sub-ward geography.** Nothing in the current sources provides it. This
+   would be a new data acquisition, not an analysis.
+
+**Both proofs are now negative-shaped.** Proof One is a measured ceiling; Proof
+Two is a measured confound. That is a coherent and defensible paper — *what
+complaint-derived data can and cannot support for urban failure prediction* —
+but it is a different paper from the one in `docs/00-build-plan.md`, and the
+decision to write it is not one this document should make quietly.
+
+The declining share is worth one more note: waterlogging is becoming a smaller
+fraction of BBMP's complaint mix, and ten wards decline significantly. That is
+consistent with drainage works actually helping, which would be a finding in the
+intervention-effectiveness output rather than a nuisance — option 2 above may be
+better supported than it currently looks.
