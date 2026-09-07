@@ -25,47 +25,54 @@ before starting anything here.
 
 ---
 
-## Current task — `data/reference/hazard_categories.yaml`
+## Current task — housekeeping bundle
 
-Hand-curated map from exact source category and sub-category strings to
-`WATERLOG` / `GARBAGE`, and within waterlogging to `event` vs `maintenance` —
-the strict/broad split from `docs/01-evaluation-rules.md`. Preserve source
-strings byte-exactly; note the double space in `Storm  Water Drain(SWD)`.
-Record the row count beside each entry so vocabulary drift shows up in a diff.
-This is a citable methodological artifact, not a config file.
+Two jobs, one afternoon, both agreed in the previous round's answers.
 
-Profile §10.1 has the counts and the parent-category table; §12.4 has the
-event/maintenance evidence (rain lift 3.07x for `water stagnation` against
-1.33x for `Road side drains`).
+**1. Restate the §12–§14 headlines on IFS.** The documents quote ERA5 figures
+while the database is primarily ECMWF-IFS. Close the seam: 13.55% -> 14.08%
+static baseline, 37.36% -> 37.72% ceiling, 4.72% -> 4.79% random. Keep the ERA5
+numbers as an explicitly labelled before/after, not as the headline. Note that
+§19 already uses the IFS figures throughout, so the inconsistency is now
+internal to the document.
+
+**2. Baseline Alembic, then add `weather_cells.model`.** Generate the baseline
+against an **empty** database so migrations build the schema from scratch
+(Phase 7 needs that), hand-add the three views with `op.execute`, verify a fresh
+`alembic upgrade head` gives an `information_schema` identical to loading
+`ufms_schema.sql`, then `alembic stamp head` on dev. Then add `model` to
+`weather_cells` as the project's first real migration, backfill it
+(cells 1-9 = `era5`, 10-23 = `ecmwf_ifs`), and update `ufms_schema.sql` to match.
 
 ---
 
 ## Queue
 
-Do these in order.
+**1. `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
+source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
+waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly;
+note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
+each entry so vocabulary drift shows in a diff. A citable methodological
+artifact, not a config file.
 
-**1. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
-YAML. Idempotent on `Complaint ID` (globally unique across all six files).
-Truncates timestamps to DATE deliberately — the source lost its AM/PM marker,
-so any time-of-day value would be fiction. Applies the crosswalk, keeps
-`in_flood_register=false` wards in the panel, and logs excluded counts
-unconditionally.
+**2. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
+YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE deliberately.
+Applies the crosswalk, keeps `in_flood_register=false` wards in the panel, and
+logs excluded counts unconditionally.
 
-**2. Hotspot register dedup decision.** The three KML layers are already loaded
-unmerged (§16.1: 398 points, `hotspot_source` per layer). What remains is the
-decision the original item deferred: whether and how to merge them, given they
-are near-disjoint (§8.2) and their provenance is still unestablished. The dedup
-threshold is a documented decision, not a default. Establish what each layer
-actually represents before choosing one.
+**3. Decide what Proof One now claims.** Profile §19.7 argues the original
+framing is close to unwinnable and proposes the inverse claim. That is a
+project-level decision, not a doc edit — it changes what the mid-review
+promises. Settle it before Phase 3 starts, not during.
 
-**3. Failure Memory Index — build the interaction features first.**
-`docs/01-evaluation-rules.md` records why: count-based memory is saturated at
-13.55% and adding more history changes nothing. Lead with
-`rain_sensitivity_mm`, `ward_rain_response_slope`,
-`conditional_rate_at_current_band` and `excess_over_city`. Every value computed
-strictly from data earlier than its `as_of_date`.
+**4. Hotspot register dedup decision.** Three KML layers already loaded
+unmerged (398 points, `hotspot_source` per layer). Establish what each layer
+represents before choosing a threshold.
 
----
+**5. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
+Per §19.7 and the evaluation rules: all four landing near 14% against a 37.7%
+ceiling is the result. Report within-night AUC or precision@k, never a pooled
+AUC.
 
 ## Done log
 
@@ -121,3 +128,18 @@ strictly from data earlier than its `as_of_date`.
   **KSNDMC: 131 gauges inside BBMP, median 0.95 km per ward — but only 5 report
   to the national portal and only from Aug 2023, and the advertised 1991-2020
   file is 342 bytes.** Dead end without an RTI. 57 tests pass.
+- **2026-09-08 — Headroom tested. It is not reachable.** A ward-level ranking
+  fitted with **perfect foresight** of the test period reaches **15.66%**
+  against the honest **14.08%** — so only **1.58 of the 23.64 points (6.7%)** of
+  headroom is ward-level at all; **93.3% is within-ward temporal variation**.
+  Consecutive rain nights' event vectors correlate at **0.090**. 70.3% of events
+  are surprises, median prior-rank 69, only 0.8% from cold wards — so the static
+  list is not merely cut too short (top-40 captures 46% at precision 10.92%).
+  **The prescribed FMI interaction features were built and tested and are worse
+  than memory alone** (cond_rate 12.94%, +excess 12.79%, vs prior_n 14.08%);
+  they correlate with plain prior count at r = 0.85-0.88. Terrain and elevation
+  add nothing. **New trap named: pooled ROC-AUC 0.749 coexists with +0.18
+  points on precision@20 (p = 0.84)** because rainfall carries 74-100% of its
+  variance between nights while precision@k compares within a night — rule added
+  to the evaluation rules. Proof One flagged for restatement. Profile §19;
+  `data/reference/ward_elevation.csv` added. 57 tests pass.

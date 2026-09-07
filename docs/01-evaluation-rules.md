@@ -32,6 +32,22 @@ Base rate is ~0.5%. A model predicting "no failure" always scores 99.5%.
 | M2 | weather + terrain | does geography alone explain it? |
 | M3 | weather + terrain + Failure Memory Index | **the system** |
 
+## Proof One — RESTATE THIS (see profile §19.7)
+
+As originally written, Proof One is close to unwinnable: a perfect ward-level
+ranking beats the static list by 1.6 points, and the honest model is already
+within 1.6 points of that. Do not promise to beat the static baseline by a
+material margin.
+
+What the data supports is the inverse, and it is a stronger claim because it is
+measured: **the event set genuinely moves** (consecutive-night correlation
+0.090), so a static list is not capturing a stable phenomenon — **and yet
+nothing observable predicts the movement**. The contribution becomes "we
+measured how much a nightly triage list can be improved, and it is 1.6 points
+of 23.6" rather than "we improved it".
+
+The original text follows.
+
 ## Proof One — the ranking is dynamic
 
 *If tonight's top 20 is the same 20 every night, this is a report, not a tool.*
@@ -156,8 +172,61 @@ cannot solve the spatial problem. This also means M1's expected score is ~5%,
 so **do not read a low M1 as a bug** — it is the predicted result, and M2 must
 be compared against it knowing that.
 
-The headroom from 13.55% to 37.36% has to come from **memory interacting with
-weather**, so the FMI must lead with:
+### The headroom was measured, and it is not reachable (8 Sep 2026)
+
+**This supersedes the feature plan below.** Profile §19 tested it rather than
+assuming it. A ward-level ranking fitted with perfect foresight — cheating,
+using the test period's own outcomes — reaches **15.66%** against the honest
+**14.08%**.
+
+| | Points | Share of headroom |
+|---|---:|---:|
+| Headroom, 14.08% to the 37.72% ceiling | 23.64 | 100% |
+| **Reachable by any perfect ward-level ranking** | **1.58** | **6.7%** |
+| **Irreducibly within-ward / temporal** | **22.06** | **93.3%** |
+
+Consecutive rain nights' event vectors correlate at **0.090**. Which wards
+flood tonight is close to independent of which flooded last time, and no ward
+attribute predicts the movement.
+
+**The two interaction features named below were built and tested. Both are
+worse than memory alone:**
+
+| Model | Within-night AUC | precision@20 |
+|---|---:|---:|
+| **prior event count alone** | **0.7371** | **14.08%** |
+| `conditional_rate_at_current_band` | 0.7091 | 12.94% |
+| + `excess_over_city` | 0.6979 | 12.79% |
+| memory + interaction + terrain | 0.7332 | 13.82% |
+
+`cond_rate` correlates with plain prior count at r = 0.853 and `excess` at
+r = 0.877 — conditioning a thin per-ward history on six rainfall bands adds
+more estimation noise than interaction signal. Terrain (elevation, elevation
+range, centroid-below-boundary) adds nothing either.
+
+**Do not build the FMI expecting a precision win.** Build the ladder to
+demonstrate the bound: M0–M3 all landing near 14% against a 37.7% ceiling *is*
+the result, and the ablation is what makes it credible.
+
+### Rule: never report a pooled AUC as evidence a triage model works
+
+A logistic model over all features reaches pooled ROC-AUC **0.749** and looks
+successful. Its within-night AUC is 0.737 — and prior count alone also gives
+0.737. Rainfall features carry 74–100% of their variance *between* nights,
+while precision@k only ever compares wards *within* one night. A night-level
+model scores pooled AUC 0.61, within-night AUC exactly **0.500**, and
+precision@20 of 4.71% — chance.
+
+**Report within-night AUC, or precision@k, or both. Never a pooled AUC alone.**
+
+### The original feature plan, retained for the record
+
+The reasoning below was sound and the features were the right ones to try. They
+were tried. Keep this section so the negative result is legible as a decision
+rather than an omission.
+
+The headroom from 13.55% to 37.36% was expected to come from **memory
+interacting with weather**, so the FMI was to lead with:
 
 - `rain_sensitivity_mm` — rainfall at which *this ward's* historical failure
   probability crosses 50%. Already in the schema; now known to be the important one.

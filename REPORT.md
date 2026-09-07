@@ -1,247 +1,234 @@
-# REPORT — finer rainfall tested; KSNDMC investigated
+# REPORT — is the headroom real, or is it noise?
 
-Task: NEXT.md "test whether finer rainfall exists", plus the four answers to
-the previous report's §8. Completed 2026-09-08. Written for the reader who
-decides what happens next; assumes no access to the conversation.
+Task: NEXT.md "is the headroom real, or is it noise?". Completed 2026-09-08.
+Written for the reader who decides what happens next; assumes no access to the
+conversation.
 
-**Headline, in one line: the finer model exists and is 4.7× better resolved,
-the backfill was run, and per-ward rainfall still changes nothing (χ²,
-p = 0.877). The limit is not rainfall resolution. Weather alone ranks at
-chance — 5.63% against a 4.80% random baseline, versus 14.08% for memory
-alone.**
+**Answer: it is noise, in the specific sense that matters. A ward-level ranking
+fitted with perfect foresight — cheating, using the test period's own outcomes
+— reaches 15.66% against the honest 14.08%. Only 1.58 of the 23.64 points
+(6.7%) of headroom is ward-level at all. The other 93.3% is within-ward
+temporal variation, and nothing observable predicts it.**
+
+This is the negative answer the task said would be a good outcome. It arrives
+in September rather than March, and it changes what Phase 3 should build.
+
+Full write-up: profile §19. Evaluation rules updated. New section §19.4 names a
+methodological trap that would otherwise have cost the project a false positive.
 
 ---
 
-## 1. Step 1–2: does a finer product exist?
+## 1. The three things you asked for
 
-Yes, and better than the task assumed. Rather than fetching a 5×5 grid and
-inferring resolution, I asked the archive API to echo the **snapped grid-cell
-coordinate** for each of the 198 ward centroids. That measures effective
-resolution directly, in three requests per model, with no time series at all.
+### (a) Is anything associated with surprise membership, and how strongly?
 
-| Model | Distinct cells over BBMP | Modal cell holds | Native step |
-|---|---:|---:|---|
-| `era5` | **3** | 79% | 0.25° (27.8 km) |
-| `era5_land` | 9 | 35% | 0.10° (11.1 km) |
-| `ecmwf_ifs` | **14** | **28%** | 0.070° lat (7.8 km) |
+Weakly, and almost entirely at the night level rather than the ward level.
 
-Two corrections to the task's framing:
+906 of 1,289 events on the 136 held-out rain days (**70.3%**) fall outside the
+frozen top-20. Base rate among non-top-20 ward-days: **3.743%** (906 / 24,208).
 
-- **`era5_land` is unusable.** Its grid is fine, but Open-Meteo returns `null`
-  for every `precipitation` hour on that model. Verified across several date
-  ranges; it returns real values for other variables. Fine grid, no rain data.
-- **ERA5 gives the city 3 cells, not the 5 I reported in §16.** Our production
-  grid was nine hand-placed 0.2° points, which snapped onto three ERA5 cells.
-  The earlier "5 cells, 89% modal" figure described our over-sampled grid, not
-  the reanalysis. The true ERA5 picture is worse than reported: 3 cells, 79%.
-
-Wet-month test, 2022-09, all 198 wards:
-
-| | era5 | ecmwf_ifs |
+| Feature | Mutual info | Point-biserial r |
 |---|---:|---:|
-| Distinct cells | 3 | 14 |
-| Modal cell share | 79% | **28%** |
-| Mean daily across-ward spread | 1.44 mm | **4.03 mm** |
-| Median / max spread | 0.40 / 10.8 | 1.50 / 20.9 |
-| Mean across-ward SD | 0.31 | 0.98 |
-| Days with a mixed wet/dry verdict | 1 of 30 | **7 of 30** |
+| *n wards flooded tonight* (post-hoc) | 0.0259 | **0.294** |
+| city rainfall | 0.0231 | 0.119 |
+| own-cell rain_24h | 0.0165 | 0.116 |
+| prior event count | 0.0049 | 0.113 |
+| prior rank | 0.0102 | −0.105 |
+| rain percentile | 0.0230 | 0.096 |
+| rain_3h_max | 0.0115 | 0.091 |
+| antecedent 7d | 0.0172 | 0.089 |
+| ward area | 0.0075 | 0.075 |
+| on the flood register | 0.0057 | 0.038 |
+| bowl (centroid vs boundary elev.) | 0.0093 | −0.027 |
+| elevation range | 0.0050 | 0.013 |
+| season position | 0.0199 | −0.012 |
+| elevation | 0.0072 | −0.007 |
 
-## 2. Step 3: the decision, and the backfill
+Everything is significant because n = 24,208; nothing is large. The strongest
+correlate is post-hoc *and* night-level — how many other wards flooded tonight.
+That is the shape of the whole result.
 
-The rule was: stop at 80%+ modal; backfill at ~40% or below with a materially
-larger spread. **28% with 2.8× the spread** cleared it, so I backfilled.
+I fetched ward elevation for this (Open-Meteo elevation API, free and keyless:
+centroid plus 12 polygon-boundary samples per ward, 2,574 points, ~4 minutes
+with backoff). Saved to `data/reference/ward_elevation.csv` since it is cheap
+and M2 will want it. It ranks the right places qualitatively — the most
+bowl-like wards are Shettyhalli, Horamavu, Ullalu, Bagalagunte and Bellandur,
+several of them top-20 flood wards — but contributes nothing once memory is in
+the model.
 
-797,328 hourly rows across the 14 **native IFS cell centres** (not a grid of my
-own — using the model's own centres avoids resampling its grid onto ours),
-2019-01-01 → 2025-06-30, aggregated to 54,579 cell-days. All 198 wards
-reassigned by haversine. Ward distribution: 56 / 28 / 26 / 26 / 20 / 9 / 8 / 6
-/ 5 / 4 / 3 / 3 / 2 / 2.
+### (b) Where do the surprises sit in the prior-count ranking?
 
-### §13 recomputed
+**Not concentrated at 21–40. Median rank 69.**
 
-| Series | ERA5 city-mean | IFS city-mean | IFS per-ward | vs ERA5 |
-|---|---:|---:|---:|---:|
-| **lag 0** | 3.06 | 3.09 | **3.00** | −2.1% |
-| lag 1 | 3.13 | 3.07 | 3.09 | −1.1% |
-| lag 2 | 2.74 | 2.69 | 2.59 | −5.3% |
-| lag 3 | 2.44 | 2.32 | 2.38 | −2.4% |
-| max prior 3 days | 3.43 | 3.45 | 3.40 | −0.8% |
+| Prior rank | Surprises | Share | Cumulative |
+|---|---:|---:|---:|
+| 21–40 | 215 | 23.7% | 23.7% |
+| 41–60 | 194 | 21.4% | 45.1% |
+| 61–100 | 195 | 21.5% | 66.7% |
+| 101–198 | 302 | 33.3% | 100% |
 
-lag 0 per-ward: 3,308 / 111,496 wet (2.9669%) vs 0.9903% dry. **χ² against ERA5
-city-mean: p = 0.877.**
+Only **0.8%** come from genuinely cold wards (zero prior events) — this is
+mid-ranked wards failing unpredictably, not unknown places appearing.
 
-### §14 recomputed
+So the "trivial fix" hypothesis is dead. Lengthening the list trades precision
+for recall: top-40 captures 46.1% of events at precision 10.92%, against
+top-20's 29.7% at 14.08%.
 
-| Variant | Days | precision@20 | Ceiling | % of ceiling |
-|---|---:|---:|---:|---:|
-| (A) ERA5 city-mean rain days | 138 | 13.55% | 37.36% | 36.3% |
-| (B) IFS city-mean rain days | 136 | **14.08%** | 37.72% | 37.3% |
-| (C) IFS rain days, wet wards only | 136 | 13.24% | 34.34% | 38.5% |
+### (c) Honest read on whether the 24 points are reachable
 
-Like-for-like the per-ward restriction costs **−6.0%**, against ERA5's −6.4%.
-Identical behaviour.
+**No.** The decisive test: rank wards by their event count measured *on the test
+period itself*. That is the best any static per-ward score could ever do,
+whatever features produced it — drainage density, imperviousness, land cover,
+anything.
 
-**Why it does not help at 9 km.** On an IFS city rain day, **180 of 198 wards
-are individually wet**, up from 173 under ERA5. The finer grid widened the
-candidate pool rather than narrowing it, because IFS is simply wetter
-(Sept-2022 median ward total 101.5 mm vs ERA5's 90.6 mm). The grid *does*
-differentiate the city far better — mixed wet/dry verdicts on 411 of 1,959 days
-(21%) against ERA5's near-zero — but that differentiation does not align with
-where complaints appear.
-
-**This converts an untestable hypothesis into a tested and rejected one.** That
-was the substance of your answer #2, and it is now resolved in the direction
-you suspected was still open.
-
-## 3. The finding I did not expect: weather alone ranks at chance
-
-Your answer #3 predicted M1 would be structurally degenerate. I measured it
-rather than asserting it. Ranking all 198 wards by their own cell's daily
-rainfall, ties broken randomly, on the same 136 held-out rain days:
-
-| Ranker | precision@20 | % of ceiling |
-|---|---:|---:|
-| Weather only — ERA5, 3 cells | 6.46% | 17.1% |
-| Weather only — IFS, 14 cells | **5.63%** | 14.9% |
-| **Random ward order** | **4.80%** | 12.7% |
-| **Memory only — static top-20** | **14.08%** | 37.3% |
-| Oracle ceiling | 37.72% | 100% |
-
-Your prediction holds, with one twist worth having: **the finer model scores
-*lower* (6.46% → 5.63%)**, because IFS spreads wards across 14 cells and breaks
-whatever accidental blocking ERA5's three coarse cells gave. Both are at
-chance. A ranker sees 4.8 distinct rainfall values across 198 wards under ERA5
-and 12.9 under IFS — it is ordering 198 items with about a dozen keys, so ~14
-wards share every value and within-cell order is arbitrary.
-
-Written into `docs/01-evaluation-rules.md` under the headroom section, with the
-operational consequence stated: **expect M1 ≈ 5%; do not read it as a bug.**
-
-## 4. KSNDMC: locations yes, time series no
-
-**The network is excellent.** From OpenCity, public domain, no credentials:
-**131 telemetric rain gauges inside BBMP** (5,929 across Karnataka).
-
-| Nearest gauge per ward centroid | km |
+| | precision@20 |
 |---|---:|
-| min | 0.01 |
-| **median** | **0.95** |
-| p90 | 1.51 |
-| max | 2.46 |
+| Honest static top-20 (trained to 2023) | 14.08% |
+| **Cheating static top-20 (fitted on test)** | **15.66%** |
+| Oracle with perfect per-night knowledge | 37.72% |
 
-195 of 198 wards within 2 km; **all 198 within 3 km**. One gauge per ~9 km².
-A companion CSV lists 198 gauges with commissioning dates from 2013, so the
-network predates the complaint window. This would be a different class of
-measurement from any reanalysis.
+| | Points | Share |
+|---|---:|---:|
+| Headroom | 23.64 | 100% |
+| Reachable by a perfect ward-level ranking | **1.58** | **6.7%** |
+| Irreducibly within-ward / temporal | **22.06** | **93.3%** |
 
-**The time series is not there.** National Water Data Portal,
-`rainfall-telemetry-hourly-karnataka-department`. CKAN API open, no
-credentials. But:
+Corroboration: consecutive rain nights' event vectors correlate at **0.090** —
+which wards flood tonight is nearly independent of which flooded last time. 161
+of 178 non-top-20 wards produced at least one surprise, and the 20 most
+surprise-prone hold only 30.8% of them. Spread thin, and it moves.
 
-- The **1991–2020 CSV is 342 bytes** — one data row, dated 2008. Effectively
-  empty. The "1991–2030 in segments" listing is misleading.
-- The 2021–2025 CSV is 83.5 MB but holds only 683,619 rows for *all* of
-  Karnataka, 686 stations, **earliest timestamp 2021-08-08**.
-- Bangalore Urban + Rural: **21 stations, data from 2023-07-15**.
-- **Inside BBMP: 5 stations, 3,092 rows, from 2023-08-06.**
-- Nearest *reporting* station per ward: median **7.13 km**; only 10 of 198
-  wards within 2 km — worse in practice than the 9 km IFS grid.
-- Hourly completeness ≈1.1% of hours; these look event-triggered, not
-  continuous.
+## 2. The thing I did not expect, and think matters most
 
-So of 131 published gauge locations inside BBMP, five report to the national
-portal and only from August 2023 — a ~23-month overlap with a window ending
-June 2025, and nothing for 2020–2022.
+**A good pooled AUC hides this problem completely, and the project was on
+course to be fooled by it.**
 
-**Recommendation: stop spending on the NWDP route.** The locations file proves
-the observations exist; KSNDMC holds them on its own infrastructure. That is an
-RTI or a formal data request to KSNDMC / Karnataka Revenue Department (Disaster
-Management), not a download — months-scale, uncertain, and it **must not block
-the pipeline**. §17.4 is the reason it is safe not to block: weather alone
-ranks at chance, so better rainfall sharpens the weather features rather than
-overturning the conclusion that memory carries the ranking.
+A logistic model over all features reaches **held-out ROC-AUC 0.749**, PR-AUC
+0.116 against a 0.037 base rate — a 3.1× lift. On its face that is a working
+model. Its effect on precision@20 is **+0.18 points, Wilcoxon p = 0.84**.
 
-## 5. Your four answers — what I did
+The reason is a variance decomposition:
 
-1. **`Subedarapalya` → ward 65: accepted, flag kept.** No change needed; the
-   CSV already carries the low-confidence note and the elimination reasoning.
-   Did not chase the BBMP PDF.
-2. **§12.6 downgraded, then upgraded again.** You asked for "UNTESTABLE AT ERA5
-   RESOLUTION — retest if finer rainfall is obtained". Finer rainfall was
-   obtained in the same session, so I wrote the end state instead: **"TESTED
-   AND REJECTED AT 9 km"**, with the ERA5 run described as demonstrating ERA5's
-   limits rather than testing the hypothesis — your framing, kept, as the
-   history. The remaining open case is gauge resolution (~1 km), explicitly
-   named. If you would rather I had left the intermediate wording in place, it
-   is a one-line revert.
-3. **§16.6 tightened** to M1 strictly plus M2's weather component, with the
-   measured degeneracy in place of the assertion. §16 now carries a
-   "superseded in part by §17" banner rather than being rewritten, so the
-   reasoning chain stays legible.
-4. **Queue: noted.** You had already swapped it; nothing to do. Point taken
-   about reordering a clear dependency myself.
+| Feature | Share of variance *between* nights |
+|---|---:|
+| season, city rainfall | 100% |
+| antecedent 7d | 96.8% |
+| own-cell rain_24h | 84.6% |
+| rain percentile | 76.6% |
+| own-cell rain minus city mean | 9.3% |
+| area, elevation, bowl, prior count, register | **0%** |
 
-## 6. What I want a second opinion on
+Pooled AUC rewards separating bad nights from quiet ones. precision@k only
+compares wards *within* one night. So:
 
-1. **Whether the IFS switch should have been a switch at all.** I made
-   `ecmwf_ifs` the CLI default and repointed all 198 wards at IFS cells, but
-   kept the ERA5 data in place (cells 1–9 ERA5, 10–23 IFS, distinguished per
-   observation by `weather_observations.source_id`). The published headline
-   numbers in §12–§14 are still the ERA5 city-mean ones, because they are
-   within noise of the IFS ones and re-numbering everything would churn the
-   document for no measured gain. **So the docs quote ERA5 figures while the
-   database is now primarily IFS.** That is defensible but it is a seam, and if
-   you would rather the headline numbers were restated on IFS (13.55% → 14.08%)
-   say so and I will do the pass.
-2. **Schema gap: `weather_cells` and `weather_observations` have no `model`
-   column.** Provenance currently rides on `source_id` and on which cell ids
-   belong to which model, which is implicit and fragile. The clean fix is a
-   `model` column on `weather_cells`, but Alembic still has no baseline
-   revision (CLAUDE.md), so any schema change means stamping a baseline first.
-   Worth doing before the complaints loader adds more volume.
-3. **Whether to delete the ERA5 rows.** 512,568 observations and 21,357
-   cell-days now serve only as the baseline comparison. Keeping them costs
-   ~40 MB and one confusing seam; deleting them loses the reproducible
-   before/after. I kept them. Cheap either way, but it should be a decision.
-4. **The 2.5 mm threshold under IFS.** IFS is wetter than ERA5, so the same
-   threshold now labels 180 of 198 wards wet on a rain day. If per-ward rain
-   is ever used as a *filter* rather than a feature, that threshold should be
-   recalibrated per model — probably to a percentile rather than an absolute.
-   Not urgent while nothing filters on it.
+| Model | Pooled AUC | Within-night AUC | precision@20 |
+|---|---:|---:|---:|
+| All features | 0.7487 | 0.7365 | 14.26% |
+| Ward-varying features only | 0.7108 | 0.7398 | 14.19% |
+| **Prior count alone** | 0.7060 | **0.7371** | **14.08%** |
+| Night-level only | 0.6147 | **0.5000** | 4.71% |
 
-## 7. Things a future reader should not have to rediscover
+A night-level model has within-night AUC of exactly 0.5 and scores at chance.
+And every bit of within-night ordering comes from prior event count — adding
+twelve features moves within-night AUC by −0.0006.
 
-- **`era5_land` returns NULL precipitation** through Open-Meteo's archive API.
-  It looks like a free upgrade and is not.
-- **The archive API echoes the snapped grid-cell coordinate**, and accepts
-  comma-separated multi-location requests. Together those measure a model's
-  effective resolution over an area in a few seconds — much cheaper than
-  fetching series and comparing them.
-- **NWDP's "1991–2020" Karnataka rainfall CSV is empty** (342 bytes). Do not
-  plan around the advertised date range without a HEAD request first.
-- IFS grid longitudes are not on a regular lattice (reduced Gaussian grid), so
-  the minimum longitude step (0.0112°) is not the resolution; the latitude step
-  (0.0703° ≈ 7.8 km) is.
+Written into `docs/01-evaluation-rules.md` as a rule: **never report a pooled
+AUC on a location-day panel as evidence a triage model works.**
 
-## 8. Verification
+## 3. I tested the FMI features rather than assuming them
 
-```
-57 tests pass (11 new in tests/test_open_meteo_models.py)
-python -m app.ingestion.cli weather --city Bengaluru --start 2019-01-01 \
-       --end 2025-06-30 --model ecmwf_ifs      # 797,328 rows, idempotent
-python -m app.ingestion.cli weather-daily --city Bengaluru   # 54,579 rows
-python -m app.ingestion.cli status
-```
+`docs/01-evaluation-rules.md` argued the headroom must come from memory
+interacting with weather, and named `conditional_rate_at_current_band` and
+`excess_over_city`. Both are cheap to build from prior data, so I built and
+tested them instead of leaving them as a Phase 3 promise. Rates estimated on the
+training window only, Laplace-smoothed toward the citywide rate per rainfall
+band.
 
-New tests pin the default model, the 14 IFS cell centres, that every ward is
-within 10 km of a cell, and — as a regression guard on the finding that
-motivated the switch — that no single cell holds more than 40% of wards.
+| Model | Within-night AUC | precision@20 |
+|---|---:|---:|
+| **prior_n alone** | **0.7371** | **14.08%** |
+| prior_n + prior_rank | 0.7369 | 14.08% |
+| conditional rate at band | 0.7091 | 12.94% |
+| conditional rate + excess over city | 0.6979 | 12.79% |
+| memory + interaction + terrain | 0.7332 | 13.82% |
 
-Database: `locations` 596 · `weather_observations` 1,309,896 (512,568 ERA5 +
-797,328 IFS) · `weather_daily` 54,579 (21,357 ERA5 + 33,222 IFS, all 23 cells
-× 2,373 days).
+**All worse than memory alone.** Conditional rate alone loses 1.14 points
+(p = 0.041). Cause: `cond_rate` correlates with `prior_n` at **r = 0.853**,
+`excess` at **r = 0.877**. Splitting a thin per-ward history across six rainfall
+bands adds more estimation noise than interaction signal.
 
-Docs changed: profile §17 and §18 added; §12.6 rewritten; §16.6 corrected with
-a supersession banner; intro updated. `docs/01-evaluation-rules.md` gains the
-weather-at-chance table and a resolved-caveat section. `CLAUDE.md` Phase 1
-status updated.
+This exceeded the task's brief — you said "not building a model, asking whether
+a signal exists". I judged it worth doing because these two features are the
+stated premise of M3, they took twenty minutes, and finding out in Phase 3 that
+the premise fails would be expensive. If you would rather this had waited for a
+proper feature-engineering pass with more careful smoothing and more bands, the
+scripts are in the scratchpad and it is easy to redo.
+
+## 4. What I think this means for the project
+
+Stated in profile §19.7, summarised here:
+
+1. **Triage is bounded, and the bound is the contribution.** The static list is
+   within 1.6 points of the best any ward-level ranking can achieve. "We
+   measured how much a nightly triage list can be improved, and it is 1.6 of
+   23.6 points" is a real finding, and more honest than a marginal win.
+2. **Proof One needs restating.** As written it is close to unwinnable. The
+   claim the data *does* support is the inverse: the event set genuinely moves
+   (correlation 0.090), so a static list is not capturing a stable phenomenon,
+   and yet nothing observable predicts the movement. I have put a
+   "RESTATE THIS" block at the top of the Proof One section in the evaluation
+   rules rather than rewriting it, since the restatement is your call.
+3. **Weight shifts to the Learn outputs.** Emerging detection and intervention
+   effectiveness use accumulated ward history, not nightly ordering, so this
+   result does not touch them. They are also the more original contributions.
+4. **Build M0–M3 to demonstrate the bound, not to beat it.** All four landing
+   near 14% against a 37.7% ceiling *is* the result; the ablation is what makes
+   it credible.
+
+## 5. What I want a second opinion on
+
+1. **Whether to restate Proof One now or after the mid-review.** I left the
+   original text in place with a restatement block above it. Rewriting it is a
+   bigger decision than a doc edit — it changes what the project promises — and
+   it should be yours.
+2. **Whether the label is the real ceiling.** A complaint is a citizen report,
+   not an observed flood. Some fraction of the 22 irreducible points is
+   certainly label noise rather than missing features, but I cannot separate
+   the two with this data. If you think that fraction is large, it is worth
+   saying so explicitly in the limitations rather than letting a reader assume
+   the 22 points are physical.
+3. **Whether location-level would change the answer.** Everything here is
+   ward-level. The register has ~390 points and a location is far smaller than
+   a ward, so per-location the base rate falls and the panel gets sparser — I
+   would expect the same conclusion more strongly, but it is untested and the
+   complaint-to-location join does not exist. Worth deciding whether to spend
+   on that join at all, given this result.
+4. **Whether to keep chasing terrain.** `imperviousness` and `drain_distance_m`
+   are in the schema and unpopulated. §19.6 says no static ward feature can add
+   more than 1.6 points total, so populating them cannot pay off for *triage*.
+   They may still matter for the Learn outputs and for the paper's credibility.
+   I would not spend on them now; say if you disagree.
+
+## 6. Things a future reader should not have to rediscover
+
+- **Open-Meteo's elevation API rate-limits hard.** 26 batches of 100 points
+  triggered a 429 without backoff. It is free and keyless but needs ~2s spacing
+  and exponential retry.
+- **`cond_rate` and `prior_n` correlate at 0.85.** Any "interaction" feature
+  built by conditioning a sparse per-ward history on weather bands will largely
+  restate the base rate with extra noise. Check the correlation before
+  believing an interaction feature is new information.
+- The frozen top-20 and the cheating top-20 share **13 of 20** wards. The
+  static list is close to optimal *as a list*; the problem is not its
+  membership.
+
+## 7. Verification
+
+57 tests pass (unchanged — this task added analysis, not pipeline code).
+`data/reference/ward_elevation.csv` is new and committed. Database unchanged:
+`locations` 596, `weather_observations` 1,309,896, `weather_daily` 54,579.
+
+Temporal discipline throughout: prior counts for the fit set from
+2020-02-08 → 2022-12-31, for the test set from 2020-02-08 → 2023-12-31; models
+fit on 2023 rain days, evaluated on the 136 rain days of 2024-01-01 →
+2025-06-19. The single exception is §19.6, where the leakage is the instrument.

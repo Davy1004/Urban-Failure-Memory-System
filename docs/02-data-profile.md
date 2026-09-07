@@ -43,11 +43,19 @@ Generated 7 Sep 2026 from the files as downloaded from
 > rainfall *still* changes nothing (χ², p = 0.877). Tripling the resolution
 > moves no figure, so the limit is not rainfall resolution.
 >
-> **The sharpest result in this document is §17.4:** a weather-only ranker
-> scores **5.63%** against a **4.80%** random baseline, while memory alone
-> reaches **14.08%** and the ceiling is **37.72%**. Weather alone ranks at
-> chance. The whole climb from 14% to 37% belongs to memory and weather
-> interacting — the case for M3, measured rather than asserted.
+> **§17.4 and §19 are the two results that decide Phase 3.** A weather-only
+> ranker scores **5.63%** against a **4.80%** random baseline, while memory
+> alone reaches **14.08%** and the ceiling is **37.72%** — weather alone ranks
+> at chance (§17.4).
+>
+> And the 23.6-point gap between memory and the ceiling **is not reachable**
+> (§19). A ward-level ranking fitted with perfect foresight of the test period
+> gets 15.66%, so **only 1.6 points — 6.7% — of the headroom is ward-level at
+> all**; the other 93.3% is within-ward temporal variation that nothing
+> observable predicts. Terrain, elevation and the prescribed memory-weather
+> interaction features were all built and tested; every one is worse than
+> prior event count alone. **Read §19.7 before planning Phase 3, and §19.4
+> before trusting any AUC.**
 
 ---
 
@@ -1562,3 +1570,230 @@ memory is what carries the ranking.
 
 The four location files are in `data/raw/` (gitignored) and the analysis is
 reproducible from the URLs in this section.
+
+---
+
+## 19. Is the headroom real? No — 93% of it is not ward-level
+
+Added 8 Sep 2026. §17.4 left 23.6 points between the static baseline (14.08%)
+and the oracle ceiling (37.72%). This section asks whether anything observable
+reaches into that gap, before any model is built.
+
+**Answer: no. A ward-level ranking fitted with perfect foresight — cheating,
+using the test period's own outcomes — reaches 15.66%. That is 1.6 of the 23.6
+points. The other 93.3% is within-ward temporal variation: knowing *which
+night* a given ward fails, which nothing available predicts.**
+
+### 19.1 The surprise set
+
+A *surprise* is a ward with a strict event on a test rain day that is not in the
+frozen top-20. On the 136 held-out IFS rain days (2024-01-01 → 2025-06-19):
+
+| | |
+|---|---:|
+| Ward-days (198 wards × 136 nights) | 26,928 |
+| Strict events | 1,289 |
+| Events inside the frozen top-20 | 383 (29.7%) |
+| **Surprises** | **906 (70.3%)** |
+| Surprise base rate among non-top-20 ward-days | 3.743% (906 / 24,208) |
+
+### 19.2 The static list is not simply cut too short
+
+Where surprises sit in the prior-count ranking:
+
+| Prior rank | Surprises | Share | Cumulative |
+|---|---:|---:|---:|
+| 21–40 | 215 | 23.7% | 23.7% |
+| 41–60 | 194 | 21.4% | 45.1% |
+| 61–100 | 195 | 21.5% | 66.7% |
+| 101–198 | 302 | 33.3% | 100% |
+
+Median surprise rank is **69**. Only **0.8%** come from genuinely cold wards
+(zero prior events), so this is not unknown places flooding — it is
+*mid-ranked* places flooding unpredictably.
+
+Lengthening the list trades precision for recall and does not help:
+
+| List | Events captured | precision@k |
+|---|---:|---:|
+| top-20 | 29.7% | **14.08%** |
+| top-30 | 40.0% | 12.62% |
+| top-40 | 46.1% | 10.92% |
+| top-60 | 61.2% | 9.67% |
+| top-80 | 70.7% | 8.37% |
+
+### 19.3 Almost nothing is associated with surprise membership
+
+Over the 24,208 non-top-20 ward-days:
+
+| Feature | Mutual info | Point-biserial r | p |
+|---|---:|---:|---:|
+| *n wards flooded tonight* (post-hoc) | 0.0259 | **0.294** | ~0 |
+| city rainfall | 0.0231 | 0.119 | 1.6e-76 |
+| own-cell rain_24h | 0.0165 | 0.116 | 1.2e-73 |
+| prior event count | 0.0049 | 0.113 | 5.3e-70 |
+| prior rank | 0.0102 | −0.105 | 4.0e-60 |
+| rain percentile | 0.0230 | 0.096 | 1.5e-50 |
+| rain_3h_max | 0.0115 | 0.091 | 8.3e-46 |
+| antecedent 7d | 0.0172 | 0.089 | 1.6e-43 |
+| ward area | 0.0075 | 0.075 | 2.3e-31 |
+| on the flood register | 0.0057 | 0.038 | 5.0e-09 |
+| bowl (centroid below boundary) | 0.0093 | −0.027 | 2.3e-05 |
+| elevation range | 0.0050 | 0.013 | 0.051 |
+| season position | 0.0199 | −0.012 | 0.071 |
+| elevation | 0.0072 | −0.007 | 0.255 |
+
+Everything is significant, because n = 24,208; nothing is *large*. The single
+strongest correlate is **post-hoc and night-level**: how many other wards
+flooded tonight. That is the shape of the whole result — surprise membership is
+mostly about which *night* it is, not which *ward*.
+
+Terrain is the disappointment. `bowl` — centroid elevation minus mean boundary
+elevation, sampled from the ward polygon — is the most physically motivated
+feature here and correlates at −0.027. It does rank the right places
+qualitatively (the most bowl-like wards are Shettyhalli, Horamavu, Ullalu,
+Bagalagunte and Bellandur, several of them top-20 flood wards), but it adds
+nothing once memory is in the model.
+
+### 19.4 Why a good AUC hides the problem
+
+A logistic model over all features reaches **held-out ROC-AUC 0.749** and
+PR-AUC 0.116 against a 0.037 base rate — a 3.1× lift. That looks like success.
+It is not, and the reason is a trap worth naming.
+
+Variance decomposition of each feature across the test panel:
+
+| Feature | Share of variance that is *between* nights |
+|---|---:|
+| season, city rainfall | 100% |
+| antecedent 7d | 96.8% |
+| own-cell rain_24h | 84.6% |
+| rain percentile | 76.6% |
+| rain_3h_max | 73.6% |
+| own-cell rain minus city mean | 9.3% |
+| area, elevation, bowl, prior count, register | **0%** |
+
+Pooled AUC rewards separating bad nights from quiet ones. **precision@k only
+ever compares wards *within* one night.** So the two can diverge completely:
+
+| Model | Pooled AUC | Within-night AUC | precision@20 |
+|---|---:|---:|---:|
+| All features | 0.7487 | 0.7365 | 14.26% |
+| Ward-varying features only | 0.7108 | 0.7398 | 14.19% |
+| **Prior event count alone** | 0.7060 | **0.7371** | **14.08%** |
+| Night-level only (city rain, season) | 0.6147 | **0.5000** | 4.71% |
+| Static top-20 | — | — | 14.08% |
+| Oracle ceiling | — | — | 37.72% |
+
+Two things to take from this table. A night-level model has within-night AUC of
+exactly 0.5 and scores at chance — it cannot order wards at all. And **every
+bit of within-night ordering ability comes from prior event count**: adding
+twelve features moves within-night AUC by −0.0006.
+
+> **Rule: never report a pooled AUC on a location-day panel as evidence that a
+> triage model works.** Report within-night AUC, or precision@k, or both.
+
+### 19.5 The prescribed FMI interaction features do not help either
+
+`docs/01-evaluation-rules.md` argues the headroom must come from memory
+interacting with weather, and names `conditional_rate_at_current_band` and
+`excess_over_city`. Both are cheap to build from prior data, so they were built
+and tested rather than assumed. Rates estimated on the training window only,
+Laplace-smoothed toward the citywide rate for each rainfall band:
+
+| Model | Within-night AUC | precision@20 |
+|---|---:|---:|
+| **prior_n only (memory)** | **0.7371** | **14.08%** |
+| prior_n + prior_rank | 0.7369 | 14.08% |
+| conditional rate at tonight's band | 0.7091 | 12.94% |
+| conditional rate + excess over city | 0.6979 | 12.79% |
+| memory + interaction + terrain | 0.7332 | 13.82% |
+
+**All of them are worse than memory alone.** Conditional rate alone loses 1.14
+points (Wilcoxon p = 0.041). The cause is visible in the correlations:
+`cond_rate` correlates with `prior_n` at **r = 0.853** and `excess` at
+**r = 0.877**. Conditioning a ward's history on six rainfall bands splits a
+already-thin record into thinner pieces; the estimation noise added exceeds the
+interaction signal gained. They are noisier restatements of memory.
+
+The full re-ranking model gains **+0.18 points of the 23.64 available — 0.8% of
+the headroom — with Wilcoxon p = 0.84.**
+
+### 19.6 The upper bound: how much of the headroom is ward-level at all?
+
+The decisive test. Rank wards by their event count measured **on the test period
+itself** — deliberate leakage, giving perfect foresight of each ward's
+propensity. No static per-ward score can beat that, whatever features produced
+it: not drainage density, not imperviousness, not land cover.
+
+| | precision@20 |
+|---|---:|
+| Honest static top-20 (trained to 2023) | 14.08% |
+| **Cheating static top-20 (fitted on the test period)** | **15.66%** |
+| Oracle with perfect per-night knowledge | 37.72% |
+
+| | Points | Share of headroom |
+|---|---:|---:|
+| Headroom | 23.64 | 100% |
+| **Reachable by a perfect ward-level ranking** | **1.58** | **6.7%** |
+| **Irreducibly within-ward / temporal** | **22.06** | **93.3%** |
+
+The cheating list shares 13 of 20 wards with the honest one and beats it by
+1.58 points (p = 0.0013) — real, but tiny.
+
+Corroborating evidence that the residual is temporal, not spatial:
+
+- The correlation between consecutive rain nights' event vectors is **0.090**.
+  Which wards flood tonight is almost independent of which flooded last time.
+- 161 of the 178 non-top-20 wards produced at least one surprise; the 20 most
+  surprise-prone hold only 30.8% of them. Surprises are spread thin, not
+  concentrated in a knowable set.
+
+### 19.7 The honest read
+
+**The 24 points are not reachable.** Ward-level features are capped at ~1.6 of
+them, and we are already within 1.6 of that cap. Rainfall was tested at 9 km
+(§17), terrain and elevation here, and the prescribed memory-weather
+interactions here. All fail to move precision@20.
+
+What would be needed is per-night, sub-ward information: which drain is blocked
+tonight, where the storm cell actually sat, which street reported. None of that
+exists in this data, and the complaint label itself is a citizen report rather
+than an observed flood, so some of the 22 points is irreducible label noise
+rather than missing features.
+
+**This does not invalidate the project — it relocates it.** Consequences:
+
+1. **Triage is a solved-and-bounded problem, and should be presented as one.**
+   The static list is within 1.6 points of the best any ward-level ranking can
+   do. The honest contribution is not "we beat the list" but "we measured how
+   much the list can be beaten, and it is 1.6 points" — with the method that
+   establishes it. That is a real finding and it is the kind that does not get
+   published often enough.
+2. **Proof One needs restating.** As written it is close to unwinnable: nightly
+   re-ranking cannot beat a static list by a material margin. What the data
+   *does* support is the inverse claim — the event set genuinely moves
+   (night-to-night correlation 0.090), so a static list is not capturing a
+   stable phenomenon, and yet nothing observable predicts the movement. Stating
+   that precisely is more valuable than a marginal precision win would be.
+3. **Weight shifts to the Learn outputs.** Emerging detection and intervention
+   effectiveness operate on *accumulated* ward history, not on nightly ordering,
+   so they are untouched by this result. They are also the more original
+   contributions. §12.5's two-target split and the 96 non-register wards as the
+   emerging pool are unaffected.
+4. **Do not build M3 expecting a precision win.** Build the model ladder to
+   *demonstrate* this bound — M0 through M3 all landing near 14% against a
+   37.7% ceiling is the result, and the ablation is what makes it credible.
+
+### 19.8 Reproducing this
+
+The analysis is in the session scratchpad rather than the repo, since it is
+diagnostic rather than pipeline code. Inputs: `weather_daily` (IFS cells
+10–23), `locations`, `data/reference/ward_crosswalk.csv`, and ward elevation
+sampled from the Open-Meteo elevation API at each ward centroid plus 12
+polygon-boundary points.
+
+Temporal discipline: prior counts for the fit set come from
+2020-02-08 → 2022-12-31 and for the test set from 2020-02-08 → 2023-12-31;
+models fit on 2023 rain days and evaluated on 2024–25 rain days. The only
+exception is §19.6, where leakage is the point.

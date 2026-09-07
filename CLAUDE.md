@@ -51,6 +51,18 @@ Done:
 - **KSNDMC gauges are a dead end for now** (profile §18): 131 gauge locations
   inside BBMP, median 0.95 km per ward, but only 5 report to the national
   portal and only from Aug 2023. RTI, not a download.
+- **THE HEADROOM IS NOT REACHABLE** (profile §19). A ward-level ranking fitted
+  with perfect foresight scores 15.66% against the honest 14.08%, so only
+  **1.6 of the 23.6 points (6.7%) is ward-level at all**; 93.3% is within-ward
+  temporal variation. Consecutive rain nights' event vectors correlate at
+  0.090. Terrain, elevation, and the prescribed `conditional_rate_at_band` /
+  `excess_over_city` interactions were all built and tested - **every one is
+  worse than prior event count alone**. Build the ladder to demonstrate the
+  bound, not to beat it. **Proof One needs restating** - see
+  `docs/01-evaluation-rules.md`.
+- **Never report a pooled AUC for triage.** Pooled 0.749 vs within-night 0.737,
+  and prior count alone also gives 0.737. Rainfall carries 74-100% of its
+  variance between nights; precision@k only compares wards within one night.
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,
