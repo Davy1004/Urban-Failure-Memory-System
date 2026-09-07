@@ -31,6 +31,54 @@ SOURCE_KW = dict(
     description="ERA5 reanalysis, hourly, 1940-present. No API key required.",
 )
 
+# Open-Meteo serves several reanalyses through the same endpoint. They differ
+# in native resolution, which is what decides whether a city the size of
+# Bengaluru gets one rainfall series or several (profile §17).
+#
+#   era5       ~25-31 km. 3 distinct cells over BBMP. The original choice.
+#   ecmwf_ifs  ~9 km, 2017-present. 14 distinct cells over BBMP. Current.
+#   era5_land  ~11 km, but Open-Meteo returns NULL precipitation for it here,
+#              so it is unusable for this project however fine its grid is.
+MODELS = {
+    "era5": dict(
+        source="Open-Meteo ERA5 reanalysis",
+        description="ERA5 reanalysis, ~25 km, hourly, 1940-present.",
+    ),
+    "ecmwf_ifs": dict(
+        source="Open-Meteo ECMWF IFS reanalysis",
+        description="ECMWF IFS, ~9 km, hourly, 2017-present.",
+    ),
+    "era5_land": dict(
+        source="Open-Meteo ERA5-Land reanalysis",
+        description="ERA5-Land, ~11 km. NOTE: precipitation returns NULL.",
+    ),
+}
+DEFAULT_MODEL = "ecmwf_ifs"
+
+# The 14 native ECMWF-IFS grid cells that the 198 BBMP ward centroids snap to.
+# Using the model's own cell centres avoids resampling its grid onto ours.
+# Derived once by asking the archive API to echo the snapped coordinate for
+# each ward centroid; see profile §17.1.
+IFS_CELLS = [
+    (12.829530, 77.586210),
+    (12.899820, 77.493190), (12.899820, 77.574930), (12.899820, 77.656670),
+    (12.970120, 77.481810), (12.970120, 77.563640), (12.970120, 77.645450),
+    (12.970120, 77.727270),
+    (13.040420, 77.470430), (13.040420, 77.552320), (13.040420, 77.634220),
+    (13.040420, 77.716110),
+    (13.110720, 77.540990), (13.110720, 77.622950),
+]
+
+
+def source_for(model: str) -> tuple[str, dict]:
+    """data_sources name + kwargs for a model, so provenance is per-model."""
+    if model not in MODELS:
+        raise ValueError(f"unknown model {model!r}; expected one of {sorted(MODELS)}")
+    m = MODELS[model]
+    kw = dict(SOURCE_KW)
+    kw["description"] = m["description"] + " Via the Open-Meteo archive API."
+    return m["source"], kw
+
 HOURLY_VARS = [
     "precipitation",
     "temperature_2m",
@@ -80,7 +128,7 @@ def ensure_cells(db: Session, city: City,
 
 def fetch_hourly(lat: float, lng: float, start: date, end: date,
                  timezone_name: str = "Asia/Kolkata",
-                 max_retries: int = 4) -> dict:
+                 max_retries: int = 4, model: Optional[str] = None) -> dict:
     """One archive request with exponential backoff.
 
     Open-Meteo rate-limits generously but does throttle; a 429 is not an
@@ -94,6 +142,8 @@ def fetch_hourly(lat: float, lng: float, start: date, end: date,
         "hourly": ",".join(HOURLY_VARS),
         "timezone": timezone_name,
     }
+    if model:
+        params["models"] = model
     delay = 2.0
     last_error: Optional[Exception] = None
 
@@ -145,7 +195,9 @@ def _rows_from_payload(cell_id: int, payload: dict, source_id: Optional[int]) ->
 
 
 def load_weather(db: Session, city_name: str, start: date,
-                 end: Optional[date] = None, chunk_years: int = 2) -> int:
+                 end: Optional[date] = None, chunk_years: int = 2,
+                 model: str = DEFAULT_MODEL,
+                 coords: Optional[Iterable[tuple[float, float]]] = None) -> int:
     """Fetch and upsert hourly weather for every cell of a city.
 
     Requests are chunked by year to keep responses a sane size. Re-running
@@ -159,10 +211,11 @@ def load_weather(db: Session, city_name: str, start: date,
     if start > end:
         raise ValueError(f"start {start} is after the latest available date {end}")
 
-    cells = ensure_cells(db, city)
+    cells = ensure_cells(db, city, coords)
     total = 0
+    source_name, source_kw = source_for(model)
 
-    with ingestion_run(db, SOURCE_NAME, **SOURCE_KW) as tracker:
+    with ingestion_run(db, source_name, **source_kw) as tracker:
         source_id = tracker.run.source_id
 
         for cell in cells:
@@ -178,7 +231,7 @@ def load_weather(db: Session, city_name: str, start: date,
 
                 payload = fetch_hourly(
                     float(cell.latitude), float(cell.longitude),
-                    window_start, window_end, city.timezone,
+                    window_start, window_end, city.timezone, model=model,
                 )
                 rows = _rows_from_payload(cell.cell_id, payload, source_id)
 
@@ -196,5 +249,6 @@ def load_weather(db: Session, city_name: str, start: date,
                 window_start = window_end + timedelta(days=1)
                 time.sleep(0.5)  # be polite to a free service
 
-    logger.info("weather load complete for %s: %d hourly rows", city.name, total)
+    logger.info("weather load complete for %s (%s): %d hourly rows",
+                city.name, model, total)
     return total

@@ -127,6 +127,35 @@ features are saturated** — `recurrence_count`, `recurrence_rate` and
 `recurrence_percentile` reproduce the static list and little else. If the
 Failure Memory Index is built mostly from those, M3 will not beat M2.
 
+### Weather alone ranks at chance — measured
+
+Ranking all 198 wards by their own cell's daily rainfall, ties broken randomly,
+on the same held-out rain days (profile §17.4):
+
+| Ranker | precision@20 | % of ceiling |
+|---|---:|---:|
+| Weather only — ERA5, 3 cells over the city | 6.46% | 17.1% |
+| Weather only — ECMWF-IFS, 14 cells | **5.63%** | 14.9% |
+| **Random ward order** | **4.80%** | 12.7% |
+| **Memory only — static top-20** | **14.08%** | 37.3% |
+| Oracle ceiling | 37.72% | 100% |
+
+**M1 is structurally close to degenerate for triage.** A weather-only ranker
+sees about 4.8 distinct rainfall values across 198 wards under ERA5 and 12.9
+under IFS, so roughly 14 wards share every value and within-cell order is
+arbitrary. It is not a weak baseline that better tuning improves; it is a
+ranker with almost no per-ward information to rank on.
+
+Tripling the grid resolution made it *worse*, not better (6.46% → 5.63%),
+because the finer grid breaks up whatever accidental blocking the coarse cells
+provided. Both sit at chance.
+
+**Report this as a finding, and expect to state it in the paper.** It is the
+project's central thesis measured directly rather than asserted: weather alone
+cannot solve the spatial problem. This also means M1's expected score is ~5%,
+so **do not read a low M1 as a bug** — it is the predicted result, and M2 must
+be compared against it knowing that.
+
 The headroom from 13.55% to 37.36% has to come from **memory interacting with
 weather**, so the FMI must lead with:
 
@@ -169,10 +198,19 @@ window scores a higher lift (3.43) purely through a falling denominator; it
 describes antecedent dryness, already covered by `antecedent_7d_mm`. Align
 rainfall to the complaint date.
 
-## Outstanding caveat
+## Resolved caveat: per-ward rainfall does not change these figures
 
-Every figure above uses the city-wide mean of 9 ERA5 cells applied uniformly to
-all 198 wards, because no ward can be assigned a grid cell until the crosswalk
-exists. The split is therefore by *day*, not by *place*. Bengaluru's storms are
-localised, so these figures understate the true lift. Recompute per-ward after
-the crosswalk — this is queue item 2 in `NEXT.md`.
+Earlier versions of this file warned that every figure used a city-wide mean
+and therefore understated the true lift. **That has been tested and rejected**
+(profile §16 and §17).
+
+The crosswalk now maps all 198 wards to a centroid, and the pipeline runs on
+ECMWF-IFS at ~9 km, which resolves BBMP into 14 cells rather than ERA5's 3.
+Per-ward rainfall moves the strict lag-0 lift only 3.06 → 3.00 (χ², p = 0.877)
+and still costs 6% on precision@20 when used to restrict the candidate pool.
+
+**Quote the city-mean figures without apology.** The one thing still untested is
+gauge resolution (~1 km): KSNDMC has 131 gauges inside BBMP, median 0.95 km from
+each ward centroid, but only 5 report to the national portal and only from
+August 2023 (profile §18). That is an RTI, not a download, and §17.4 above shows
+it would sharpen the weather features rather than overturn the conclusion.

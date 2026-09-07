@@ -25,43 +25,45 @@ before starting anything here.
 
 ---
 
-## Current task — complaints loader
+## Current task — `data/reference/hazard_categories.yaml`
 
-`app/ingestion/bbmp_complaints.py`, driven by
-`data/reference/hazard_categories.yaml`. Idempotent on `Complaint ID`.
-Truncates timestamps to DATE deliberately — the source lost its AM/PM marker,
-so any time-of-day value would be fiction. Applies the crosswalk; logs excluded
-rows.
+Hand-curated map from exact source category and sub-category strings to
+`WATERLOG` / `GARBAGE`, and within waterlogging to `event` vs `maintenance` —
+the strict/broad split from `docs/01-evaluation-rules.md`. Preserve source
+strings byte-exactly; note the double space in `Storm  Water Drain(SWD)`.
+Record the row count beside each entry so vocabulary drift shows up in a diff.
+This is a citable methodological artifact, not a config file.
 
-**Dependency: this needs the hazard YAML, which is the next queue item.**
-Either build the YAML first and treat both as one task, or reorder the queue.
-Flagging rather than deciding.
-
-Everything else it needs is in place: all 198 ward names resolve to a BBMP ward
-number and a `locations` row (§16.1), and `apply_to_ward_series()` returns the
-keep-mask plus an exclusion report that logs on every run.
-
-Two traps from the profile: filter waterlogging on **`Sub Category`, not
-`Category`** (§10.1 — 84% of it sits under `Road Maintenance(Engg)`), and keep
-source strings byte-exact, including the double space in
-`Storm  Water Drain(SWD)`.
+Profile §10.1 has the counts and the parent-category table; §12.4 has the
+event/maintenance evidence (rain lift 3.07x for `water stagnation` against
+1.33x for `Road side drains`).
 
 ---
 
 ## Queue
 
-**2. `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
-source category/sub-category strings to `WATERLOG` / `GARBAGE`, and within
-waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly —
-note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
-each entry so drift is visible in a diff. This file is a citable methodological
-artifact, not a config detail. **Blocks the current task.**
+Do these in order.
 
-**3. Hotspot register dedup decision.** The three KML layers are already loaded
+**1. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
+YAML. Idempotent on `Complaint ID` (globally unique across all six files).
+Truncates timestamps to DATE deliberately — the source lost its AM/PM marker,
+so any time-of-day value would be fiction. Applies the crosswalk, keeps
+`in_flood_register=false` wards in the panel, and logs excluded counts
+unconditionally.
+
+**2. Hotspot register dedup decision.** The three KML layers are already loaded
 unmerged (§16.1: 398 points, `hotspot_source` per layer). What remains is the
 decision the original item deferred: whether and how to merge them, given they
 are near-disjoint (§8.2) and their provenance is still unestablished. The dedup
-threshold is a documented decision, not a default.
+threshold is a documented decision, not a default. Establish what each layer
+actually represents before choosing one.
+
+**3. Failure Memory Index — build the interaction features first.**
+`docs/01-evaluation-rules.md` records why: count-based memory is saturated at
+13.55% and adding more history changes nothing. Lead with
+`rain_sensitivity_mm`, `ward_rain_response_slope`,
+`conditional_rate_at_current_band` and `excess_over_city`. Every value computed
+strictly from data earlier than its `as_of_date`.
 
 ---
 
@@ -105,3 +107,17 @@ threshold is a documented decision, not a default.
   headline baseline is unchanged, and the finding bounds M1/M2 — ERA5 cannot
   discriminate between wards on the same night, so whatever does must come from
   memory and terrain. 46 tests pass.
+- **2026-09-08 — Finer rainfall tested; KSNDMC investigated.** `ecmwf_ifs`
+  (~9 km) resolves BBMP into **14 cells** against ERA5's **3** (modal cell 28%
+  vs 79%, 2.8x the across-ward spread), so the backfill ran: 797,328 hourly
+  rows, 2019-2025, all 198 wards reassigned. **Per-ward rainfall still changes
+  nothing** — lag-0 lift 3.06 -> 3.00, chi2 **p = 0.877**; the precision@20
+  restriction still costs -6.0%. The hypothesis is now tested and rejected at
+  9 km, not merely untestable. `era5_land` is unusable (NULL precipitation).
+  **New headline finding (§17.4): a weather-only ranking scores 5.63% against a
+  4.80% random baseline, while memory alone reaches 14.08% and the ceiling is
+  37.72% — weather alone ranks at chance**, and the finer model scores *lower*
+  than the coarse one. Added to `docs/01-evaluation-rules.md`; expect M1 ~5%.
+  **KSNDMC: 131 gauges inside BBMP, median 0.95 km per ward — but only 5 report
+  to the national portal and only from Aug 2023, and the advertised 1991-2020
+  file is 342 bytes.** Dead end without an RTI. 57 tests pass.

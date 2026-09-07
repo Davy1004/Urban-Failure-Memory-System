@@ -31,11 +31,13 @@ def _date(s: str) -> date:
 
 
 def cmd_weather(args) -> int:
-    from app.ingestion.open_meteo import load_weather
+    from app.ingestion.open_meteo import DEFAULT_MODEL, IFS_CELLS, load_weather
 
+    coords = IFS_CELLS if args.model == "ecmwf_ifs" else None
     with SessionLocal() as db:
-        n = load_weather(db, args.city, args.start, args.end)
-    print(f"{n:,} hourly rows upserted for {args.city}")
+        n = load_weather(db, args.city, args.start, args.end,
+                         model=args.model, coords=coords)
+    print(f"{n:,} hourly rows upserted for {args.city} ({args.model})")
     return 0
 
 
@@ -91,6 +93,8 @@ def main(argv=None) -> int:
     w.add_argument("--city", required=True)
     w.add_argument("--start", type=_date, required=True)
     w.add_argument("--end", type=_date, default=None)
+    w.add_argument("--model", default="ecmwf_ifs",
+                   choices=["era5", "ecmwf_ifs", "era5_land"])
     w.set_defaults(fn=cmd_weather)
 
     d = sub.add_parser("weather-daily", help="aggregate hourly into weather_daily")

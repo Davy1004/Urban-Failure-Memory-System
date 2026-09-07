@@ -36,12 +36,18 @@ Generated 7 Sep 2026 from the files as downloaded from
 > to weather and location features — which is the case for M3, measured rather
 > than asserted.
 >
-> **§15–§16 close the ward join and retire a caveat.** All 198 complaint ward
-> names now map to a BBMP ward number with a polygon centroid (§16.1). But
-> **89% of wards share one ERA5 cell**, so per-ward rainfall changes nothing —
-> §12.6's prediction that it would raise every figure was tested and is wrong.
-> ERA5 cannot resolve intra-city rainfall for a city this size, which bounds
-> what M1 and M2 can learn and sharpens the argument for M3 (§16.6).
+> **§15–§18 close the ward join and settle the rainfall-resolution question.**
+> All 198 complaint ward names map to a BBMP ward number with a polygon
+> centroid (§16.1). The pipeline now runs on **ECMWF-IFS at ~9 km, which
+> resolves BBMP into 14 cells** instead of ERA5's 3 (§17.1) — and per-ward
+> rainfall *still* changes nothing (χ², p = 0.877). Tripling the resolution
+> moves no figure, so the limit is not rainfall resolution.
+>
+> **The sharpest result in this document is §17.4:** a weather-only ranker
+> scores **5.63%** against a **4.80%** random baseline, while memory alone
+> reaches **14.08%** and the ceiling is **37.72%**. Weather alone ranks at
+> chance. The whole climb from 14% to 37% belongs to memory and weather
+> interacting — the case for M3, measured rather than asserted.
 
 ---
 
@@ -784,16 +790,26 @@ rather than one to settle by whichever filter was written first.
 
 ### 12.6 Two caveats on these numbers
 
-1. ~~**Rainfall is city-wide, not per-ward.**~~ **RETIRED — see §16.** This
-   caveat predicted that a per-ward rainfall join would raise every lift
-   figure. It was tested in §16 and the prediction was wrong: per-ward moves
-   the strict lag-0 lift from 3.06 to 2.89, a difference indistinguishable
-   from noise (χ², p = 0.575). 89% of wards share one ERA5 cell because the
-   grid step (~22 km) is barely finer than the city (~30 km), so "per-ward
-   rainfall" is one number with edge noise. **Quote the city-mean figures
-   without this apology.** Substituting the max across cells for the mean
-   changes the broad lift only from 1.44 to 1.46, so the conclusion is not
-   sensitive to that choice either.
+1. **Rainfall is city-wide, not per-ward. TESTED AND REJECTED AT 9 km — see
+   §17.** This caveat predicted a per-ward join would raise every lift figure.
+
+   The first attempt (§16) could not test it: 89% of wards shared one ERA5
+   cell, so that run demonstrated ERA5's limits rather than testing the
+   hypothesis. §17 then ran the real test on ECMWF-IFS, which resolves BBMP
+   into **14 cells instead of 3** (modal cell 28%, 2.8× the across-ward
+   spread, mixed wet/dry verdicts on 21% of days). Per-ward rainfall still
+   moves the strict lag-0 lift only 3.06 → 3.00, **χ², p = 0.877**, and the
+   precision@20 restriction still costs −6.0%.
+
+   **Quote the city-mean figures without apology.** Tripling the resolution
+   changes nothing measurable, so the limiting factor is not rainfall
+   resolution. Substituting the max across cells for the mean changes the
+   broad lift only from 1.44 to 1.46, so the conclusion is not sensitive to
+   that choice either.
+
+   Still open at *gauge* resolution (~1 km), which is a different order of
+   magnitude — but §18 finds the gauge time series is not obtainable, and
+   §17.4 shows weather alone ranks at chance regardless.
 2. **A reporting lag exists but is small.** Shifting rainfall back one day
    raises the broad lift from 1.44 to 1.46 and the strict lift from 3.06 to
    3.13; by three days both are below the same-day figure. Same-day and
@@ -1288,24 +1304,35 @@ candidates.
 
 ### 16.6 What this means
 
+> **Superseded in part by §17.** Point 1 below was right about ERA5 but wrong
+> to generalise — a finer product exists, was tested, and resolves BBMP into 14
+> cells. The conclusion survives anyway: it still does not help. Points 2 and 3
+> are corrected here; read §17 for the tested versions.
+
 1. **ERA5 cannot resolve intra-city rainfall for Bengaluru.** At ~25–31 km
    native resolution against a ~30 km city, per-ward weather from this source
-   is mostly one number with edge noise. Adding more cells to the grid will not
-   fix it — the underlying reanalysis has no finer structure to give.
-2. **The §12.6 caveat should be retired, not carried forward.** It predicted
-   understated figures; the measurement says the city-mean and per-ward
-   versions agree within noise. Quote the city-mean numbers without the
-   apology.
-3. **This bounds M1 and M2.** A weather-only model over ERA5 sees essentially
-   one rainfall series for the whole city, so it cannot discriminate *between*
-   wards on a given night — only between nights. **Whatever separates wards on
-   the same night has to come from the memory and terrain features.** That is a
-   sharper argument for M3 than §14.3 alone, and it is now measured.
+   is one number with edge noise. Adding more cells to *this* grid will not fix
+   it — the reanalysis has no finer structure to give. **It does not follow
+   that no product can**: ECMWF-IFS at ~9 km gives 14 cells over the same city
+   (§17.1).
+2. **The §12.6 caveat is now tested, not merely untestable.** This run could
+   not test it — with 89% of wards on one cell it demonstrated ERA5's limits.
+   §17 ran the real test at 9 km and the hypothesis was rejected there
+   (χ², p = 0.877). Quote city-mean numbers without apology, on that basis.
+3. **This bounds M1, and the weather component of M2.** A weather-only ranker
+   sees ~4.8 distinct rainfall values across 198 wards under ERA5 and 12.9
+   under IFS, so its within-night ordering is largely arbitrary — about 14
+   wards share every value. **M1 is not a weak baseline for triage, it is
+   structurally close to degenerate.** Measured in §17.4: weather-only scores
+   **5.63%** against a **4.80%** random baseline, while memory alone reaches
+   **14.08%**. M2 is not affected the same way — terrain genuinely varies per
+   ward — so this bounds M1 strictly and M2's weather features only.
 4. **If genuine per-ward rainfall is wanted, it needs a different source.**
-   KSNDMC operates telemetric rain gauges at ward granularity across Bengaluru;
-   that, or IMD gridded data, is the only way to get real intra-city variation.
-   Worth an RTI or a data request — but note the whole pipeline works without
-   it, and this section is the evidence for saying so in the limitations.
+   KSNDMC operates telemetric rain gauges at ward granularity across Bengaluru
+   — 131 inside BBMP, median 0.95 km from each ward centroid. **But the hourly
+   series is not obtainable: §18 found only 5 reporting stations from August
+   2023.** The pipeline works without it, and §17.4 is the evidence for saying
+   so in the limitations.
 
 ### 16.7 Reproducing this
 
@@ -1316,3 +1343,222 @@ python -m app.ingestion.cli status
 
 Idempotent: `locations` holds 596 rows (198 wards + 398 points) before and
 after a re-run.
+
+---
+
+## 17. Finer rainfall: tested, and it does not help
+
+Added 7 Sep 2026. §16 concluded that ERA5 cannot resolve intra-city rainfall
+and left open whether a finer product would. **It was tested. It does not.**
+
+### 17.1 What Open-Meteo actually serves
+
+The archive endpoint takes a `models=` parameter. Asking it to echo the snapped
+grid-cell coordinate for each of the 198 ward centroids measures effective
+resolution directly, without fetching any time series:
+
+| Model | Distinct cells over BBMP | Modal cell holds | Native grid step |
+|---|---:|---:|---|
+| `era5` | **3** | 79% | 0.25° (27.8 km) |
+| `era5_land` | 9 | 35% | 0.10° (11.1 km) |
+| `ecmwf_ifs` | **14** | **28%** | 0.070° lat (7.8 km) |
+
+BBMP spans 29.2 km N–S by 30.4 km E–W, so ERA5 genuinely gives the city three
+cells. (Our production grid of nine 0.2° points was over-sampling a three-cell
+reality — the nine points snapped onto three cells.)
+
+**`era5_land` is unusable despite its grid**: Open-Meteo returns `null` for
+every `precipitation` hour on that model. Verified over multiple date ranges.
+It is fine for temperature; it cannot serve this project.
+
+`ecmwf_ifs` (~9 km, 2017-present, so it covers the whole complaint period) is
+the only finer option that works.
+
+### 17.2 The wet-month test
+
+One wet month, 2022-09, fetched at every distinct cell of each model and mapped
+onto the 198 wards:
+
+| | era5 | ecmwf_ifs |
+|---|---:|---:|
+| Distinct cells | 3 | **14** |
+| Modal cell share | 79% | **28%** |
+| Mean daily across-ward spread | 1.44 mm | **4.03 mm** |
+| Median daily spread | 0.40 mm | 1.50 mm |
+| Max daily spread | 10.8 mm | 20.9 mm |
+| Mean across-ward SD | 0.31 | 0.98 |
+| Days where all wards read alike | 10% | 7% |
+| Days with a mixed wet/dry verdict | 1 of 30 | **7 of 30** |
+
+The decision rule in the task was: stop if the modal cell still holds 80%+;
+backfill if it drops to ~40% or below with a materially larger spread. It
+dropped to **28% with 2.8× the spread**, so the backfill was run.
+
+### 17.3 The backfill, and the result
+
+797,328 hourly rows over the 14 native IFS cells, 2019-01-01 → 2025-06-30,
+aggregated to 54,579 cell-days. All 198 wards reassigned to their nearest IFS
+cell (56 / 28 / 26 / 26 / 20 / 9 / 8 / 6 / 5 / 4 / 3 / 3 / 2 / 2).
+
+**§13 — lift, strict label, 2.5 mm threshold:**
+
+| Rainfall series | ERA5 city-mean | IFS city-mean | **IFS per-ward** | vs ERA5 |
+|---|---:|---:|---:|---:|
+| **lag 0 (same day)** | 3.06 | 3.09 | **3.00** | −2.1% |
+| lag 1 | 3.13 | 3.07 | 3.09 | −1.1% |
+| lag 2 | 2.74 | 2.69 | 2.59 | −5.3% |
+| lag 3 | 2.44 | 2.32 | 2.38 | −2.4% |
+| max over prior 3 days | 3.43 | 3.45 | 3.40 | −0.8% |
+
+lag 0 per-ward: 3,308 events on 111,496 wet ward-days (2.9669%) against dry
+0.9903%. Versus ERA5 city-mean's 2.9551% / 0.9653%. **χ², p = 0.877.**
+
+**§14 — static precision@20:**
+
+| Variant | Days | precision@20 | Ceiling | % of ceiling |
+|---|---:|---:|---:|---:|
+| (A) ERA5 city-mean rain days, all wards | 138 | 13.55% | 37.36% | 36.3% |
+| (B) IFS city-mean rain days, all wards | 136 | **14.08%** | 37.72% | 37.3% |
+| (C) IFS rain days, ranking only wet wards | 136 | 13.24% | 34.34% | 38.5% |
+
+Like-for-like, the per-ward restriction still costs **−6.0%**, essentially
+identical to ERA5's −6.4%.
+
+Why it does not help, even at 9 km: on an IFS city rain day **180 of 198 wards
+are individually wet**, up from 173 under ERA5. A finer grid did not narrow the
+candidate pool, it widened it — IFS is simply wetter (September 2022 median
+ward total 101.5 mm against ERA5's 90.6 mm), so more wards clear 2.5 mm. The
+grid does differentiate the city far better — a mixed wet/dry verdict on 411 of
+1,959 days (21%) against ERA5's near-zero — but that differentiation does not
+line up with where complaints appear.
+
+**This is now a tested hypothesis, not an untestable one.** Tripling the
+resolution, from 3 cells to 14, moves nothing measurable. The limiting factor
+is not rainfall resolution.
+
+### 17.4 Weather alone ranks at chance
+
+The natural follow-up: if per-ward rainfall carries so little ranking
+information, what does a weather-only ranker actually score? Ranking all 198
+wards by their own cell's `rain_24h_mm` each night, ties broken randomly,
+evaluated on the same 136 held-out rain days:
+
+| Ranker | precision@20 | % of ceiling |
+|---|---:|---:|
+| Weather only — ERA5, 3 cells | 6.46% | 17.1% |
+| Weather only — IFS, 14 cells | **5.63%** | 14.9% |
+| **Random ward order** | **4.80%** | 12.7% |
+| **Memory only — static top-20** | **14.08%** | 37.3% |
+| Oracle ceiling | 37.72% | 100% |
+
+**A weather-only ranking scores at chance.** 5.63% against a 4.80% random
+baseline, and the *finer* model scores slightly lower than the coarse one —
+because IFS spreads wards across 14 cells and breaks whatever accidental
+blocking ERA5's three coarse cells provided. Neither is meaningfully above
+random.
+
+A ranker sees a mean of 4.8 distinct rainfall values across 198 wards under
+ERA5, and 12.9 under IFS. Either way it is being asked to order 198 items using
+about a dozen distinct keys, so within-cell order is arbitrary — 14 wards on
+average share every value.
+
+**This is the project's central claim, measured directly:**
+
+> Memory alone reaches 14.1%. Weather alone reaches 4.8–5.6%, which is chance.
+> The oracle ceiling is 37.7%. The entire climb from 14% to 37% has to come
+> from the two interacting — which is exactly what M3 is.
+
+### 17.5 What this settles, and what it does not
+
+**Settled.** Reanalysis rainfall does not resolve which *ward* floods on a
+given night, at 27 km or at 9 km. Report city-mean figures without apology.
+§12.6's hypothesis has now been tested and rejected at 9 km.
+
+**Not settled.** The hypothesis remains untested at *gauge* resolution (~1 km),
+which is a different order of magnitude — a ward averages 3.7 km², while even a
+9 km IFS cell is ~80 km², still 20 wards wide. §18 reports on what gauge data
+is actually obtainable.
+
+**Operationally, nothing changes.** The pipeline runs on IFS now because it is
+strictly better data at no cost, and the headline numbers are unchanged within
+noise. `weather_cells` 1–9 are ERA5 and 10–23 are ECMWF-IFS; `data_sources`
+distinguishes them per observation via `weather_observations.source_id`.
+
+---
+
+## 18. KSNDMC telemetric gauges — locations yes, time series no
+
+Timeboxed investigation, 7 Sep 2026. **Verdict: the gauge network is real and
+dense, but the retrievable hourly data is not. Dead end for this project's
+window unless KSNDMC is approached directly.**
+
+### 18.1 The gauge network is excellent
+
+From OpenCity, public domain, no credentials:
+
+| Layer | Placemarks | Inside BBMP |
+|---|---:|---:|
+| `Karnataka - Telemetric Rain Gauges` | 5,929 | **131** |
+| `Bengaluru Urban - Telemetric Rain Gauge Locations` | 185 | 129 |
+| `Karnataka - Telemetric Weather Stations` | 740 | 11 |
+
+Rain-gauge density inside BBMP, per ward centroid:
+
+| | km |
+|---|---:|
+| Nearest gauge, minimum | 0.01 |
+| **Nearest gauge, median** | **0.95** |
+| Nearest gauge, p90 | 1.51 |
+| Nearest gauge, maximum | 2.46 |
+
+**195 of 198 wards are within 2 km of a gauge; all 198 within 3 km.** Density is
+one gauge per ~9 km². Against 14 IFS cells for the whole city, this would be a
+different class of measurement — genuine point observation at roughly ward
+scale. A companion CSV lists 198 telemetric rain gauges with commissioning
+dates from 2013, so the network predates the complaint window.
+
+### 18.2 The time series is not available
+
+National Water Data Portal, `rainfall-telemetry-hourly-karnataka-department`.
+The CKAN API is open and needs no credentials. Three CSVs are listed:
+
+| Resource | Size | Reality |
+|---|---:|---|
+| Rainfall Karnataka 1991–2020 | **342 bytes** | **Effectively empty — one row, dated 2008** |
+| Rainfall Karnataka 2021–2025 | 83.5 MB | Real data, but see below |
+| Rainfall Karnataka 2026–2030 | — | Future |
+
+The 83.5 MB file holds 683,619 rows for **all of Karnataka** — 686 stations,
+earliest timestamp **2021-08-08**, not 1991.
+
+Narrowing to Bengaluru:
+
+- Bangalore Urban + Rural districts: **21 stations**, data from **2023-07-15**.
+- Inside the BBMP bounding box: **5 stations**, 3,092 rows, from **2023-08-06**.
+- Nearest *reporting* station per ward: median **7.13 km**, only 10 of 198 wards
+  within 2 km — worse in practice than the 9 km IFS grid.
+- Hourly completeness ≈ 1.1% of hours. These look like event or threshold
+  triggered records, not a continuous series.
+
+So of 131 published gauge locations inside BBMP, **five report to the national
+portal, and only from August 2023** — a ~23-month overlap with a complaint
+window that ends June 2025, and nothing for 2020–2022.
+
+### 18.3 Recommendation
+
+**Stop spending on the NWDP route.** The gap is not our filtering: the data is
+not on that portal.
+
+The locations file proves the observations exist — KSNDMC holds them on its own
+infrastructure. That is an RTI or a formal data request to KSNDMC / Karnataka
+Revenue Department (Disaster Management), not a download. Worth one letter
+given the payoff, but it is a months-scale ask with an uncertain answer and
+**must not block the pipeline**.
+
+Note the honest framing for the paper: §17.4 shows weather alone ranks at
+chance, and that finding does not depend on rainfall resolution — a gauge
+network would sharpen the weather features, not overturn the conclusion that
+memory is what carries the ranking.
+
+The four location files are in `data/raw/` (gitignored) and the analysis is
+reproducible from the URLs in this section.

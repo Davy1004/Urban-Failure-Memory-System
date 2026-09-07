@@ -40,9 +40,17 @@ Done:
 - `app/ingestion/bbmp_wards.py` — 198 ward centroids + 398 register hotspot
   points into `locations`, each with its nearest ERA5 `cell_id`. The three
   register layers are loaded unmerged.
-- **ERA5 cannot resolve intra-city rainfall here** (profile §16): 89% of wards
-  fall in one cell, so per-ward rainfall is one number with edge noise. M1/M2
-  cannot separate wards on the same night; only memory and terrain can.
+- **Weather is ECMWF-IFS (~9 km), not ERA5.** `--model ecmwf_ifs` is the CLI
+  default; IFS resolves BBMP into 14 cells against ERA5's 3. `weather_cells`
+  1-9 are ERA5, 10-23 are IFS.
+- **Rainfall resolution is settled, and it is not the limit** (profile §17).
+  Tripling resolution moves no figure (chi2 p = 0.877). **§17.4: a
+  weather-only ranking scores 5.63% against a 4.80% random baseline, while
+  memory alone reaches 14.08% and the ceiling is 37.72%.** Weather alone ranks
+  at chance. Expect M1 to score ~5% - that is the predicted result, not a bug.
+- **KSNDMC gauges are a dead end for now** (profile §18): 131 gauge locations
+  inside BBMP, median 0.95 km per ward, but only 5 report to the national
+  portal and only from Aug 2023. RTI, not a download.
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,
