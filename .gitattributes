@@ -1,0 +1,10 @@
+# Normalise line endings so a Windows/Linux team does not generate
+# whole-file diffs every time someone saves.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.parquet binary
+*.xlsx binary
+*.gz binary

@@ -1,0 +1,32 @@
+# Secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Data. Downloads are large and re-fetchable; derived panels are rebuildable.
+# Note the glob form: "data/raw/" would ignore the directory itself, and git
+# cannot un-ignore a file inside an ignored directory, so .gitkeep would vanish
+# and a fresh clone would have no data/raw/ for the loaders to write into.
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Trained model artifacts
+models/*.joblib
+models/*.pkl
+
+# OS / editor
+.DS_Store
+Thumbs.db

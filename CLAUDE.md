@@ -1,0 +1,221 @@
+# UFMS — project context for Claude
+
+Read this before making changes. It records decisions already taken and
+settled; do not relitigate them without being asked.
+
+## Current status — read this first
+
+**Phase 0: COMPLETE and verified against a live database (7 Sep 2026).**
+Schema (26 tables, 3 views), SQLAlchemy models matching it exactly, JWT +
+bcrypt auth, repository/service layers, exception handling, request logging,
+health check, Alembic wired up.
+
+First real run is done: MySQL 8.0 booted via docker compose, `ufms_schema.sql`
+loaded (26 tables + 3 views), venv built on Python 3.12, uvicorn served `/docs`
+and `/api/v1/health` returned `"database": "reachable"`.
+`tests/test_security.py` — 5 passed. Model metadata was diffed against the live
+database: table sets match exactly, no column drift.
+
+**Phase 1: IN PROGRESS.**
+
+Done:
+- `app/ingestion/base.py` — `ingestion_run` context manager (opens/closes an
+  `ingestion_runs` row, marks failed runs loudly), `upsert_chunk` for MySQL
+  INSERT ... ON DUPLICATE KEY UPDATE, `resolve_city`.
+- `app/ingestion/open_meteo.py` — ERA5 hourly loader. 3x3 grid of cells per
+  city at 0.2 degrees, chunked by 2-year windows, exponential backoff on 429,
+  clamps the end date for the ~6 day archive lag. Idempotent.
+
+Not started:
+- `app/ingestion/bbmp_complaints.py` — **inspect the real CSV headers before
+  writing the parser.** The column names are unknown; guessing produces a
+  loader that silently drops rows. Add an `--inspect` mode that prints headers
+  plus a sample row, then map explicitly. Filter to waterlogging and
+  solid-waste categories only at load time.
+- `app/ingestion/bbmp_hotspots.py` — load the BBMP flood-prone register into
+  `locations` with `is_known_hotspot=true` and `first_listed_year` set.
+- `app/ingestion/geo.py` — assign each location its nearest `weather_cells`
+  row (`Location.cell_id`); haversine is fine at this scale.
+- `app/ingestion/cli.py` — `python -m app.ingestion.cli weather --city Bengaluru --start 2015-01-01`
+- Daily aggregation into `weather_daily`: `rain_24h_mm`, `rain_1h_max_mm`,
+  `rain_3h_max_mm`, `antecedent_7d_mm`, plus the normalised features.
+  **`rain_percentile` and `return_period_yrs` must be computed on an expanding
+  window** (only data before each date) or they leak the future into the
+  training set.
+
+### Bringing the stack up
+
+```bash
+docker compose up -d
+docker exec -i ufms-mysql mysql -uroot -proot < ufms_schema.sql
+python -m venv .venv && .venv\Scripts\activate     # Windows
+pip install -r requirements.txt
+copy .env.example .env                                # then set a real SECRET_KEY
+uvicorn app.main:app --reload
+```
+
+Green when `/docs` loads and `/api/v1/health` reports `"database": "reachable"`.
+
+Two things that bit on the first run, both fixed — do not reintroduce them:
+
+- **MySQL is on host port 3307, not 3306.** A native Windows MySQL service
+  commonly already owns 3306, and the container then fails to bind.
+  `docker-compose.yml` maps `${MYSQL_HOST_PORT:-3307}:3306` and `DATABASE_URL`
+  in `.env.example` matches. Override `MYSQL_HOST_PORT` if 3307 is taken too.
+- **`email-validator` is a real dependency.** `app/schemas/auth.py` uses
+  pydantic `EmailStr`, which imports it lazily — so everything installs fine
+  and then the app dies on import. It is pinned in `requirements.txt`.
+
+`ufms_schema.sql` opens with `DROP DATABASE IF EXISTS ufms`, so re-running it
+wipes all data. The `ufms` user's grants do survive the drop; no re-grant.
+
+Alembic connects but has **no baseline revision** — the schema is loaded from
+`ufms_schema.sql`, not migrations, so `alembic revision --autogenerate` would
+try to create all 26 tables. Stamp a baseline before writing the first
+migration.
+
+## What this is
+
+**Urban Failure Memory System.** A **decision support system for preventive
+municipal maintenance** — NOT a prediction system, and NOT a "recommendation
+system" (that term means collaborative filtering and invites the wrong
+questions).
+
+Final-year major project. Team of 2–3. Zero budget. Target: April 2027,
+mid-review around 7 December 2026.
+
+### The framing that matters
+
+The city already knows where it floods — BBMP publishes ~210 flood-prone
+locations. A system whose output is "these places flood" tells the city what
+it compiled by hand years ago. So the question is not *where*, it is:
+
+1. **Triage** — which 20 of the ~210 do we send tonight's crews to?
+2. **Emerging** — which locations are becoming the next entry on that list?
+3. **Effectiveness** — did last year's desilting actually work?
+
+One-liner for the abstract: *Cities already know where they fail; that
+knowledge just isn't operational. UFMS turns scattered institutional memory
+into a nightly triage list, surfaces failure points the city hasn't
+recognised yet, and measures whether past fixes actually worked.*
+
+## Cities
+
+- **Bengaluru — primary.** Trains, evaluates, supplies every measured number.
+  Has complaints (BBMP grievances, 2020–2025, ward level, public domain), a
+  hotspot register (BBMP flood-prone areas), and ward work orders
+  (2013–2022) for intervention effectiveness. All downloadable.
+- **Delhi — demo only.** Same method applied to the PWD hotspot list plus
+  Open-Meteo rainfall. **No ground truth, so no evaluation.** Present it as
+  an unevaluated portability demonstration. Never report metrics for Delhi.
+
+## Scope — frozen until the mid-review
+
+| Component | Status |
+|---|---|
+| Waterlogging | Full pipeline |
+| Garbage | Operations only (CRUD, dashboard, alerts) |
+| Traffic / water shortage / infrastructure | Schema tables only. No modules, no simulated data. |
+| Roles | `admin` and `officer` only |
+| Cross-city transfer study | Limitations paragraph, not an experiment |
+
+New ideas go in a backlog file, not the build. Scope creep already cost this
+project one full revision.
+
+## Non-negotiable engineering rules
+
+1. **No leakage.** Every `failure_memory` row must be computed from data
+   strictly earlier than its `as_of_date`. This is the single easiest way to
+   invalidate the entire project.
+2. **Temporal splits only.** Never `train_test_split(shuffle=True)`. Train on
+   earlier seasons, test on later ones. Block by rainfall event so one storm
+   cannot appear in both.
+3. **Never report accuracy.** Base rate is ~0.5%, so "no failure" scores
+   99.5%. Report precision@k, PR-AUC, Brier, and calibration error, with the
+   base rate printed beside every figure.
+4. **Persist every ranking.** `daily_rankings` looks recomputable but is not:
+   without stored history the ranking-dynamism proof is impossible.
+5. **Always write `actual_outcome`.** Closing the loop on
+   `risk_predictions` is how the system is ever shown to work.
+6. **Labels are complaints, not floods.** Control for each ward's baseline
+   complaint rate. Reporting propensity tracks income and civic awareness.
+7. **Ingestion filters at source.** Only waterlogging and solid-waste
+   categories. Loading all 1.5M BBMP records blows the 1 GB free tier.
+8. **Weather is stored per grid cell, not per location.** A few ERA5 cells
+   cover a city; per-ward hourly weather would be 10M+ rows.
+
+## The two proofs (first-class deliverables)
+
+**Proof 1 — the ranking is dynamic.** If tonight's top 20 equals every other
+night's top 20, this is a report, not a tool. Baseline to beat: a static
+"20 historically worst" list. Measure precision@20 plus Kendall's tau
+between consecutive events. **Due in Phase 3, before the mid-review**, so
+there is time to adapt if it fails.
+
+**Proof 2 — emerging detection finds real additions.** Mann-Kendall / CUSUM
+on complaint rate normalised by rainfall. Validate by training through year
+*n* and checking flagged sites show sustained elevation in *n+1*.
+
+## Model ladder (ablation)
+
+- `M0_threshold` — rainfall threshold rule, no ML. The baseline to beat.
+- `M1_weather` — weather features only
+- `M2_weather_geo` — weather + terrain
+- `M3_full_memory` — weather + terrain + Failure Memory Index ← the system
+
+## Stack
+
+FastAPI + SQLAlchemy 2.0 + MySQL 8 + Alembic; React + Tailwind + shadcn +
+Recharts + Leaflet (frontend, Phase 4); pandas / scikit-learn for modelling.
+
+Zero budget: local MySQL via `docker compose`, **Aiven** free tier for hosted
+MySQL (Railway killed its free tier), Render for the API, Vercel for the
+frontend, Open-Meteo for weather (free, no key). Train from Parquet, not
+MySQL — the database is the system of record, the panel is a derived artifact.
+
+## Layout
+
+```
+app/
+  core/          config, security (JWT + bcrypt), exceptions, logging
+  db/            engine, session, declarative base
+  models/        26 SQLAlchemy models mirroring ufms_schema.sql
+  schemas/       Pydantic request/response models
+  repositories/  data access; keeps SQLAlchemy out of services
+  services/      business logic; owns transactions (commit here, not in routes)
+  api/v1/        routers
+  middleware/    request logging with correlation ids
+```
+
+See `docs/` for the build plan and the evaluation rules — read `docs/01-evaluation-rules.md` before writing any modelling code.
+
+`ufms_schema.sql` at the repo root is the canonical DDL. The SQLAlchemy
+models mirror it — change both together, or generate a migration.
+
+## Conventions
+
+- Services commit; routes and repositories never do.
+- Raise `UFMSError` subclasses (`NotFoundError`, `ConflictError`, `AuthError`,
+  `PermissionError_`) — handlers turn them into consistent JSON.
+- Login failures return one message for both wrong-email and wrong-password.
+- Officers do not self-register; `/auth/register` is admin-only.
+
+## Deferred decisions (do not silently "fix" these)
+
+- **Alembic baseline — deferred to Phase 2.** `versions/` is intentionally
+  empty; the schema comes from `ufms_schema.sql`. Do NOT run
+  `alembic revision --autogenerate` before baselining, or it will emit a
+  migration that recreates all 26 tables. When it is done properly: generate
+  the baseline against an EMPTY database so migrations can build the schema
+  from scratch (Render needs this in Phase 7), hand-add the 3 views with
+  `op.execute`, verify a fresh `alembic upgrade head` produces an
+  `information_schema` identical to loading the raw SQL, then
+  `alembic stamp head` on the existing dev database.
+
+- **`ufms_schema.sql` is no longer destructive.** The `DROP DATABASE` moved
+  to `scripts/reset_db.sql`. Re-running the schema file on a populated
+  database now fails loudly instead of wiping Phase 1 data. Do not
+  reintroduce `DROP DATABASE` into the schema file.
+
+- **`/health` returns 503 when the database is unreachable**, not 200.
+  Platform health checks read the status code, not the body. Keep it that way.
