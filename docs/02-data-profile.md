@@ -21,6 +21,12 @@ Generated 7 Sep 2026 from the files as downloaded from
 >    years; two statuses were silently retired (§9.4, §9.5).
 > 5. Absence is encoded as the literal string `null`, which pandas does not
 >    treat as NA by default (§4).
+>
+> **§12 adds a sixth, measured against real rainfall:** two-thirds of the
+> "waterlogging" complaints are routine drain maintenance that barely responds
+> to rain (lift 1.3×). Filtering them out changes the ward-day base rate from
+> 7.99% to 1.56% and the rain lift from 1.4× to 3.1×. The event label and the
+> maintenance label must be modelled separately.
 
 ---
 
@@ -636,3 +642,166 @@ Concrete decisions for `app/ingestion/bbmp_complaints.py`, in priority order.
 - **No ward population or area** is present in any file, so complaints-per-capita
   (evaluation rule: control for ward baseline) needs a Census join not yet
   sourced.
+
+---
+
+## 12. Ward-day base rate, and the rainfall split
+
+Added 7 Sep 2026, after loading Open-Meteo rainfall. This is the first
+measured statement about how often the thing we are trying to predict
+actually happens.
+
+### 12.1 The panel
+
+| | |
+|---|---|
+| Covered period | 2020-02-08 → 2025-06-19 (complaint coverage, §6) |
+| Days | 1,959 |
+| Wards | 198 (`NON Ward` excluded) |
+| **All ward-days** | **387,882** |
+
+A ward-day is counted in the denominator whether or not anything was
+reported there, which is the point — the denominator is the full panel, not
+the set of days that happen to appear in the complaint file.
+
+### 12.2 Headline rates
+
+Using the nine waterlogging sub-categories identified in §10.1 ("broad"), and
+the IMD rainy-day threshold of 2.5 mm:
+
+| | Ward-days with ≥1 waterlogging complaint | of | Rate |
+|---|---:|---:|---:|
+| **All ward-days** | **30,993** | 387,882 | **7.99%** |
+| **On rainy ward-days** (≥2.5 mm) | **11,756** | 115,632 | **10.17%** |
+| **On dry ward-days** (<2.5 mm) | **19,237** | 272,250 | **7.07%** |
+
+**Lift from rain: 1.44×.** That is far weaker than expected, and §12.4
+explains why.
+
+Threshold sensitivity — the weak lift is not an artifact of where the line
+is drawn:
+
+| Rain threshold (city mean) | Wet days | Dry days | Rate wet | Rate dry | Lift |
+|---|---:|---:|---:|---:|---:|
+| any measurable (≥0.1 mm) | 1,163 | 796 | 9.06% | 6.43% | 1.41 |
+| ≥1.0 mm | 833 | 1,126 | 9.71% | 6.72% | 1.45 |
+| **IMD rainy day (≥2.5 mm)** | 584 | 1,375 | **10.17%** | **7.07%** | **1.44** |
+| ≥10 mm | 176 | 1,783 | 12.52% | 7.54% | 1.66 |
+| ≥25 mm | 14 | 1,945 | 12.88% | 7.96% | 1.62 |
+
+### 12.3 The base rate is not 0.5%
+
+`CLAUDE.md` rule 3 and `docs/01-evaluation-rules.md` both assume a base rate
+of ~0.5%. At **ward-day granularity the measured rate is 7.99% — sixteen times
+higher.**
+
+These are not contradictory, they are different units. A ward is large (198
+wards for ~13 M people, so ~65,000 residents each), so "something waterlogging-
+related was reported somewhere in this ward today" is a much easier event than
+"this specific hotspot flooded today". The 0.5% figure presumably refers to
+**location-days** over the ~200–400 register locations, which cannot be
+computed yet because the ward crosswalk does not exist (§8.3).
+
+Two things follow:
+
+- **The 0.5% figure is currently unsourced.** Nothing in the data supports it
+  yet. Either derive it once locations are joinable, or stop quoting it.
+- **The "never report accuracy" rule still holds and is unaffected.** At a
+  7.99% base rate an always-negative classifier still scores 92% accuracy;
+  at 1.56% (§12.4) it scores 98.4%. The argument for precision@k and PR-AUC
+  does not depend on the exact figure.
+
+### 12.4 Most of the signal is routine maintenance, not flooding
+
+Splitting the 1.44× lift by sub-category shows it is an average over two
+completely different behaviours:
+
+| Sub Category | Ward-days | Rate wet | Rate dry | **Lift** |
+|---|---:|---:|---:|---:|
+| `water stagnation` | 6,029 | 2.95% | 0.96% | **3.07** |
+| `Maintenance of SWD` | 3,321 | 1.19% | 0.72% | 1.66 |
+| `Garbage thrown in storm water drain` | 867 | 0.28% | 0.20% | 1.44 |
+| `Sewerage water left in SWD` | 1,518 | 0.48% | 0.35% | 1.35 |
+| **`Road side drains`** | **20,500** | **6.41%** | **4.81%** | **1.33** |
+| `Water related issue` | 888 | 0.24% | 0.23% | 1.05 |
+| `water leakage on road` | 1,683 | 0.44% | 0.43% | 1.03 |
+| *(all nine combined)* | 30,993 | 10.17% | 7.07% | 1.44 |
+
+`Road side drains` is **66% of all waterlogging ward-days and barely responds
+to rain** (1.33×). It is a request to clean or repair a drain — a maintenance
+backlog item that can be filed on any dry Tuesday — not a report that
+something flooded. Because it dominates the count, it drags the combined lift
+down to 1.44 and makes the label look weather-insensitive.
+
+`water stagnation` behaves the way a flood label should: **3.07× lift**, and
+it is the sub-category whose plain meaning is "there is water sitting here".
+
+**A strict event label** — `water stagnation` + `Stagnation of water on road/
+Water logging` + `Drainage blockage` (8,293 complaints):
+
+| | Ward-days | of | Rate |
+|---|---:|---:|---:|
+| **All ward-days** | **6,045** | 387,882 | **1.56%** |
+| **On rainy ward-days** (≥2.5 mm) | **3,417** | 115,632 | **2.96%** |
+| **On dry ward-days** (<2.5 mm) | **2,628** | 272,250 | **0.97%** |
+
+**Lift 3.06×**, and it holds across every threshold (3.45× at ≥0.1 mm, 3.64×
+at ≥10 mm). This is a label that responds to weather.
+
+### 12.5 Recommendation
+
+**Model two distinct targets, do not merge them.**
+
+- **Failure events** — `water stagnation` and the two tiny stagnation/blockage
+  sub-categories. Base rate 1.56%, rain lift 3.1×. This is the waterlogging
+  label for `failure_memory` and the triage ranking.
+- **Maintenance demand** — `Road side drains`, `Maintenance of SWD`, and the
+  rest. Base rate 5.3% for `Road side drains` alone, rain lift 1.3×. This is
+  a useful *feature* (a ward with a chronic drain backlog is plausibly more
+  failure-prone) and a legitimate second output, but it is not a flood.
+
+Training M1–M3 against the broad label would ask the model to predict a
+maintenance backlog using rainfall, and it would deservedly fail. The `M0`
+rainfall-threshold baseline would look strong against the strict label and
+weak against the broad one — so **which label is chosen partly determines
+whether Proof One succeeds**, which makes it a decision to record explicitly
+rather than one to settle by whichever filter was written first.
+
+### 12.6 Two caveats on these numbers
+
+1. **Rainfall is city-wide, not per-ward.** No ward can be assigned to a grid
+   cell until the crosswalk exists (§8.3), so the rain figure is the mean of
+   all nine ERA5 cells and every ward on a given date is labelled wet or dry
+   identically. The split is therefore **by day, not truly by ward-day**.
+   Bengaluru's convective storms are strongly localised, so this understates
+   the true lift: on a day when one corner of the city floods, the other 190
+   wards are counted as "rainy with no complaint". Re-running per-ward after
+   the crosswalk should raise every lift figure. Substituting the max across
+   cells for the mean changes the broad lift only from 1.44 to 1.46, so the
+   conclusion is not sensitive to that choice.
+2. **A reporting lag exists but is small.** Shifting rainfall back one day
+   raises the broad lift from 1.44 to 1.46 and the strict lift from 3.06 to
+   3.13; by three days both are below the same-day figure. Same-day and
+   previous-day rain are the informative windows.
+
+Daily rainfall correlates with waterlogging ward-day counts at r = 0.32 daily
+and r = 0.47 on monthly means — positive and real, but weak enough that
+rainfall alone will not rank locations. That is the argument for the Failure
+Memory Index, and it is now measured rather than asserted.
+
+### 12.7 Reproducing this
+
+```bash
+python -m app.ingestion.cli weather --city Bengaluru --start 2019-01-01 --end 2025-06-30
+python -m app.ingestion.cli weather-daily --city Bengaluru
+python -m app.ingestion.cli status
+```
+
+512,568 hourly rows across 9 ERA5 cells, aggregated to 21,357 cell-days
+(2019-01-01 → 2025-06-30). The 2019 lead-in exists so that `antecedent_7d_mm`
+and the expanding-window percentiles have history before the complaint period
+opens. Both commands are idempotent.
+
+Loaded annual totals sanity-check against Bengaluru's ~970 mm normal, and
+reproduce known years: 2023 at 726 mm (Karnataka's drought year) and 2021 at
+1,382 mm (a record wet year).

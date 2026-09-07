@@ -25,23 +25,39 @@ Done:
 - `app/ingestion/open_meteo.py` — ERA5 hourly loader. 3x3 grid of cells per
   city at 0.2 degrees, chunked by 2-year windows, exponential backoff on 429,
   clamps the end date for the ~6 day archive lag. Idempotent.
+- `app/ingestion/weather_daily.py` — daily aggregation into `weather_daily`.
+  `rain_percentile` and `return_period_yrs` use an expanding window over
+  strictly prior dates; `tests/test_weather_daily.py` pins that against
+  regression. NULL below 365 days of history rather than a guess.
+- `app/ingestion/cli.py` — `weather`, `weather-daily`, `status` subcommands.
+- **Bengaluru weather is loaded**: 512,568 hourly rows over 9 ERA5 cells,
+  2019-01-01..2025-06-30, aggregated to 21,357 cell-days.
+- `docs/02-data-profile.md` — profile of the raw BBMP files. **Read §10 and
+  §12 before writing the complaint loader.**
 
 Not started:
-- `app/ingestion/bbmp_complaints.py` — **inspect the real CSV headers before
-  writing the parser.** The column names are unknown; guessing produces a
-  loader that silently drops rows. Add an `--inspect` mode that prints headers
-  plus a sample row, then map explicitly. Filter to waterlogging and
-  solid-waste categories only at load time.
+- `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,
+  so map explicitly from `docs/02-data-profile.md` §2. Two traps that profile
+  documents: filter waterlogging on **`Sub Category`, not `Category`** (84% of
+  it sits under `Road Maintenance(Engg)`), and parse the date to **`DATE`,
+  not `DATETIME`** (the timestamps lost their AM/PM marker). Keep the
+  `--inspect` mode as a header-signature assertion so a republished file with
+  a changed vocabulary fails loudly.
+- **Decide the waterlogging label before training anything.** `Road side
+  drains` is 66% of waterlogging ward-days but is maintenance backlog, not
+  flooding — rain lift 1.3x versus 3.1x for `water stagnation`. Profile §12.5
+  recommends modelling failure events and maintenance demand as two separate
+  targets. This choice partly determines whether Proof One succeeds.
 - `app/ingestion/bbmp_hotspots.py` — load the BBMP flood-prone register into
-  `locations` with `is_known_hotspot=true` and `first_listed_year` set.
+  `locations` with `is_known_hotspot=true` and `first_listed_year` set. The
+  register is **KML, not CSV** — three near-disjoint layers, ~390 locations
+  rather than the ~210 assumed. `flood_vulnerable_map.kml` is the primary one.
+- **`data/reference/ward_crosswalk.csv`** — hand-checked, keyed on `WARDNO`
+  1-198. Complaints carry ward *name* only, the register carries ward
+  *number*; only 55 of 103 names match exactly. Do not fuzzy-match at load
+  time, it mis-pairs real wards. Blocks `geo.py`.
 - `app/ingestion/geo.py` — assign each location its nearest `weather_cells`
   row (`Location.cell_id`); haversine is fine at this scale.
-- `app/ingestion/cli.py` — `python -m app.ingestion.cli weather --city Bengaluru --start 2015-01-01`
-- Daily aggregation into `weather_daily`: `rain_24h_mm`, `rain_1h_max_mm`,
-  `rain_3h_max_mm`, `antecedent_7d_mm`, plus the normalised features.
-  **`rain_percentile` and `return_period_yrs` must be computed on an expanding
-  window** (only data before each date) or they leak the future into the
-  training set.
 
 ### Bringing the stack up
 
@@ -130,9 +146,13 @@ project one full revision.
 2. **Temporal splits only.** Never `train_test_split(shuffle=True)`. Train on
    earlier seasons, test on later ones. Block by rainfall event so one storm
    cannot appear in both.
-3. **Never report accuracy.** Base rate is ~0.5%, so "no failure" scores
-   99.5%. Report precision@k, PR-AUC, Brier, and calibration error, with the
-   base rate printed beside every figure.
+3. **Never report accuracy.** Report precision@k, PR-AUC, Brier, and
+   calibration error, with the base rate printed beside every figure.
+   The measured ward-day base rate is **1.56%** for the strict waterlogging
+   label and **7.99%** for the broad one (profile §12), so "no failure" still
+   scores 98.4% / 92%. The **~0.5% figure previously quoted here is unsourced**
+   — it presumably meant location-days, which cannot be computed until the
+   ward crosswalk exists. Derive it then, or stop quoting it.
 4. **Persist every ranking.** `daily_rankings` looks recomputable but is not:
    without stored history the ranking-dynamism proof is impossible.
 5. **Always write `actual_outcome`.** Closing the loop on
