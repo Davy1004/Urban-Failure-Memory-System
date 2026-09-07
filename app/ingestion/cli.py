@@ -17,7 +17,7 @@ from sqlalchemy import func, select
 
 from app.core.logging import configure_logging
 from app.db.session import SessionLocal
-from app.models.geography import IngestionRun
+from app.models.geography import IngestionRun, Location
 from app.models.observation import WeatherDaily, WeatherObservation
 
 logger = logging.getLogger("ufms.ingestion.cli")
@@ -48,6 +48,18 @@ def cmd_weather_daily(args) -> int:
     return 0
 
 
+def cmd_wards(args) -> int:
+    import pathlib as _p
+    from app.ingestion.bbmp_wards import load_hotspots, load_wards
+
+    raw = _p.Path(args.raw_dir) if args.raw_dir else _p.Path("data/raw")
+    with SessionLocal() as db:
+        n_w = load_wards(db, args.city)
+        n_h = load_hotspots(db, raw, args.city)
+    print(f"{n_w} ward locations, {n_h} hotspot points upserted for {args.city}")
+    return 0
+
+
 def cmd_status(args) -> int:
     with SessionLocal() as db:
         obs = db.execute(select(func.count()).select_from(WeatherObservation)).scalar()
@@ -55,6 +67,8 @@ def cmd_status(args) -> int:
         span = db.execute(
             select(func.min(WeatherDaily.obs_date), func.max(WeatherDaily.obs_date))
         ).one()
+        locs = db.execute(select(func.count()).select_from(Location)).scalar()
+        print(f"locations            : {locs:>9,}")
         print(f"weather_observations : {obs:>9,}")
         print(f"weather_daily        : {daily:>9,}   {span[0]} .. {span[1]}")
         print("\nrecent ingestion runs:")
@@ -82,6 +96,11 @@ def main(argv=None) -> int:
     d = sub.add_parser("weather-daily", help="aggregate hourly into weather_daily")
     d.add_argument("--city", required=True)
     d.set_defaults(fn=cmd_weather_daily)
+
+    wd = sub.add_parser("wards", help="load ward centroids + register hotspots")
+    wd.add_argument("--city", default="Bengaluru")
+    wd.add_argument("--raw-dir", dest="raw_dir", default=None)
+    wd.set_defaults(fn=cmd_wards)
 
     s = sub.add_parser("status", help="row counts and recent runs")
     s.set_defaults(fn=cmd_status)

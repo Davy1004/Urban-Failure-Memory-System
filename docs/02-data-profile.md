@@ -35,6 +35,13 @@ Generated 7 Sep 2026 from the files as downloaded from
 > list on more history does not improve it, so the remaining headroom belongs
 > to weather and location features — which is the case for M3, measured rather
 > than asserted.
+>
+> **§15–§16 close the ward join and retire a caveat.** All 198 complaint ward
+> names now map to a BBMP ward number with a polygon centroid (§16.1). But
+> **89% of wards share one ERA5 cell**, so per-ward rainfall changes nothing —
+> §12.6's prediction that it would raise every figure was tested and is wrong.
+> ERA5 cannot resolve intra-city rainfall for a city this size, which bounds
+> what M1 and M2 can learn and sharpens the argument for M3 (§16.6).
 
 ---
 
@@ -777,16 +784,16 @@ rather than one to settle by whichever filter was written first.
 
 ### 12.6 Two caveats on these numbers
 
-1. **Rainfall is city-wide, not per-ward.** No ward can be assigned to a grid
-   cell until the crosswalk exists (§8.3), so the rain figure is the mean of
-   all nine ERA5 cells and every ward on a given date is labelled wet or dry
-   identically. The split is therefore **by day, not truly by ward-day**.
-   Bengaluru's convective storms are strongly localised, so this understates
-   the true lift: on a day when one corner of the city floods, the other 190
-   wards are counted as "rainy with no complaint". Re-running per-ward after
-   the crosswalk should raise every lift figure. Substituting the max across
-   cells for the mean changes the broad lift only from 1.44 to 1.46, so the
-   conclusion is not sensitive to that choice.
+1. ~~**Rainfall is city-wide, not per-ward.**~~ **RETIRED — see §16.** This
+   caveat predicted that a per-ward rainfall join would raise every lift
+   figure. It was tested in §16 and the prediction was wrong: per-ward moves
+   the strict lag-0 lift from 3.06 to 2.89, a difference indistinguishable
+   from noise (χ², p = 0.575). 89% of wards share one ERA5 cell because the
+   grid step (~22 km) is barely finer than the city (~30 km), so "per-ward
+   rainfall" is one number with edge noise. **Quote the city-mean figures
+   without this apology.** Substituting the max across cells for the mean
+   changes the broad lift only from 1.44 to 1.46, so the conclusion is not
+   sensitive to that choice either.
 2. **A reporting lag exists but is small.** Shifting rainfall back one day
    raises the broad lift from 1.44 to 1.46 and the strict lift from 3.06 to
    3.13; by three days both are below the same-day figure. Same-day and
@@ -1019,6 +1026,13 @@ plausible modelling gain.
 
 ## 15. The ward crosswalk
 
+> **Partly superseded by §16.** The artifact described here was rebuilt on the
+> 198-ward BBMP boundary file, which covers every ward rather than the
+> register's 103. The **method** below still stands and the hand decisions were
+> all independently confirmed — but the CSV's columns and the coverage counts
+> are now those in §16.1. Read this section for how the decisions were made,
+> §16 for what the file contains today.
+
 Added 7 Sep 2026. Artifact: `data/reference/ward_crosswalk.csv`.
 Loader-side rule: `app/ingestion/ward_crosswalk.py`.
 Tests: `tests/test_ward_crosswalk.py` (21).
@@ -1140,3 +1154,165 @@ when anything is excluded. A ward name absent from the CSV raises rather than
 being guessed at, with an error that names the file to edit.
 
 Current state: **0 rows excluded.** When that changes, it will say so.
+
+---
+
+## 16. Per-ward rainfall: the recompute, and why it does not help
+
+Added 7 Sep 2026. §12.6 predicted that replacing city-wide mean rainfall with
+per-ward rainfall would raise every lift figure, because Bengaluru's storms are
+localised and a city mean labels 197 dry wards "rainy" whenever one corner
+floods.
+
+**That prediction was wrong.** Every figure moved slightly the wrong way. The
+reason is a resolution limit that is worth stating plainly, because it also
+constrains what M1 and M2 can ever learn from ERA5.
+
+### 16.1 What changed upstream
+
+`data/reference/ward_crosswalk.csv` was rebuilt on
+**`bbmp_ward_map_2015.kml`, the 198-ward BBMP delimitation** in force for the
+whole complaint period — not on the flood register. All 198 complaint ward
+names now carry a BBMP ward number, a polygon centroid, a zone and an area.
+
+| | Register-based (§15) | Boundary-based (§16) |
+|---|---:|---:|
+| Wards with a ward number | 102 | **198** |
+| Complaint rows covered | 59.69% | **100%** |
+| `exact` | 55 | 106 |
+| `normalised` | 20 | 44 |
+| `manual` | 27 | 48 |
+| `unresolved` | 0 | **0** |
+
+**All 102 register-derived ward numbers agree with the boundary file**, which
+independently validates the §15 hand decisions, including the two contested
+ones (`Ulsoor`→90, `Kempapura Agrahara`→122).
+
+Polygon centroids, not register points, are the right geometry: a register
+point is by definition a *flood-prone* spot, so using one as a ward's position
+drags every ward toward low ground — a systematic bias in every distance
+computed from it, not a missing-data problem.
+
+`locations` now holds 198 ward rows (`geom_level='ward'`) plus 398 register
+points (`geom_level='point'`, `is_known_hotspot=true`, `hotspot_source` naming
+the layer). The three register layers are loaded **unmerged**; one low-lying
+row is dropped because its KML coordinates are the literal string `nan,nan`.
+
+### 16.2 The two wards the register could not resolve
+
+§15.4 left BBMP ward 65 unpaired. The boundary file closes it, and turns up a
+second case the register could not have shown:
+
+- **`Someshwara` → ward 3.** No 198-ward is named Someshwara, and the complaint
+  feed has no `Atturu`. In the **243-ward** delimitation
+  (`bbmp_ward_map_2022.kml`) ward 3 is `Someshwara Ward` (centroid 13.1037,
+  77.5744) and ward 4 is `Atturu Layout` (13.0957, 77.5550) — both carved out
+  of the single 198-ward 3 `Atturu` (13.1028, 77.5600). The complaint feed is
+  using the newer locality name for part of the old ward. 11,376 complaints.
+- **`Subedarapalya` → ward 65** (`Kadu Malleshwar Ward`, West). Reached by
+  elimination once Someshwara resolved: exactly one name and one ward left.
+  Corroborated — Subedarpalya is a Malleshwaram-belt locality and ward 65's
+  BBMP Division and Sub Division are both *Malleshwaram* — but not proved, so
+  it is flagged in the CSV as the file's lowest-confidence row.
+
+`NEXT.md` stated that ward 65 "is the complaint-side `Kadu Malleshwar`". That
+is not quite right: `Kadu Malleshwar` is the *register* and *boundary* spelling.
+No complaint ward carries that name. The gap was on the complaint side, and it
+is `Subedarapalya` that fills it. The geography in the task note — ward 65
+between Rajamahal (64) and Subrahmanyanagar (66) — is confirmed exactly.
+
+### 16.3 The resolution limit
+
+Each ward was assigned the nearest of the 9 ERA5 cells by haversine:
+
+| Cell | Wards |
+|---|---:|
+| 5 (city centre) | **176** |
+| 6 | 8 |
+| 8 | 7 |
+| 4 | 4 |
+| 2 | 3 |
+
+**176 of 198 wards — 89% — share one cell.** Only 5 of the 9 cells are used at
+all. The grid is 3×3 at 0.2°, about 22 km spacing, and BBMP spans roughly
+0.26° × 0.28°, about 29 × 30 km. **The city is barely larger than one grid
+step**, so almost every ward centroid is nearest the middle.
+
+On 36.1% of days every ward receives an identical rainfall value. The five used
+cells do differ — a mean daily max-minus-min spread of 2.94 mm — so there is
+real spatial signal, but only 22 wards are positioned to receive it, and being
+at the city's edge is not the same as being where the storm was.
+
+### 16.4 §13 recomputed — reporting lag
+
+| Rainfall series | City-mean lift | **Per-ward lift** | Change |
+|---|---:|---:|---:|
+| **lag 0 (same day)** | 3.06 | **2.89** | −5.6% |
+| lag 1 | 3.13 | 3.08 | −1.6% |
+| lag 2 | 2.74 | 2.66 | −2.7% |
+| lag 3 | 2.44 | 2.34 | −4.1% |
+| max over prior 3 days | 3.43 | 3.48 | +1.7% |
+
+Per-ward, lag 0: 3,262 events on 111,924 wet ward-days (2.9145%) against 2,783
+on 275,958 dry (1.0085%).
+
+The wet-day event rate is statistically indistinguishable from the city-mean
+version (**χ², p = 0.575**). Every conclusion in §13 survives unchanged: lag 0
+is the right alignment, lag 1 is noise, lags 2–3 are worse, and the 3-day
+window's edge is still denominator-driven.
+
+### 16.5 §14 recomputed — the static baseline
+
+The static ranking uses prior event counts only, so per-ward rainfall cannot
+change the ranking. What it can change is *which wards are candidates on a
+given night* — operationally the more useful question, since crews are only
+sent where it is raining.
+
+| Variant | Days | precision@20 | Ceiling | % of ceiling |
+|---|---:|---:|---:|---:|
+| (A) city-mean rain days, all 198 wards ranked | 138 | **13.55%** | 37.36% | 36.3% |
+| (A′) the 123 of those days with ≥20 wet wards | 123 | 13.90% | 37.32% | 37.2% |
+| (B) same 123 days, ranking **only wet wards** | 123 | **13.01%** | 35.45% | 36.7% |
+
+Like-for-like, restricting the candidate pool to wet wards **lowers**
+precision@20 by 6.4%.
+
+The reason is in the numbers: on a typical rain day **173 of 198 wards are
+already "wet"** at the 2.5 mm threshold, because 89% of them read the same
+central cell. So the restriction removes only ~25 wards, and some of those
+removed did have events — the ward was flooding while the cell it inherited
+read dry. It costs more in lost true positives than it gains in discarded
+candidates.
+
+**The headline baseline is unchanged: precision@20 = 13.6%, ceiling 37.4%.**
+
+### 16.6 What this means
+
+1. **ERA5 cannot resolve intra-city rainfall for Bengaluru.** At ~25–31 km
+   native resolution against a ~30 km city, per-ward weather from this source
+   is mostly one number with edge noise. Adding more cells to the grid will not
+   fix it — the underlying reanalysis has no finer structure to give.
+2. **The §12.6 caveat should be retired, not carried forward.** It predicted
+   understated figures; the measurement says the city-mean and per-ward
+   versions agree within noise. Quote the city-mean numbers without the
+   apology.
+3. **This bounds M1 and M2.** A weather-only model over ERA5 sees essentially
+   one rainfall series for the whole city, so it cannot discriminate *between*
+   wards on a given night — only between nights. **Whatever separates wards on
+   the same night has to come from the memory and terrain features.** That is a
+   sharper argument for M3 than §14.3 alone, and it is now measured.
+4. **If genuine per-ward rainfall is wanted, it needs a different source.**
+   KSNDMC operates telemetric rain gauges at ward granularity across Bengaluru;
+   that, or IMD gridded data, is the only way to get real intra-city variation.
+   Worth an RTI or a data request — but note the whole pipeline works without
+   it, and this section is the evidence for saying so in the limitations.
+
+### 16.7 Reproducing this
+
+```bash
+python -m app.ingestion.cli wards --city Bengaluru
+python -m app.ingestion.cli status
+```
+
+Idempotent: `locations` holds 596 rows (198 wards + 398 points) before and
+after a re-run.

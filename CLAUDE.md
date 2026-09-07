@@ -34,6 +34,15 @@ Done:
   2019-01-01..2025-06-30, aggregated to 21,357 cell-days.
 - `docs/02-data-profile.md` — profile of the raw BBMP files. **Read §10 and
   §12 before writing the complaint loader.**
+- `data/reference/ward_crosswalk.csv` + `app/ingestion/ward_crosswalk.py` —
+  all 198 complaint ward names mapped to a BBMP ward number, polygon centroid,
+  zone and area, off the 198-ward `bbmp_ward_map_2015.kml`. 0 unresolved.
+- `app/ingestion/bbmp_wards.py` — 198 ward centroids + 398 register hotspot
+  points into `locations`, each with its nearest ERA5 `cell_id`. The three
+  register layers are loaded unmerged.
+- **ERA5 cannot resolve intra-city rainfall here** (profile §16): 89% of wards
+  fall in one cell, so per-ward rainfall is one number with edge noise. M1/M2
+  cannot separate wards on the same night; only memory and terrain can.
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,
