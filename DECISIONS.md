@@ -122,32 +122,70 @@ to solve."
 
 ---
 
-### The memory features are about rainfall response, not counts
+### We tried to make the prediction cleverer, measured it, and it did not work
 
-We measured this rather than assumed it: simply counting past floods per ward
-reproduces the city's existing list and stops there. Knowing *more* history adds
-nothing.
+The plan was that knowing how much rain *each specific place* needs before it
+floods would beat simply counting past floods. We built that and tested it. It
+performed worse.
 
-What matters is how much rain each specific place needs before it floods. Two
-roads get the same 60 mm; one goes under and one does not. That difference is
-the system.
+The reason is mundane: each ward has too few past floods to split across rainfall
+levels, so the "clever" number is mostly the simple number with extra noise added.
 
-**If challenged:** "We measured that frequency-based memory saturates. The
-predictive signal is in how each location responds to rainfall, not how often it
-has failed."
+**If challenged:** "We tested the interaction hypothesis rather than assuming it,
+and it failed for a measurable reason — the per-ward history is too thin to
+condition on. We report what we measured."
 
 ---
 
-### Rainfall is currently city-wide, and we say so
+### The most important result is a limit, not a win
 
-The free weather data has grid cells about the size of Bengaluru itself, so
-almost every ward reads the same rainfall value. We are testing finer sources.
+We asked how much better *any* nightly ranking could possibly be. To find out we
+cheated deliberately: we ranked wards using the answers from the test period
+itself — the best any method could ever do.
 
-Until then, results are reported as city-level, not as if we had per-ward rain.
+It scored 15.7%. The honest version scores 14.1%. So the entire space available
+to any amount of clever feature engineering is about 1.6 percentage points out of
+24.
 
-**If challenged:** "Reanalysis at 25 km cannot resolve variation inside a 30 km
-city. We state that limitation rather than implying spatial precision we do not
-have."
+That is the project's central finding. Not "our model is good", but "we measured
+how much room there is, and there is almost none — and here is exactly where it
+runs out."
+
+**If challenged:** "We established the predictability ceiling rather than
+claiming to approach it. A ranking fitted with perfect foresight beats ours by
+1.6 points, so the limit is in the phenomenon, not in our method."
+
+---
+
+### Which places flood on a given night genuinely moves — and nothing predicts it
+
+Two facts sit together and that combination is the interesting part.
+
+The set of flooded wards shifts almost completely from one rainy night to the
+next — knowing tonight tells you almost nothing about next time. So a fixed list
+is not capturing something stable.
+
+And yet nothing we can observe — rainfall, terrain, season, past history —
+predicts the shifting.
+
+**If challenged:** "The phenomenon moves, and no available data explains the
+movement. Establishing that both are true is more useful than a marginal
+improvement would have been."
+
+---
+
+### We do not report AUC, and there is a specific reason
+
+A standard model score (AUC) said our model worked well — 0.75, which looks
+convincing. It made no difference whatsoever to the actual decision.
+
+The score was rewarding the model for telling bad nights from quiet nights,
+which is easy. The decision needs it to tell places apart *within* one night,
+which is what it could not do.
+
+**If challenged:** "Pooled AUC on this kind of data measures the wrong thing. It
+credits separating days when the decision compares places within a day. We
+demonstrate the gap and report the decision metric instead."
 
 ---
 

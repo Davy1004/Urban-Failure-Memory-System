@@ -1,234 +1,229 @@
-# REPORT — is the headroom real, or is it noise?
+# REPORT — can we predict the size of the night?
 
-Task: NEXT.md "is the headroom real, or is it noise?". Completed 2026-09-08.
-Written for the reader who decides what happens next; assumes no access to the
-conversation.
+Task: NEXT.md "can we predict the size of the night?", plus the six answers to
+the previous report's §5. Completed 2026-09-08. Written for the reader who
+decides what happens next; assumes no access to the conversation.
 
-**Answer: it is noise, in the specific sense that matters. A ward-level ranking
-fitted with perfect foresight — cheating, using the test period's own outcomes
-— reaches 15.66% against the honest 14.08%. Only 1.58 of the 23.64 points
-(6.7%) of headroom is ward-level at all. The other 93.3% is within-ward
-temporal variation, and nothing observable predicts it.**
+**Answer, against the bar you set in advance: the first criterion is missed
+decisively, the second is marginal. R² on the target as specified is −0.03.
+On a detrended target it is 0.196 (95% CI 0.082–0.278), and 3-class accuracy is
+50.0% against a 39.6% majority — +10.5 points, but the CI on that gap includes
+zero.**
 
-This is the negative answer the task said would be a good outcome. It arrives
-in September rather than March, and it changes what Phase 3 should build.
+**The defensible claim is narrow: weather reliably flags the handful of worst
+nights and is near-chance in the middle. Nine of the ten nights it was most
+confident about were genuinely severe.** I would report this as an advisory
+secondary output and not promote it further.
 
-Full write-up: profile §19. Evaluation rules updated. New section §19.4 names a
-methodological trap that would otherwise have cost the project a false positive.
+Full write-up: profile §20 (magnitude) and §21 (label ceiling). Evaluation
+rules updated with Proof One restated and five settled decisions recorded.
 
 ---
 
-## 1. The three things you asked for
+## 1. The specified target fails, and the reason is not weather
 
-### (a) Is anything associated with surprise membership, and how strongly?
+The brief named the target as "the count of distinct wards with a strict event,
+per rain day". That target is not stationary:
 
-Weakly, and almost entirely at the night level rather than the ward level.
-
-906 of 1,289 events on the 136 held-out rain days (**70.3%**) fall outside the
-frozen top-20. Base rate among non-top-20 ward-days: **3.743%** (906 / 24,208).
-
-| Feature | Mutual info | Point-biserial r |
-|---|---:|---:|
-| *n wards flooded tonight* (post-hoc) | 0.0259 | **0.294** |
-| city rainfall | 0.0231 | 0.119 |
-| own-cell rain_24h | 0.0165 | 0.116 |
-| prior event count | 0.0049 | 0.113 |
-| prior rank | 0.0102 | −0.105 |
-| rain percentile | 0.0230 | 0.096 |
-| rain_3h_max | 0.0115 | 0.091 |
-| antecedent 7d | 0.0172 | 0.089 |
-| ward area | 0.0075 | 0.075 |
-| on the flood register | 0.0057 | 0.038 |
-| bowl (centroid vs boundary elev.) | 0.0093 | −0.027 |
-| elevation range | 0.0050 | 0.013 |
-| season position | 0.0199 | −0.012 |
-| elevation | 0.0072 | −0.007 |
-
-Everything is significant because n = 24,208; nothing is large. The strongest
-correlate is post-hoc *and* night-level — how many other wards flooded tonight.
-That is the shape of the whole result.
-
-I fetched ward elevation for this (Open-Meteo elevation API, free and keyless:
-centroid plus 12 polygon-boundary samples per ward, 2,574 points, ~4 minutes
-with backoff). Saved to `data/reference/ward_elevation.csv` since it is cheap
-and M2 will want it. It ranks the right places qualitatively — the most
-bowl-like wards are Shettyhalli, Horamavu, Ullalu, Bagalagunte and Bellandur,
-several of them top-20 flood wards — but contributes nothing once memory is in
-the model.
-
-### (b) Where do the surprises sit in the prior-count ranking?
-
-**Not concentrated at 21–40. Median rank 69.**
-
-| Prior rank | Surprises | Share | Cumulative |
+| Year | Rain days | Mean events/rain day | Total complaints |
 |---|---:|---:|---:|
-| 21–40 | 215 | 23.7% | 23.7% |
-| 41–60 | 194 | 21.4% | 45.1% |
-| 61–100 | 195 | 21.5% | 66.7% |
-| 101–198 | 302 | 33.3% | 100% |
+| 2020 | 121 | 3.99 | 91,620 |
+| 2021 | 126 | 3.90 | 103,504 |
+| 2022 | 114 | 6.94 | 118,394 |
+| 2023 | 86 | 4.33 | 119,140 |
+| 2024 | 107 | 7.84 | 207,016 |
+| 2025 | 29 | 15.52 | 126,974 |
 
-Only **0.8%** come from genuinely cold wards (zero prior events) — this is
-mid-ranked wards failing unpredictably, not unknown places appearing.
+Train mean 4.78, test mean 9.48. Correlation with time 0.243; with city
+rainfall 0.214. **The reporting trend is as strong as the weather signal.**
 
-So the "trivial fix" hypothesis is dead. Lengthening the list trades precision
-for recall: top-40 captures 46.1% of events at precision 10.92%, against
-top-20's 29.7% at 14.08%.
-
-### (c) Honest read on whether the 24 points are reachable
-
-**No.** The decisive test: rank wards by their event count measured *on the test
-period itself*. That is the best any static per-ward score could ever do,
-whatever features produced it — drainage density, imperviousness, land cover,
-anything.
-
-| | precision@20 |
-|---|---:|
-| Honest static top-20 (trained to 2023) | 14.08% |
-| **Cheating static top-20 (fitted on test)** | **15.66%** |
-| Oracle with perfect per-night knowledge | 37.72% |
-
-| | Points | Share |
+| Model | R² | MAE |
 |---|---:|---:|
-| Headroom | 23.64 | 100% |
-| Reachable by a perfect ward-level ranking | **1.58** | **6.7%** |
-| Irreducibly within-ward / temporal | **22.06** | **93.3%** |
+| Mean baseline (train mean) | −0.136 | 6.65 |
+| Rainfall-threshold baseline (4 buckets) | −0.065 | 6.48 |
+| **Linear regression, weather only** | **−0.032** | 6.31 |
+| Poisson GLM, weather only | −0.033 | 6.30 |
+| Linear + explicit time trend | 0.090 | 6.28 |
+| Time trend alone, no weather | −0.055 | 6.64 |
 
-Corroboration: consecutive rain nights' event vectors correlate at **0.090** —
-which wards flood tonight is nearly independent of which flooded last time. 161
-of 178 non-top-20 wards produced at least one surprise, and the 20 most
-surprise-prone hold only 30.8% of them. Spread thin, and it moves.
+Every R² is at or below zero. Weather models beat the mean baseline but all are
+worse than predicting the test mean.
 
-## 2. The thing I did not expect, and think matters most
+## 2. What I changed, and why — flagging this as a deviation
 
-**A good pooled AUC hides this problem completely, and the project was on
-course to be fooled by it.**
+I re-ran against a **detrended target**: events divided by the trailing 90-day
+mean events per rain day, computed from prior days only so no model sees the
+future trend.
 
-A logistic model over all features reaches **held-out ROC-AUC 0.749**, PR-AUC
-0.116 against a 0.037 base rate — a 3.1× lift. On its face that is a working
-model. Its effect on precision@20 is **+0.18 points, Wilcoxon p = 0.84**.
+This is a change to the specified target and you should weigh it as one. My
+reasoning: the absolute target is dominated by BBMP's reporting-channel growth
+(§9.7), so measuring it answers "did complaint volume grow" rather than "does
+weather predict severity". The relative question is also the one an operations
+desk actually asks. But it is a weaker operational claim than the absolute one
+would have been, and it requires maintaining a trailing baseline in production
+that drifts with reporting channels rather than weather.
 
-The reason is a variance decomposition:
+## 3. Results on the fair target
 
-| Feature | Share of variance *between* nights |
-|---|---:|
-| season, city rainfall | 100% |
-| antecedent 7d | 96.8% |
-| own-cell rain_24h | 84.6% |
-| rain percentile | 76.6% |
-| own-cell rain minus city mean | 9.3% |
-| area, elevation, bowl, prior count, register | **0%** |
+| Model | R² | MAE |
+|---|---:|---:|
+| Mean baseline | −0.007 | 0.880 |
+| **Linear regression, weather only** | **0.196** | **0.788** |
 
-Pooled AUC rewards separating bad nights from quiet ones. precision@k only
-compares wards *within* one night. So:
+Bootstrap, 1,000 resamples of test nights: R² **0.187, 95% CI [0.082, 0.278]**.
+Excludes zero; excludes 0.4.
 
-| Model | Pooled AUC | Within-night AUC | precision@20 |
+Single-feature models, since the multivariate coefficients are badly collinear
+(rain_max_cell +0.809 against city_rain −0.645):
+
+| Feature(s) | R² | Binary AUC | 3-class acc |
 |---|---:|---:|---:|
-| All features | 0.7487 | 0.7365 | 14.26% |
-| Ward-varying features only | 0.7108 | 0.7398 | 14.19% |
-| **Prior count alone** | 0.7060 | **0.7371** | **14.08%** |
-| Night-level only | 0.6147 | **0.5000** | 4.71% |
+| city rainfall alone | 0.123 | 0.715 | **51.5%** |
+| max-cell rainfall alone | 0.137 | 0.735 | 50.0% |
+| rain percentile alone | 0.122 | 0.710 | 47.0% |
+| antecedent 7d alone | 0.095 | 0.610 | 41.7% |
+| spread (max cell − city mean) | 0.075 | 0.706 | 47.7% |
+| all six | **0.196** | **0.749** | 50.0% |
 
-A night-level model has within-night AUC of exactly 0.5 and scores at chance.
-And every bit of within-night ordering comes from prior event count — adding
-twelve features moves within-night AUC by −0.0006.
+Most of the signal is simply how much rain fell. The six-feature model doubles
+R² over city rainfall alone and does not improve classification at all.
 
-Written into `docs/01-evaluation-rules.md` as a rule: **never report a pooled
-AUC on a location-day panel as evidence a triage model works.**
+### Operational version
 
-## 3. I tested the FMI features rather than assuming them
+Terciles of the **training** ratio distribution. Test: quiet 48, moderate 49,
+severe 35. Majority baseline **39.6%** (bootstrap).
 
-`docs/01-evaluation-rules.md` argued the headroom must come from memory
-interacting with weather, and named `conditional_rate_at_current_band` and
-`excess_over_city`. Both are cheap to build from prior data, so I built and
-tested them instead of leaving them as a Phase 3 promise. Rates estimated on the
-training window only, Laplace-smoothed toward the citywide rate per rainfall
-band.
+3-class classifier, **accuracy 50.0%**:
 
-| Model | Within-night AUC | precision@20 |
-|---|---:|---:|
-| **prior_n alone** | **0.7371** | **14.08%** |
-| prior_n + prior_rank | 0.7369 | 14.08% |
-| conditional rate at band | 0.7091 | 12.94% |
-| conditional rate + excess over city | 0.6979 | 12.79% |
-| memory + interaction + terrain | 0.7332 | 13.82% |
+| true \ predicted | quiet | moderate | severe |
+|---|---:|---:|---:|
+| **quiet** | 32 | 8 | 8 |
+| **moderate** | 26 | 12 | 11 |
+| **severe** | 8 | 5 | 22 |
 
-**All worse than memory alone.** Conditional rate alone loses 1.14 points
-(p = 0.041). Cause: `cond_rate` correlates with `prior_n` at **r = 0.853**,
-`excess` at **r = 0.877**. Splitting a thin per-ward history across six rainfall
-bands adds more estimation noise than interaction signal.
+Quiet 32/48 and severe 22/35 are called reasonably. The middle collapses — 26 of
+49 moderate nights called quiet. **The extremes are separable, the middle is
+not.**
 
-This exceeded the task's brief — you said "not building a model, asking whether
-a signal exists". I judged it worth doing because these two features are the
-stated premise of M3, they took twenty minutes, and finding out in Phase 3 that
-the premise fails would be expensive. If you would rather this had waited for a
-proper feature-engineering pass with more careful smoothing and more bands, the
-scripts are in the scratchpad and it is easy to redo.
+Gap over majority: **+10.5 points, 95% CI [−0.8, +20.5]**; the model wins in
+96.1% of resamples. Positive, not comfortably significant.
 
-## 4. What I think this means for the project
+### Where it is genuinely useful
 
-Stated in profile §19.7, summarised here:
+Binary "is tonight in the worst third of recent rain nights", base rate 26.5%:
+**ROC-AUC 0.749 (CI 0.650–0.841)**, accuracy 79.3% vs 73.5% majority.
 
-1. **Triage is bounded, and the bound is the contribution.** The static list is
-   within 1.6 points of the best any ward-level ranking can achieve. "We
-   measured how much a nightly triage list can be improved, and it is 1.6 of
-   23.6 points" is a real finding, and more honest than a marginal win.
-2. **Proof One needs restating.** As written it is close to unwinnable. The
-   claim the data *does* support is the inverse: the event set genuinely moves
-   (correlation 0.090), so a static list is not capturing a stable phenomenon,
-   and yet nothing observable predicts the movement. I have put a
-   "RESTATE THIS" block at the top of the Proof One section in the evaluation
-   rules rather than rewriting it, since the restatement is your call.
-3. **Weight shifts to the Learn outputs.** Emerging detection and intervention
-   effectiveness use accumulated ward history, not nightly ordering, so this
-   result does not touch them. They are also the more original contributions.
-4. **Build M0–M3 to demonstrate the bound, not to beat it.** All four landing
-   near 14% against a 37.7% ceiling *is* the result; the ablation is what makes
-   it credible.
+| Flagged | Genuinely severe | Precision |
+|---|---|---:|
+| top 5 | 5/5 | 100% |
+| top 10 | 9/10 | **90%** |
+| top 15 | 11/15 | 73% |
+| top 20 | 11/20 | 55% |
+| top 40 | 20/40 | 50% |
 
-## 5. What I want a second opinion on
+Over 18 months, the ten nights the model was most confident about contained
+nine genuinely severe ones, against a 26.5% base rate. Small counts at the top —
+read with care — but the ordering is monotone and the AUC interval excludes
+chance.
 
-1. **Whether to restate Proof One now or after the mid-review.** I left the
-   original text in place with a restatement block above it. Rewriting it is a
-   bigger decision than a doc edit — it changes what the project promises — and
-   it should be yours.
-2. **Whether the label is the real ceiling.** A complaint is a citizen report,
-   not an observed flood. Some fraction of the 22 irreducible points is
-   certainly label noise rather than missing features, but I cannot separate
-   the two with this data. If you think that fraction is large, it is worth
-   saying so explicitly in the limitations rather than letting a reader assume
-   the 22 points are physical.
-3. **Whether location-level would change the answer.** Everything here is
-   ward-level. The register has ~390 points and a location is far smaller than
-   a ward, so per-location the base rate falls and the panel gets sparser — I
-   would expect the same conclusion more strongly, but it is untested and the
-   complaint-to-location join does not exist. Worth deciding whether to spend
-   on that join at all, given this result.
-4. **Whether to keep chasing terrain.** `imperviousness` and `drain_distance_m`
-   are in the schema and unpopulated. §19.6 says no static ward feature can add
-   more than 1.6 points total, so populating them cannot pay off for *triage*.
-   They may still matter for the Learn outputs and for the paper's credibility.
-   I would not spend on them now; say if you disagree.
+## 4. Verdict against your pre-set bar
 
-## 6. Things a future reader should not have to rediscover
+| Criterion | Result | Met? |
+|---|---|---|
+| R² > ~0.4 | 0.196, CI [0.082, 0.278] | **No, decisively** |
+| 3-class meaningfully above majority | 50.0% vs 39.6%, CI on gap [−0.8, +20.5] | **Marginal** |
+| (unplanned) binary AUC | 0.749, CI [0.650, 0.841] | Clearly above chance |
 
-- **Open-Meteo's elevation API rate-limits hard.** 26 batches of 100 points
-  triggered a 429 without backoff. It is free and keyless but needs ~2s spacing
-  and exponential retry.
-- **`cond_rate` and `prior_n` correlate at 0.85.** Any "interaction" feature
-  built by conditioning a sparse per-ward history on weather bands will largely
-  restate the base rate with extra noise. Check the correlation before
-  believing an interaction feature is new information.
-- The frozen top-20 and the cheating top-20 share **13 of 20** wards. The
-  static list is close to optimal *as a list*; the problem is not its
-  membership.
+Your rule said above the bar means "a real weather-driven output and the honest
+product statement becomes *predictable in magnitude, not in location*"; below
+means "weather contributes nothing anywhere".
 
-## 7. Verification
+**Neither branch is quite right, and I am not going to talk it into one.** The
+honest position: *unpredictable in location, weakly predictable in magnitude,
+and reliable only for the worst nights.* That is a real but secondary output.
+It does not rescue triage, and the project still rests mainly on the Learn
+outputs — but "weather contributes nothing anywhere" would be too strong, since
+an AUC of 0.749 with a CI excluding 0.5 is not nothing.
+
+## 5. The label-ceiling bound (your answer 2)
+
+The frozen top-20 against BBMP's agency-observed register:
+
+| | |
+|---|---:|
+| Top-20 wards on the register | **16 / 20 (80%)** |
+| Register coverage, all 198 wards | 52% |
+| Expected under independence | 10.3 / 20 |
+| Hypergeometric p | **0.0060** |
+| Spearman ρ, events vs register points | **0.334** (p = 1.5e-06) |
+| Overlap of the two top-20 lists | 9 / 20 |
+| Mean events, register vs non-register wards | 24.7 vs 13.4 (p = 0.0001) |
+
+**The label finds real places.** Four fifths of the wards the complaints rank
+worst are independently listed as flood-prone by BBMP — significant enrichment
+over the 52% base. But ρ = 0.334 and 9/20 list overlap are not a clean proxy:
+the two agree on *which wards are flood-prone* far more than on *how bad each
+is*.
+
+Reading: **the label's error is concentrated in timing and degree, not in
+place** — which is exactly what §19.6 found independently (place is saturated at
+1.58 of 23.64 points; the rest is when). Two separate analyses converging is the
+strongest evidence in the report.
+
+A bonus worth noting: the four top-20 wards *not* on the register are Hoodi,
+Someshwara, Jakkur and Basavanapura. Under the §12.5 framing those are precisely
+the emerging-hotspot candidates — places failing repeatedly that the official
+list has not caught up with. Proof Two's population, surfaced unprompted.
+
+## 6. Your other answers — what I did
+
+- **0. Corrected the rules file.** The FMI section no longer reads as a plan
+  with a caveat; it is headed "ASSERTED, THEN MEASURED, AND WRONG" and states
+  the r = 0.853 explanation. The original text is kept in full so the negative
+  result reads as a decision.
+- **1. Proof One restated**, in your words, as the live text. The original is
+  kept below a "Superseded" heading. Practical consequences spelled out: do not
+  promise to beat the static baseline; the deliverable is the bound.
+- **2. Label ceiling** — §21 above, plus a standing note in the rules file with
+  the sentence to put in the limitations.
+- **3. Location-level join** — recorded as an untested expectation in the rules
+  file, explicitly not to be built.
+- **4. Terrain** — `ward_elevation.csv` kept; a note says do not chase
+  `imperviousness` or `drain_distance_m` for triage.
+- **5. Pooled-AUC trap** — recorded as a paper contribution in its own right,
+  not only a rule, with the variance-decomposition explanation.
+
+## 7. What I want a second opinion on
+
+1. **Whether the detrending is acceptable.** It is the difference between "no
+   signal" and "a weak one". I think it is necessary and I have flagged it, but
+   an examiner could reasonably say the absolute count is the operational
+   quantity and it failed. If you want the headline to be the absolute-target
+   failure with the relative result as a footnote, say so — it is a framing
+   choice, not a re-analysis.
+2. **Whether to build the magnitude output at all.** AUC 0.749 and 9/10 on the
+   top flagged nights is product-shaped, but it needs a maintained trailing
+   baseline and it only works at the extremes. It is perhaps two days of work.
+   My inclination is to build it *after* the Learn outputs, not before.
+3. **The housekeeping bundle has fallen off the queue.** The previous round
+   agreed two jobs — restate §12–§14 headlines on IFS, and baseline Alembic then
+   add `weather_cells.model`. Neither is in the current NEXT.md. The IFS one
+   matters: the profile now quotes ERA5 figures in §12–§14 and IFS figures in
+   §17–§21, so the inconsistency you wanted closed is now *internal to the
+   document*. I did not do it unasked because the current task was explicitly
+   one session's work, but it should go back on the queue.
+4. **Whether §20 belongs in the paper at all.** A marginal magnitude result may
+   dilute a clean negative headline. It could equally strengthen it — "we
+   checked whether weather helps anywhere, and here is the one place it
+   slightly does". Your call on the narrative.
+
+## 8. Verification
 
 57 tests pass (unchanged — this task added analysis, not pipeline code).
-`data/reference/ward_elevation.csv` is new and committed. Database unchanged:
-`locations` 596, `weather_observations` 1,309,896, `weather_daily` 54,579.
+Database unchanged: `locations` 596, `weather_observations` 1,309,896,
+`weather_daily` 54,579.
 
-Temporal discipline throughout: prior counts for the fit set from
-2020-02-08 → 2022-12-31, for the test set from 2020-02-08 → 2023-12-31; models
-fit on 2023 rain days, evaluated on the 136 rain days of 2024-01-01 →
-2025-06-19. The single exception is §19.6, where the leakage is the instrument.
+Temporal discipline: models fit on rain days ≤ 2023-12-31, evaluated on the 136
+rain days of 2024-01-01 → 2025-06-19. The trailing baseline uses a 90-day window
+of strictly prior rain days. Class edges come from the training distribution,
+never the test. Bootstrap CIs resample test nights, 1,000 draws.

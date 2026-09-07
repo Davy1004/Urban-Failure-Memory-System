@@ -32,23 +32,34 @@ Base rate is ~0.5%. A model predicting "no failure" always scores 99.5%.
 | M2 | weather + terrain | does geography alone explain it? |
 | M3 | weather + terrain + Failure Memory Index | **the system** |
 
-## Proof One — RESTATE THIS (see profile §19.7)
+## Proof One (restated) — the predictability ceiling
 
-As originally written, Proof One is close to unwinnable: a perfect ward-level
-ranking beats the static list by 1.6 points, and the honest model is already
-within 1.6 points of that. Do not promise to beat the static baseline by a
-material margin.
+**This replaces the original Proof One. Settled 8 Sep 2026; the superseded text
+is kept below the fold.**
 
-What the data supports is the inverse, and it is a stronger claim because it is
-measured: **the event set genuinely moves** (consecutive-night correlation
-0.090), so a static list is not capturing a stable phenomenon — **and yet
-nothing observable predicts the movement**. The contribution becomes "we
-measured how much a nightly triage list can be improved, and it is 1.6 points
-of 23.6" rather than "we improved it".
+> The original claim — that a nightly ranking would reorder meaningfully with
+> weather and beat a static list — is **tested and rejected**. A ward-level
+> ranking fitted with perfect foresight reaches 15.66% against the honest
+> static 14.08%, so at most 1.58 of 23.64 points of headroom is reachable by
+> any ward-level score whatsoever. What replaces it is a measurement: *we
+> establish the predictability ceiling of complaint-derived urban failure
+> triage and locate where it binds.* The event set genuinely moves
+> (consecutive-night correlation 0.090), so the static list is not capturing a
+> stable phenomenon — and yet nothing observable predicts the movement. That
+> conjunction is the finding.
 
-The original text follows.
+What this means in practice:
 
-## Proof One — the ranking is dynamic
+- **Do not promise to beat the static baseline.** Report M0–M3 all landing near
+  14% against a 37.72% ceiling; the ablation is the evidence.
+- **The deliverable is the bound, not the model.** "We measured how much a
+  nightly triage list can be improved, and it is 1.6 of 23.6 points."
+- **Two supporting results carry it.** The pooled-AUC trap (§19.4) explains why
+  others have not noticed, and the agency-register check (profile §21) shows
+  the label is finding real places, so the ceiling is not an artefact of a
+  broken target.
+
+### Superseded: Proof One as originally written
 
 *If tonight's top 20 is the same 20 every night, this is a report, not a tool.*
 
@@ -219,11 +230,18 @@ precision@20 of 4.71% — chance.
 
 **Report within-night AUC, or precision@k, or both. Never a pooled AUC alone.**
 
-### The original feature plan, retained for the record
+### The original feature plan — ASSERTED, THEN MEASURED, AND WRONG
 
-The reasoning below was sound and the features were the right ones to try. They
-were tried. Keep this section so the negative result is legible as a decision
-rather than an omission.
+**This section used to state as fact that the headroom would come from memory
+interacting with weather. That was an assertion, it was tested, and it is
+false.** The features below were the right ones to try and they were tried;
+every one scores worse than plain prior event count. `cond_rate` correlates
+with `prior_n` at r = 0.853, because a conditional rate estimated from a thin
+per-ward history is mostly a noisier restatement of the base rate.
+
+Kept in full so the negative result reads as a decision rather than an
+omission — and as a standing reminder that a plausible feature story in this
+file is a hypothesis until someone measures it.
 
 The headroom from 13.55% to 37.36% was expected to come from **memory
 interacting with weather**, so the FMI was to lead with:
@@ -283,3 +301,63 @@ gauge resolution (~1 km): KSNDMC has 131 gauges inside BBMP, median 0.95 km from
 each ward centroid, but only 5 report to the national portal and only from
 August 2023 (profile §18). That is an RTI, not a download, and §17.4 above shows
 it would sharpen the weather features rather than overturn the conclusion.
+
+---
+
+# Settled decisions (8 Sep 2026)
+
+## The label ceiling — say it out loud
+
+A complaint is a citizen report, not an observed flood, so an unknown share of
+the 22 irreducible points in §19.6 is reporting behaviour rather than hydrology.
+The two cannot be separated with this data. **The limitations section must say
+so** rather than let a reader assume the residual is physical.
+
+The available partial bound, from profile §21: the frozen top-20 is
+significantly enriched for wards on BBMP's own agency-observed flood register —
+**16 of 20 against a 52% base rate, hypergeometric p = 0.006** — but agrees only
+moderately on severity (**Spearman ρ = 0.334**, top-20 overlap 9/20). Reading:
+the label finds real places; its error is concentrated in timing and degree, not
+in place. That is consistent with the §19.6 decomposition and is the sentence to
+put in the paper.
+
+## Location-level triage — expectation recorded, not tested
+
+Everything is ward-level. Per-location the panel is sparser and the base rate
+lower, so the §19 conclusion should hold *more* strongly, not less. **This is
+untested and recorded as an expectation.** The complaint-to-location join does
+not exist and will not be built: §19.6 caps any ward-level gain at 1.58 points,
+and a finer unit does not lift that cap.
+
+## Terrain — do not populate for triage
+
+`ward_elevation.csv` is kept: it was cheap, it ranks the right places
+qualitatively (the most bowl-like wards are Shettyhalli, Horamavu, Ullalu,
+Bagalagunte, Bellandur), and the Learn outputs may want it. But elevation
+contributes nothing once memory is in the model, and §19.6 makes further terrain
+work unpayable for triage. **Do not chase `imperviousness` or
+`drain_distance_m`** for this purpose.
+
+## The pooled-AUC trap is a paper contribution, not just a rule
+
+§19.4 belongs in the paper as a methodological finding in its own right, not
+only in this file. A held-out ROC-AUC of 0.749 coexisting with a precision@20
+effect of +0.18 points (p = 0.84) is exactly the result that gets published
+elsewhere as a working model. The clean explanation is the variance
+decomposition: every ward-varying feature has **0%** between-night variance
+while rainfall carries 74–100% of its variance between nights, and precision@k
+only ever compares wards within one night. Anyone building a location-day triage
+model can be fooled the same way.
+
+## Magnitude is a secondary output, not a headline
+
+Profile §20. Weather cannot predict the raw count of failing wards (R² = −0.03;
+reporting drift dominates). Against a trailing baseline it reaches R² = 0.196
+and 3-class accuracy 50.0% vs a 39.6% majority. The pre-set bar (R² > 0.4, or
+3-class meaningfully above majority) is **missed on the first and marginal on
+the second**.
+
+Report it as advisory only: the binary "is tonight in the worst third" question
+reaches AUC 0.749, and 9 of the 10 most confidently flagged nights were
+genuinely severe — but the middle of the distribution is near chance. **Quote
+the extremes, never a headline R².**

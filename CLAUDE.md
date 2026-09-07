@@ -63,6 +63,20 @@ Done:
 - **Never report a pooled AUC for triage.** Pooled 0.749 vs within-night 0.737,
   and prior count alone also gives 0.737. Rainfall carries 74-100% of its
   variance between nights; precision@k only compares wards within one night.
+- **Proof One is RESTATED** (`docs/01-evaluation-rules.md`). We no longer claim
+  to beat the static list. The deliverable is the ceiling itself: *we establish
+  the predictability ceiling of complaint-derived urban failure triage and
+  locate where it binds.*
+- **Magnitude is a weak secondary output** (profile §20). Weather cannot predict
+  the raw count of failing wards (R2 = -0.03; reporting drift dominates).
+  Against a trailing baseline: R2 = 0.196, 3-class 50.0% vs 39.6% majority -
+  the pre-set bar was missed on R2 and marginal on 3-class. Useful only at the
+  extremes: 9 of the 10 most confidently flagged nights were genuinely severe.
+  Advisory output, never a headline.
+- **The label is real but noisy** (profile §21). 16 of the frozen top-20 wards
+  are on BBMP's agency-observed register against a 52% base rate (p = 0.006),
+  but severity agreement is only moderate (Spearman 0.334). The label finds real
+  places; its error is in timing and degree. Say this in the limitations.
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,

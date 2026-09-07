@@ -56,6 +56,15 @@ Generated 7 Sep 2026 from the files as downloaded from
 > interaction features were all built and tested; every one is worse than
 > prior event count alone. **Read §19.7 before planning Phase 3, and §19.4
 > before trusting any AUC.**
+>
+> **§20–§21 bound what is left.** Weather cannot predict the raw *number* of
+> failing wards either (R² = −0.03 — reporting drift dominates); against a
+> trailing baseline it manages R² = 0.196 and flags 9 of its 10 most confident
+> nights correctly, so magnitude is an advisory output, not a headline (§20).
+> And the label is real but imprecise: 16 of the frozen top-20 wards sit on
+> BBMP's own agency-observed register against a 52% base rate (p = 0.006),
+> while severity agreement is only moderate (ρ = 0.334) — the label finds real
+> places, and its error is in timing and degree (§21).
 
 ---
 
@@ -1797,3 +1806,213 @@ Temporal discipline: prior counts for the fit set come from
 2020-02-08 → 2022-12-31 and for the test set from 2020-02-08 → 2023-12-31;
 models fit on 2023 rain days and evaluated on 2024–25 rain days. The only
 exception is §19.6, where leakage is the point.
+
+---
+
+## 20. Can weather predict the size of the night?
+
+Added 8 Sep 2026. §19 showed weather cannot say *which* wards fail. This asks
+whether it can say *how many* — the question that decides how many crews a city
+puts on standby.
+
+**Verdict: partly, and less than hoped. On the target as specified — the raw
+count of wards with an event — weather fails outright (R² = −0.03, worse than
+useless). On a detrended target it reaches R² = 0.196 and a 3-class accuracy of
+50.0% against a 39.6% majority baseline. The pre-set bar was R² > 0.4 or
+3-class accuracy meaningfully above majority. The first is missed decisively;
+the second is met by +10.5 points but its 95% CI includes zero.**
+
+The defensible claim is narrow: **weather reliably flags the handful of worst
+nights and is near-chance in the middle of the distribution.**
+
+### 20.1 The specified target is not stationary
+
+Mean wards-with-an-event per rain day, by year:
+
+| Year | Rain days | Mean events | Total complaints that year |
+|---|---:|---:|---:|
+| 2020 | 121 | 3.99 | 91,620 |
+| 2021 | 126 | 3.90 | 103,504 |
+| 2022 | 114 | 6.94 | 118,394 |
+| 2023 | 86 | 4.33 | 119,140 |
+| 2024 | 107 | 7.84 | 207,016 |
+| 2025 | 29 | 15.52 | 126,974 |
+
+Train mean 4.78 (sd 5.99); test mean 9.48 (sd 12.77). The target roughly
+doubles across the window, tracking **reporting volume, not rainfall**
+(§9.7). Correlation with time is 0.243, with city rainfall 0.214 — the trend
+is as strong as the weather signal.
+
+That makes the absolute count untrainable across this window:
+
+| Model | R² | MAE |
+|---|---:|---:|
+| Mean baseline (train mean) | −0.136 | 6.65 |
+| Rainfall-threshold baseline (4 buckets) | −0.065 | 6.48 |
+| Linear regression, weather only | **−0.032** | 6.31 |
+| Poisson GLM, weather only | −0.033 | 6.30 |
+| Linear + explicit time trend | 0.090 | 6.28 |
+| Time trend alone, no weather | −0.055 | 6.64 |
+
+Every R² is at or below zero. **On the target as specified, the answer is a
+clean no** — and the reason is reporting drift, not the absence of a weather
+signal.
+
+### 20.2 The fair target: severity relative to the recent baseline
+
+A city does not ask "how many wards will report tonight" in the abstract; it
+asks "is tonight worse than a normal recent night". So the target is
+recomputed as a ratio to the **trailing 90-day mean events per rain day**,
+computed from prior days only.
+
+| Model | R² | MAE |
+|---|---:|---:|
+| Mean baseline (ratio = train mean) | −0.007 | 0.880 |
+| **Linear regression, weather only** | **0.196** | **0.788** |
+
+Bootstrap over 1,000 resamples of the test nights: R² **0.187, 95% CI
+[0.082, 0.278]**. The interval excludes zero and excludes 0.4.
+
+Single-feature models, to avoid reading collinear coefficients:
+
+| Feature(s) | R² | Binary AUC | 3-class acc |
+|---|---:|---:|---:|
+| city rainfall alone | 0.123 | 0.715 | 51.5% |
+| max-cell rainfall alone | 0.137 | 0.735 | 50.0% |
+| rain percentile alone | 0.122 | 0.710 | 47.0% |
+| antecedent 7d alone | 0.095 | 0.610 | 41.7% |
+| spread (max cell − city mean) | 0.075 | 0.706 | 47.7% |
+| all six | **0.196** | **0.749** | 50.0% |
+
+Most of it is just *how much rain fell*. The six-feature model doubles R² over
+city rainfall alone but does not improve 3-class accuracy at all.
+
+### 20.3 The operational version
+
+Nights bucketed into quiet / moderate / severe by terciles of the **training**
+ratio distribution.
+
+Test distribution: quiet 48, moderate 49, severe 35. **Majority-class baseline
+39.6%** (bootstrap; 37.1% on the point estimate).
+
+Direct 3-class classifier, **accuracy 50.0%**:
+
+| true \ predicted | quiet | moderate | severe |
+|---|---:|---:|---:|
+| **quiet** | 32 | 8 | 8 |
+| **moderate** | 26 | 12 | 11 |
+| **severe** | 8 | 5 | 22 |
+
+Quiet and severe nights are called reasonably (32/48 and 22/35). The middle
+class is where it collapses — 26 of 49 moderate nights are called quiet. That
+is the honest shape of the result: **the extremes are separable, the middle is
+not.**
+
+Bootstrap on the gap over majority: **+10.5 points, 95% CI [−0.8, +20.5]**, with
+the model beating majority in **96.1%** of resamples. Positive, but not
+comfortably significant.
+
+### 20.4 Where it is actually useful
+
+The binary question — *is tonight in the worst third of recent rain nights?* —
+is the one it answers best. Base rate 26.5%.
+
+| | |
+|---|---:|
+| ROC-AUC | **0.749** (95% CI 0.650–0.841) |
+| Accuracy at 0.5 | 79.3% (majority 73.5%) |
+
+Precision among the nights it flags most confidently:
+
+| Flagged | Genuinely severe | Precision | (base 26.5%) |
+|---|---|---:|---|
+| top 5 | 5/5 | **100%** | 3.8× |
+| top 10 | 9/10 | **90%** | 3.4× |
+| top 15 | 11/15 | 73% | 2.8× |
+| top 20 | 11/20 | 55% | 2.1× |
+| top 30 | 18/30 | 60% | 2.3× |
+| top 40 | 20/40 | 50% | 1.9× |
+
+**This is the product-shaped finding**: over 18 months, the ten nights the model
+was most confident about contained nine genuinely severe ones. Read the small
+counts with care — top-5 and top-10 rest on 5 and 10 nights — but the ordering
+is monotone and the AUC interval excludes chance.
+
+### 20.5 Verdict against the pre-set bar
+
+The bar, fixed before the analysis: *R² above roughly 0.4, or three-class
+accuracy meaningfully above majority-class.*
+
+| Criterion | Result | Met? |
+|---|---|---|
+| R² > 0.4 | 0.196, CI [0.082, 0.278] | **No, decisively** |
+| 3-class > majority | 50.0% vs 39.6%, +10.5 pts, CI [−0.8, +20.5] | **Marginal** |
+| (unplanned) binary AUC | 0.749, CI [0.650, 0.841] | Clearly above chance |
+
+**Honest read.** Weather gives a modest magnitude signal, not a strong one. It
+should be reported as a secondary, advisory output — "tonight looks like a
+heavy night" — with the explicit caveat that it is trustworthy at the extremes
+and near-chance in the middle. It is **not** a headline result and should not
+be promoted to one.
+
+Two caveats that matter:
+
+1. **The target was changed to get this.** The specified target (raw count)
+   fails. The detrending is a defensible and necessary response to the
+   reporting drift, but it is a change to the brief, and the relative target is
+   a weaker operational claim than the absolute one would have been.
+2. **The reporting drift itself is unmodelled.** Predicting relative severity
+   requires a trailing baseline that must be maintained in production and will
+   drift with BBMP's reporting channels, not with the weather.
+
+The product statement therefore becomes: *unpredictable in location, weakly
+predictable in magnitude, and reliable only for the worst nights.*
+
+---
+
+## 21. How much of the label is real? A bound from the agency register
+
+Added 8 Sep 2026. §19.7 flagged that some unknown share of the 22 irreducible
+points is reporting noise rather than hydrology, and that the two cannot be
+separated. One partial bound is free: BBMP's flood register is
+**agency-observed**, not citizen-reported. If the complaint ranking agrees with
+it, the label is tracking something real.
+
+| | |
+|---|---:|
+| Frozen top-20 wards that are on the register | **16 / 20 (80%)** |
+| Register coverage across all 198 wards | 52% |
+| Expected under independence | 10.3 / 20 |
+| Hypergeometric p (enrichment) | **0.0060** |
+| Spearman ρ, complaint events vs register points (198 wards) | **0.334** (p = 1.5e-06) |
+| Kendall τ | 0.265 (p = 1.4e-06) |
+| Overlap of the two top-20 lists | 9 / 20 |
+| Mean complaint events, register wards | 24.7 (median 13) |
+| Mean complaint events, non-register wards | 13.4 (median 7) |
+| Mann-Whitney one-sided p | 0.0001 |
+
+**Reading.** The agreement is real but moderate. Four fifths of the wards the
+complaint data ranks worst are wards BBMP independently lists as flood-prone,
+which is significant enrichment over the 52% base rate. So the label is not
+mostly reporting artefact: **it is finding places that genuinely flood.**
+
+But ρ = 0.334 and a 9/20 top-list overlap are not the numbers of a clean proxy.
+The complaint ranking and the agency register agree on *which wards are
+flood-prone* far more than on *how bad each one is*.
+
+That is consistent with §19: **the label's error is concentrated in timing and
+degree, not in place.** Which in turn supports the §19.6 decomposition — place
+is nearly saturated (1.58 of 23.64 points), and what remains is when.
+
+Four of the frozen top-20 are *not* on the register — Hoodi, Someshwara, Jakkur
+and Basavanapura. Under the §12.5 framing those are exactly the emerging-hotspot
+candidates: places failing repeatedly that the official list has not caught up
+with. That is Proof Two's population, and it is encouraging that the method
+surfaces four of them unprompted.
+
+**For the limitations section:** state that the label is a citizen complaint,
+that it is significantly enriched for agency-confirmed flood wards (16/20,
+p = 0.006) but correlates only moderately with agency severity (ρ = 0.334), and
+that consequently an unknown share of the irreducible variance in §19 is
+reporting behaviour rather than hydrology. Do not let a reader assume the 22
+points are physics.

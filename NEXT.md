@@ -25,54 +25,55 @@ before starting anything here.
 
 ---
 
-## Current task — housekeeping bundle
+## Current task — `data/reference/hazard_categories.yaml`
 
-Two jobs, one afternoon, both agreed in the previous round's answers.
+Hand-curated map from exact source category and sub-category strings to
+`WATERLOG` / `GARBAGE`, and within waterlogging to `event` vs `maintenance`.
+Preserve source strings byte-exactly; note the double space in
+`Storm  Water Drain(SWD)`. Record the row count beside each entry so vocabulary
+drift shows in a diff. A citable methodological artifact, not a config file.
 
-**1. Restate the §12–§14 headlines on IFS.** The documents quote ERA5 figures
-while the database is primarily ECMWF-IFS. Close the seam: 13.55% -> 14.08%
-static baseline, 37.36% -> 37.72% ceiling, 4.72% -> 4.79% random. Keep the ERA5
-numbers as an explicitly labelled before/after, not as the headline. Note that
-§19 already uses the IFS figures throughout, so the inconsistency is now
-internal to the document.
-
-**2. Baseline Alembic, then add `weather_cells.model`.** Generate the baseline
-against an **empty** database so migrations build the schema from scratch
-(Phase 7 needs that), hand-add the three views with `op.execute`, verify a fresh
-`alembic upgrade head` gives an `information_schema` identical to loading
-`ufms_schema.sql`, then `alembic stamp head` on dev. Then add `model` to
-`weather_cells` as the project's first real migration, backfill it
-(cells 1-9 = `era5`, 10-23 = `ecmwf_ifs`), and update `ufms_schema.sql` to match.
+Profile §10.1 has the counts and the parent-category table; §12.4 has the
+event/maintenance evidence (rain lift 3.07x for `water stagnation` against
+1.33x for `Road side drains`).
 
 ---
 
 ## Queue
 
-**1. `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
-source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
-waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly;
-note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
-each entry so vocabulary drift shows in a diff. A citable methodological
-artifact, not a config file.
+**1. Housekeeping bundle — fell off the queue, put it back.** Agreed two rounds
+ago, never scheduled. (a) Restate the §12-§14 headlines on IFS: 13.55% -> 14.08%
+static baseline, 37.36% -> 37.72% ceiling, 4.72% -> 4.79% random, keeping ERA5
+as a labelled before/after. The seam is now *internal to the profile* - §12-§14
+quote ERA5 while §17-§21 quote IFS. (b) Baseline Alembic against an empty
+database, hand-add the three views with `op.execute`, verify a fresh
+`alembic upgrade head` matches loading `ufms_schema.sql`, `alembic stamp head`
+on dev, then add `weather_cells.model` as the first real migration and backfill
+it (cells 1-9 `era5`, 10-23 `ecmwf_ifs`).
 
-**2. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
-YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE deliberately.
-Applies the crosswalk, keeps `in_flood_register=false` wards in the panel, and
-logs excluded counts unconditionally.
+**2. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by the
+hazard YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE
+deliberately. Applies the crosswalk, keeps `in_flood_register=false` wards in
+the panel, logs excluded counts unconditionally.
 
-**3. Decide what Proof One now claims.** Profile §19.7 argues the original
-framing is close to unwinnable and proposes the inverse claim. That is a
-project-level decision, not a doc edit — it changes what the mid-review
-promises. Settle it before Phase 3 starts, not during.
-
-**4. Hotspot register dedup decision.** Three KML layers already loaded
+**3. Hotspot register dedup decision.** Three KML layers already loaded
 unmerged (398 points, `hotspot_source` per layer). Establish what each layer
 represents before choosing a threshold.
 
-**5. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
-Per §19.7 and the evaluation rules: all four landing near 14% against a 37.7%
-ceiling is the result. Report within-night AUC or precision@k, never a pooled
-AUC.
+**4. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
+All four landing near 14% against a 37.72% ceiling is the result. Report
+within-night AUC or precision@k, never a pooled AUC.
+
+**5. Learn outputs — emerging detection and intervention effectiveness.**
+These now carry the project (Proof One restated). Untouched by the §19 result:
+they use accumulated ward history, not nightly ordering. Profile §21 notes that
+Hoodi, Someshwara, Jakkur and Basavanapura are top-20 complaint wards *absent*
+from the official register - emerging candidates surfaced unprompted.
+
+**6. Magnitude advisory output (optional, after the Learn outputs).** Profile
+§20: AUC 0.749 on "is tonight in the worst third", 9 of the top 10 flagged
+nights genuinely severe. Needs a maintained trailing baseline. Weak in the
+middle of the distribution. Build only if the Learn outputs land early.
 
 ## Done log
 
@@ -143,3 +144,23 @@ AUC.
   variance between nights while precision@k compares within a night — rule added
   to the evaluation rules. Proof One flagged for restatement. Profile §19;
   `data/reference/ward_elevation.csv` added. 57 tests pass.
+- **2026-09-08 — Night size: weakly predictable, and only at the extremes.**
+  On the target as specified (raw count of wards with an event per rain day)
+  weather **fails**: R2 = -0.03, worse than predicting the test mean, because
+  reporting volume roughly doubles across the window and correlates with time
+  (0.243) as strongly as with rainfall (0.214). Re-run against a trailing-90-day
+  baseline — **a change to the brief, flagged** — weather reaches **R2 = 0.196**
+  (95% CI 0.082-0.278) and 3-class accuracy **50.0% vs 39.6% majority**
+  (+10.5 pts, CI [-0.8, +20.5], model wins 96.1% of bootstraps). The pre-set bar
+  (R2 > 0.4, or 3-class meaningfully above majority) is **missed on the first,
+  marginal on the second**. Genuinely useful only at the top: binary "worst
+  third" AUC **0.749**, and **9 of the 10 most confident nights were severe**
+  against a 26.5% base rate; the middle of the distribution is near chance.
+  Verdict: *unpredictable in location, weakly predictable in magnitude, reliable
+  only for the worst nights.* Advisory output, not a headline.
+  **Label ceiling bounded (§21):** 16 of the frozen top-20 wards are on BBMP's
+  agency-observed register against a 52% base rate (hypergeometric p = 0.006),
+  but severity agreement is only moderate (Spearman 0.334, 9/20 list overlap).
+  The label finds real places; its error is in **timing and degree, not place** —
+  converging independently with §19.6. Proof One restated in the rules file;
+  five settled decisions recorded. 57 tests pass.
