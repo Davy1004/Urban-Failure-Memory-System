@@ -1014,3 +1014,129 @@ plausible modelling gain.
    selective ask than 20 of 198 wards and the baseline will be lower.
    **The ward-level 13.6% is a floor for the location-level baseline, not a
    substitute for it.**
+
+---
+
+## 15. The ward crosswalk
+
+Added 7 Sep 2026. Artifact: `data/reference/ward_crosswalk.csv`.
+Loader-side rule: `app/ingestion/ward_crosswalk.py`.
+Tests: `tests/test_ward_crosswalk.py` (21).
+
+§8.3 established that the complaints and the hotspot register cannot be joined
+on ward name. This section records the hand-checked crosswalk that fixes it,
+and — more importantly — what it does *not* fix.
+
+### 15.1 Coverage
+
+One row per complaint ward name, 198 rows, each name appearing exactly once.
+
+| `match_method` | Wards | Complaint rows | Share of rows |
+|---|---:|---:|---:|
+| `exact` | 55 | 279,210 | 36.42% |
+| `normalised` | 20 | 73,614 | 9.60% |
+| `manual` | 27 | 104,810 | 13.67% |
+| `not_in_register` | 96 | 309,012 | 40.31% |
+| `unresolved` | **0** | **0** | **0.00%** |
+| **mapped to a ward number** | **102** | **457,634** | **59.69%** |
+
+**Nothing is unresolved.** Every one of the 198 complaint ward names was
+either mapped to a register ward number or positively identified as a ward the
+register does not cover.
+
+Share is reported on complaint **rows**, not ward names, because one busy ward
+matters more than ten quiet ones. The row-weighted picture is close to the
+ward-weighted one here (59.7% of rows vs 51.5% of wards), so no single
+high-volume ward is doing outsized damage.
+
+### 15.2 Two corrections to the task spec
+
+**The crosswalk has 198 rows, not 103.** `NEXT.md` says "every one of the 103
+complaint ward names". 103 is the count of ward names in the *register*; the
+complaints carry **198**. The artifact is keyed on `complaint_ward_name`, so it
+has one row per complaint ward. The 55-of-103 figure quoted in the task is a
+register-side statistic and is unchanged.
+
+**`match_method` needed a fifth value, `not_in_register`.** The spec's four
+values have no way to say "this is a real ward that the register simply does
+not list". The register covers flood-vulnerable locations in 103 of 198 wards,
+so 96 complaint wards have no register entry at all. That is a fact about the
+register's scope, not a failure to resolve a name.
+
+This matters because of the exclusion rule. Marking those 96 `unresolved` and
+excluding them would have dropped **309,012 rows, 40.31% of the dataset**,
+under the label of routine data cleaning — precisely the "shrinking panel
+nobody notices" failure the task warns about. So:
+
+- `unresolved` → excluded from the panel, logged loudly.
+- `not_in_register` → **kept**. The ward exists, its number is merely not
+  recoverable from this source. It has complaints, it has a name, and it
+  belongs in every ward-level analysis.
+
+Only wards that need a *location* (nearest weather cell, hotspot join) require
+the ward number. Ward-level work — everything in §12, §13 and §14 — needs only
+the name, and is unaffected.
+
+### 15.3 Method
+
+1. **Exact** — casefold, collapse whitespace. 55 wards.
+2. **Normalised** — a fixed set of documented Kannada-to-Latin folds applied to
+   both sides: `oo`/`u`, `ee`/`i`, `th`/`t`, `w`/`v`, aspirated consonants
+   (`bh`→`b` and friends), trailing vowel drift, doubled letters, and a
+   dropped trailing `Ward`. A match counted only when the normal form was
+   unique on the register side. 20 wards, each verified by eye afterwards.
+3. **Manual** — 27 wards resolved one at a time against the register's ward
+   **number**, BBMP **zone**, and point **centroid**. Every row carries a note
+   giving the evidence.
+4. **Unresolved** — none needed.
+
+**No ward number was assigned by fuzzy string matching.** Fuzzy scores were used
+only to shortlist candidates for human review, exactly as the task requires.
+Three of the pairings string distance suggests are wrong or unjustifiable, and
+each was decided on other evidence:
+
+| Pair | String verdict | Actual decision |
+|---|---|---|
+| register `Kadu Malleshwar` → `Malleshwaram` | 0.77, plausible | **Rejected.** `Malleshwaram` matches register `Malleshwaram` (ward 45) *exactly*. BBMP lists Kadu Malleshwara and Malleswaram as separate wards. Left unpaired. |
+| register `Kempapura` → `Kempapura Agrahara` | 0.69, flagged as wrong in §8.3 | **Accepted on coordinates.** Ward 122 sits between Cottonpete (120) and Vijayanagar (123) at 12.972, 77.554 — exactly Kempapura Agrahara. Not the Hebbal Kempapura, which is near 13.05. |
+| register `Halsoor` → `Ulsoor` | 0.77, weak | **Accepted on local knowledge.** Halasuru *is* Ulsoor — the Kannada name against the anglicised one. Centroid 12.978, 77.627 confirms. String distance alone would never justify this. |
+
+The `Kempapura Agrahara` row is marked in the CSV as the **lowest-confidence
+decision in the file**. If one row gets re-checked by a second person, it is
+that one. It carries 903 complaint rows, 0.12% of the dataset, so the blast
+radius if wrong is small.
+
+### 15.4 One register ward could not be paired
+
+**Register ward 65, `Kadu Malleshwar`** (West zone, 13.003, 77.564) has no
+complaint-side partner. The obvious candidate is already taken: complaint
+`Malleshwaram` matches register `Malleshwaram` at ward 45 exactly. The nearby
+unmatched complaint wards — `Subramanya Nagar`, `Gayathri Nagar`,
+`Marappana Palya` — are all plausibly separate wards in their own right, and
+guessing between them would be exactly the error this artifact exists to avoid.
+
+So 102 of the register's 103 wards are claimed. Ward 65's single
+flood-vulnerable location cannot currently be attributed to a complaint ward.
+**Resolve this against BBMP's published 198-ward list**, which neither source
+here contains, rather than against these two files.
+
+### 15.5 A defect in the register
+
+`flood_vulnerable_map.kml` carries **ward 73 `Kottegepalya` twice with two
+different `ZONE` values** — once as RR Nagar (12.966, 77.517) and once as
+Dasarahalli (12.998, 77.517). The name-to-number mapping is unaffected, but
+the register's `ZONE` field cannot be treated as authoritative. Use `WARDNO`.
+
+### 15.6 The loader-side rule
+
+`app/ingestion/ward_crosswalk.py` loads the CSV and validates it on every
+construction: no duplicate complaint name, no register ward number claimed
+twice, every `manual` and `unresolved` row carrying a note, and no row both
+lacking a number and claiming a match method that implies one.
+
+`apply_to_ward_series()` returns a keep-mask plus a report, and **logs the
+excluded row count and share unconditionally on every run** — at `WARNING`
+when anything is excluded. A ward name absent from the CSV raises rather than
+being guessed at, with an error that names the file to edit.
+
+Current state: **0 rows excluded.** When that changes, it will say so.

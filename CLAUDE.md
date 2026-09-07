@@ -90,6 +90,18 @@ Alembic connects but has **no baseline revision** — the schema is loaded from
 try to create all 26 tables. Stamp a baseline before writing the first
 migration.
 
+## Where the work queue lives
+
+`NEXT.md` at the repo root holds the current task and the queue. Read it, do the
+task at the top, move it to the Done log with a one-line result, promote the
+next. Do not start queued items early.
+
+Standing evaluation rules and all measured baselines are in
+`docs/01-evaluation-rules.md`. **Read that before writing any modelling code** —
+in particular, the static baseline to beat is precision@20 = 13.55%, the oracle
+ceiling is 37.36%, and count-based memory features are already known to be
+saturated.
+
 ## What this is
 
 **Urban Failure Memory System.** A **decision support system for preventive
