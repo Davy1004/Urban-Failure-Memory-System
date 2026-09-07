@@ -172,6 +172,24 @@ night's top 20, this is a report, not a tool. Baseline to beat: a static
 between consecutive events. **Due in Phase 3, before the mid-review**, so
 there is time to adapt if it fails.
 
+The baseline is now **measured, not hypothetical** (profile §14, ward level,
+strict label, temporal split):
+
+- **precision@20 = 13.6%** for the static list on held-out rain days.
+- **Oracle ceiling = 37.4%** — only ~9 wards have an event on a typical rain
+  day, so 20 slots cannot all be right. **Always report achieved, baseline and
+  ceiling together**; a bare precision@20 reads as failure when it is not.
+- Random baseline 4.7%. Re-ranking the static list daily on all prior history
+  gives 13.7% — i.e. **memory alone is saturated**, and the headroom to 37.4%
+  has to come from weather and location features. That is M3's job.
+- **Judge Kendall's tau against 0.59**, the observed static persistence between
+  period halves. A model ranking at tau >= 0.59 has reproduced the static list.
+- Stratify by rainfall band: the static baseline itself moves from 8.9% on
+  2.5-5 mm days to 33.3% on >=25 mm days, a bigger spread than any likely
+  modelling gain.
+- No reporting lag worth modelling: lag 1 beats lag 0 by 33 events out of
+  3,417, p = 0.70 (profile §13). Align rainfall to the complaint date.
+
 **Proof 2 — emerging detection finds real additions.** Mann-Kendall / CUSUM
 on complaint rate normalised by rainfall. Validate by training through year
 *n* and checking flagged sites show sustained elevation in *n+1*.

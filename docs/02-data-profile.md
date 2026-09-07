@@ -27,6 +27,14 @@ Generated 7 Sep 2026 from the files as downloaded from
 > to rain (lift 1.3×). Filtering them out changes the ward-day base rate from
 > 7.99% to 1.56% and the rain lift from 1.4× to 3.1×. The event label and the
 > maintenance label must be modelled separately.
+>
+> **§13–§14 add the numbers Proof One is scored against.** There is no
+> reporting lag worth modelling (§13). The static "20 historically worst wards"
+> baseline scores **precision@20 = 13.6% on held-out rain days, against an
+> oracle ceiling of 37.4%** and a 4.7% random baseline (§14.3). Re-ranking that
+> list on more history does not improve it, so the remaining headroom belongs
+> to weather and location features — which is the case for M3, measured rather
+> than asserted.
 
 ---
 
@@ -805,3 +813,204 @@ opens. Both commands are idempotent.
 Loaded annual totals sanity-check against Bengaluru's ~970 mm normal, and
 reproduce known years: 2023 at 726 mm (Karnataka's drought year) and 2021 at
 1,382 mm (a record wet year).
+
+---
+
+## 13. Reporting lag
+
+Added 7 Sep 2026. Strict event label (§12.4), rain threshold 2.5 mm city mean.
+
+A complaint is filed when someone notices and reports, which need not be the
+day it rained. If the lag were material, aligning rainfall to the complaint
+date would understate every weather effect in the project.
+
+| Rainfall series | Wet events | of ward-days | Dry events | of ward-days | Rate wet | Rate dry | **Lift** |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **same day (lag 0)** | 3,417 | 115,632 | 2,628 | 272,250 | 2.955% | 0.965% | **3.06** |
+| lagged 1 day | 3,450 | 115,632 | 2,595 | 272,052 | 2.984% | 0.954% | **3.13** |
+| lagged 2 days | 3,252 | 115,632 | 2,793 | 271,854 | 2.812% | 1.027% | **2.74** |
+| lagged 3 days | 3,078 | 115,434 | 2,967 | 271,854 | 2.667% | 1.091% | **2.44** |
+| max over prior 3 days | 4,488 | 177,210 | 1,557 | 210,672 | 2.533% | 0.739% | **3.43** |
+
+### No — lag 1 does not materially beat lag 0
+
+Lag 1 raises the lift from 3.06 to 3.13, a 2.3% relative gain. In absolute
+terms that is **33 extra ward-day events out of 3,417**, on an identical
+denominator of 115,632 ward-days. A chi-squared test on the two wet-day rates
+gives **p = 0.695** — indistinguishable from noise.
+
+Lag 2 (2.74) and lag 3 (2.44) are both clearly *worse* than same-day, and the
+monotone decline from lag 1 onward is what a genuine same-day signal decaying
+under mis-alignment looks like. If complaints were systematically filed a day
+after the rain, lag 1 would stand out and lag 0 would be the weak one. It is
+the other way round.
+
+**Conclusion: align rainfall to the complaint date. Use lag 0.** Carry lag-1
+rainfall as an extra feature if a model wants it, but do not shift the label,
+and do not claim a reporting lag was found — the data does not show one.
+
+### The 3-day window is better, but for a different reason
+
+"Max rainfall over the prior three days" gives the highest lift in the table
+(3.43). That is a real improvement, but reading it as "a wider window locates
+events better" would be wrong. Compare it to lag 0:
+
+- the wet-day event rate **falls**, 2.955% → 2.533%
+- the dry-day event rate falls **further**, 0.965% → 0.739%
+
+The window flags 895 days as wet instead of 584, sweeping marginal days into
+the wet group and diluting it. All of the gain comes from the denominator: what
+remains in the dry group is now genuinely dry *spells* rather than isolated dry
+days sitting inside a wet week. So the 3-day window is a better description of
+**antecedent dryness**, not a better detector of event days — which is exactly
+the role `antecedent_7d_mm` already plays in `weather_daily`.
+
+For ranking locations on a given night, same-day rainfall remains the right
+alignment.
+
+---
+
+## 14. Spatial concentration, and the static baseline Proof One must beat
+
+Added 7 Sep 2026. Strict event label, 2.5 mm threshold, ward level throughout —
+**no ward crosswalk required**, so this is computable today.
+
+### 14.1 The historically-worst list is stable
+
+Splitting the period in half (H1 2020-02-08 → 2022-10-14, 2,835 events;
+H2 2022-10-14 → 2025-06-19, 3,210 events) and ranking all 198 wards by event
+count within each half:
+
+| Comparison | Statistic |
+|---|---|
+| All 198 wards, H1 rank vs H2 rank | **Kendall tau = 0.590** (p = 8.8e-33) |
+| All 198 wards, H1 vs H2 | Spearman rho = 0.756 |
+| H1 top 20, their H1 rank vs their H2 rank | **Kendall tau = 0.400** (p = 0.015) |
+| Top-20 set overlap between halves | **15 of 20** |
+
+The list is persistent. Three quarters of the worst wards are still the worst
+wards across a 2.7-year gap, and their internal ordering stays positively
+correlated. **This is bad news for a naive system and good news for an honest
+one**: it means "where does it flood" is close to a solved, static question,
+exactly as `CLAUDE.md` argues. The value has to come from *when*.
+
+### 14.2 The static ranking, trained and tested temporally
+
+Train 2020-02-08 → 2023-12-31 (1,423 days). Freeze the top 20 wards by event
+count. Test on the **138 rain days** in 2024-01-01 → 2025-06-19, carrying 1,289
+strict events. The list is never updated during testing.
+
+| # | Ward | Train events | Test rain-day events |
+|---:|---|---:|---:|
+| 1 | Bellandur | 156 | 21 |
+| 2 | Horamavu | 130 | 36 |
+| 3 | Thanisandra | 100 | 22 |
+| 4 | Begur | 98 | 14 |
+| 5 | Ramamurthy Nagar | 92 | 11 |
+| 6 | Hoodi | 90 | 16 |
+| 7 | Dodda Bidarkallu | 85 | 22 |
+| 8 | Singasandra | 85 | 20 |
+| 9 | Someshwara | 83 | 20 |
+| 10 | Varthur | 76 | 25 |
+| 11 | Rajarajeshwari Nagar | 72 | 13 |
+| 12 | Bilekahalli | 64 | 8 |
+| 13 | Jakkur | 64 | 26 |
+| 14 | HBR Layout | 62 | 20 |
+| 15 | Doddanekkundi | 60 | 30 |
+| 16 | HSR Layout | 60 | 22 |
+| 17 | Hagadooru | 55 | 14 |
+| 18 | Byatarayanapura | 53 | 15 |
+| 19 | Basavanapura | 48 | 12 |
+| 20 | Herohalli | 44 | 7 |
+
+The list is a sanity check in itself: Bellandur, Varthur, Hoodi, Doddanekkundi,
+HSR Layout and Horamavu are the Outer Ring Road / Mahadevapura belt that
+Bengaluru's press names every monsoon. The label is finding the places the city
+already knows about — the premise of the project, now measured rather than
+assumed.
+
+**Share of events captured** on those 138 test rain days:
+
+| List size | % of wards | Events captured | Share of all 1,289 | precision@k |
+|---|---:|---:|---:|---:|
+| top 5 | 2.5% | 104 | 8.1% | 15.07% |
+| top 10 | 5.1% | 207 | 16.1% | 15.00% |
+| **top 20** | **10.1%** | **374** | **29.0%** | **13.55%** |
+| top 30 | 15.2% | 506 | 39.3% | 12.22% |
+| top 40 | 20.2% | 583 | 45.2% | 10.56% |
+| top 60 | 30.3% | 779 | 60.4% | 9.41% |
+
+10% of the wards carry 29% of the events — real concentration, roughly 2.9x,
+but well short of a "a few wards account for everything" story.
+
+### 14.3 The number to beat
+
+> ### **precision@20 = 13.6%**
+>
+> Ranking wards by prior event count alone, frozen at the end of 2023 and
+> evaluated on the 138 rain days of 2024-2025.
+>
+> **This is the static baseline. M3 must beat it, and beating it is the
+> substance of Proof One.**
+
+Context for that figure, all on the same test set:
+
+| Benchmark | precision@20 |
+|---|---:|
+| Random 20 wards | 4.72% |
+| **Static "20 historically worst" (the baseline)** | **13.55%** |
+| Same list re-ranked daily on all prior data | 13.70% |
+| **Oracle ceiling** | **37.36%** |
+
+Three things follow, and the third matters most.
+
+**Precision@20 is capped at 37%, not 100%.** A rain day carries a mean of 9.3
+and a median of 6 strict events across the whole city. Only 14 of the 138 test
+rain days (10.1%) have 20 or more events, so on most nights fewer than 20 wards
+*can* be right, and a perfect oracle would still score below 50%. Every
+precision@20 figure this project reports must be printed beside this ceiling or
+it will read as a failure when it is not. The static list achieves **36.3% of
+the achievable maximum**.
+
+**Re-ranking on more history adds nothing** (13.70% vs 13.55%). The static list
+is already saturated: three further years of complaint counts do not improve
+it. So the headroom between 13.6% and 37.4% is unreachable with memory alone —
+it has to come from weather and from location-level features. That is the
+argument for M3 restated as a measurement, and it is an encouraging result,
+because the remaining 64% of achievable performance is exactly the space the
+Failure Memory Index is designed to occupy.
+
+**The baseline is not fragile.** Re-running with a 50/50 split (train to
+2022-10-14, test on 246 rain days) gives precision@20 = 11.36% against a 3.56%
+random baseline and a 29.70% ceiling — 38.3% of ceiling, the same story.
+
+### 14.4 The baseline gets stronger as rain gets heavier
+
+| Rain that day | Rain days | Mean events | Static precision@20 | Ceiling | % of ceiling |
+|---|---:|---:|---:|---:|---:|
+| 2.5-5 mm | 47 | 5.6 | 8.94% | 27.23% | 32.8% |
+| 5-10 mm | 53 | 8.3 | 12.64% | 33.58% | 37.6% |
+| 10-25 mm | 35 | 14.9 | 19.43% | 54.00% | 36.0% |
+| >=25 mm | 3 | 20.3 | 33.33% | 68.33% | 48.8% |
+
+Heavier rain produces more events, so both the achievable ceiling and the
+static list's absolute score rise together. **Report precision@20 stratified by
+rainfall, or at minimum on a fixed set of held-out rain events.** A model
+evaluated on a wetter test period beats one evaluated on a drier period without
+being any better, and the spread here (8.9% to 33.3%) is larger than any
+plausible modelling gain.
+
+### 14.5 What this means for Proof One
+
+1. **The target is precision@20 > 13.6% on rain days, against a 37.4% ceiling.**
+   Quote all three numbers together — achieved, baseline, ceiling — every time.
+2. **Kendall tau between consecutive rankings must be judged against tau = 0.59**,
+   the observed static persistence between period halves. A model whose nightly
+   rankings correlate at 0.59 or above has reproduced the static list and has
+   proved nothing, however good its precision looks.
+3. **Block the test set by rainfall band**, per §14.4.
+4. These figures are ward-level. Once the crosswalk exists, re-run the same
+   analysis at location level, where 20 of ~390 locations is a far more
+   selective ask than 20 of 198 wards and the baseline will be lower.
+   **The ward-level 13.6% is a floor for the location-level baseline, not a
+   substitute for it.**
