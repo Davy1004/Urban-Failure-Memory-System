@@ -25,117 +25,74 @@ before starting anything here.
 
 ---
 
-## Current task — intervention effectiveness, first real build
+## Current task — stop analysing, start building
 
-Profile §24 says the work orders are feasible: ~1,350 usable drainage works
-across 166 wards, ward/date/cost complete for 183 of 198. This is now the
-project's most promising output and the only one with a source independent of
-the complaint feed.
+The analysis has landed. All three outputs are characterised and the system has
+not moved since Phase 0. The mid-review is around 7 December and the deliverable
+is a system *and* a paper. Your scheduling note called this and it is now due.
 
-**Build the dose-response analysis**, not treated-vs-control — only 32 wards are
-untreated and they are not exchangeable.
+**Build the complaints loader**, and the small artifact it depends on.
 
-1. **Recover the 15 dateless wards first** if it is cheap. Wards 184-198 carry a
-   legacy schema; dates look regex-recoverable from the concatenated `brnumber`
-   string. An hour, and it restores Bilekahalli, Begur, Gottigere and Arakere -
-   active flood wards. Timebox it; if the regex is fragile, drop them and say so.
-2. **Hand-curate the drainage classification.** Keyword matching gave 36.4% but
-   many road works also mention drains. Same discipline as the hazard YAML:
-   exact source strings, counts beside each entry, committed as an artifact.
-3. **Design it as difference-in-differences on the relative index**, reusing
-   §23's `rel(w,q) = events / (complaints x city_share)`. Never test against
-   zero. Spend is the dose; the outcome is the change in `rel` after completion
-   versus before.
-4. **Jakkur is the case study.** Rs 494M of drainage spend and a significantly
-   *rising* flooding share. Either the works failed or they were a response to a
-   worsening problem - separating those is the whole point.
+**First: `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
+source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
+waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly -
+note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
+each entry so vocabulary drift shows in a diff. Profile §10.1 has the counts,
+§12.4 the event/maintenance evidence. This also replaces the keyword match used
+for drainage classification in §25, so give it a work-order section too.
 
-Watch the obvious confound: **spend is not random.** BBMP spends where it thinks
-there is a problem, so naive dose-response will show "more spend, more flooding".
-Control for prior level, not just prior trend, and say plainly if the design
-cannot separate targeting from effect.
+**Then: `app/ingestion/bbmp_complaints.py`.** Idempotent on `Complaint ID`
+(globally unique across all six files). Truncates timestamps to DATE
+deliberately - the source lost its AM/PM marker, so any time-of-day value would
+be fiction. Applies the ward crosswalk, keeps `in_flood_register=false` wards in
+the panel, and logs excluded counts unconditionally. Expect ~237k rows after
+filtering.
+
+Everything it needs exists: all 198 ward names resolve to a ward number and a
+`locations` row, `apply_to_ward_series()` returns the keep-mask and report, and
+`upsert_chunk` handles idempotency.
+
+**Do not open another analysis thread** unless the build turns up a data problem
+that blocks it.
 
 ---
 
-## The project-level call — read this one yourself
+## A scheduling note, not a task  (ACTED ON 8 Sep - see current task)
 
-Both proofs are negative-shaped. That needs saying out loud rather than being
-absorbed one report at a time.
+Worth naming: **the analysis has advanced enormously and the system has not
+moved since Phase 0.** Complaints are still not in the database, there is no
+frontend, no memory engine, no alerts. Everything above has been computed from
+CSVs directly.
 
-**What the project actually has now**, and it is more than it feels like:
-
-- A **measured predictability ceiling** for complaint-derived triage: 1.58 of
-  23.64 points reachable by any ward-level score whatsoever.
-- The **pooled-AUC trap**, with a clean variance decomposition. Publishable on
-  its own; anyone building a location-day triage model can be fooled the same way.
-- The **reporting-growth confound**: seven spurious emerging hotspots over five
-  years, every one explained by volume growth — including Bellandur and Varthur,
-  the two most notorious flooding wards in Bengaluru, appearing as *newly
-  emerging*. That example alone is worth the paper.
-- **Convergent validity**: two independent methods agreeing that place is
-  saturated and the residual is timing.
-- A working system, 57 tests, reproducible pipeline.
-
-**The honest thesis has changed** from "we built a predictor" to *"we measured
-what civic complaint data can and cannot support for urban failure prediction,
-and it is less than the literature assumes."* That is a better paper than a
-marginal accuracy win, and every claim in it is defensible line by line because
-it was measured rather than asserted.
-
-**The risk is not the science, it is the audience.** A jury expecting a working
-predictor may not immediately value a rigorous negative. That is a real risk and
-it is Tanmay's to manage, not ours.
-
-**Action for Tanmay, before December:** take this to your guide. Not the numbers
-— the framing. "Our results are turning out to be measured limits rather than a
-working predictor; is a rigorous negative acceptable for this project, or does
-the department expect a positive?" Five minutes, and the answer changes what the
-next three months optimise for. Do not discover it at the mid-review.
-
-**Update, 8 Sep 2026 — the framing above softens slightly, but not much.**
-Proof Two is no longer purely negative: benchmarked against the city trend there
-are 9 upward-diverging wards and a permutation p of 0.0010, plus one nameable
-case (Jakkur) validated against its own Rs 494M of drainage spend. And the work
-orders are feasible, so intervention effectiveness is a live positive output
-rather than a hope.
-
-So the honest thesis is now *"we measured what complaint data can and cannot
-support, and here is the narrow band where it can"* rather than a flat negative.
-**The conversation with the guide is still worth having** — the headline results
-are still limits rather than a working predictor — but you can now go in with
-one demonstrated emerging hotspot and a funded-works effectiveness analysis in
-progress, which is a materially easier conversation than a pure negative.
+That is the right order — building a dashboard on a thesis that turned out to be
+wrong would have been the expensive mistake. But the mid-review is around
+7 December and the deliverable is a system *and* a paper. After intervention
+effectiveness lands, the queue should turn to building, and the analysis should
+stop expanding.
 
 ---
 
 ## Queue
 
-**1. Recover wards 184-198 from the legacy work-order schema** if not done as
-part of the current task.
+**1. Hotspot register dedup decision.** Three KML layers loaded unmerged (398
+points, `hotspot_source` per layer). Establish what each represents before
+choosing a threshold.
 
-**2. `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
-source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
-waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly.
-
-**3. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
-YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE. Applies the
-crosswalk, keeps `in_flood_register=false` wards, logs excluded counts.
-
-**4. Housekeeping bundle.** Restate the §12-§14 headlines on IFS so the profile
+**2. Housekeeping bundle.** Restate the §12-§14 headlines on IFS so the profile
 stops quoting two weather sources. Baseline Alembic against an empty database,
 hand-add the three views with `op.execute`, verify against `ufms_schema.sql`,
 stamp dev, then add `weather_cells.model` as the first real migration.
 
-**5. Decide how Proof Two is presented.** §23 gives an aggregate result
-(permutation p = 0.0010) and exactly one nameable ward. REPORT.md §6 recommends
-reporting the aggregate as the finding and Jakkur as a worked case.
+**3. Memory engine and the model ladder M0-M3** - to demonstrate the bound, not
+to beat it. Report within-night AUC or precision@k, never a pooled AUC.
 
-**6. Hotspot register dedup decision.** Three KML layers loaded unmerged.
+**4. Frontend (Phase 4).** Tonight's Priority List, Leaflet, Recharts. Include
+the magnitude advisory badge (§20) - half a day once the frontend exists.
 
-**7. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
-Report within-night AUC or precision@k, never a pooled AUC.
-
-**8. Magnitude advisory badge (Phase 4, half a day).**
+**5. Open analysis questions, only if time allows.** (a) Does the Q5 spend
+quintile recover if the post window is split 2023 vs 2024-25? That would
+separate construction disruption from failure (§25.5). (b) Re-run §25 drainage
+classification off the hand-curated YAML instead of keywords.
 
 ## Done log
 
@@ -268,3 +225,28 @@ Report within-night AUC or precision@k, never a pooled AUC.
   **dose-response on spend**, not treated-vs-control. Jakkur is the 2nd-highest
   drainage spender (Rs 494M) *and* the one FDR-surviving riser — a ready-made
   case study. New: `ward_relative_trends.csv`. 57 tests pass.
+- **2026-09-08 — Intervention effectiveness: the one positive result.**
+  Dose-response of the change in relative flooding index on log drainage spend:
+  **coefficient -0.0240, se 0.0096, p = 0.0138, 95% CI [-0.0428, -0.0052],
+  n = 110 wards**, controlling for pre-period index and log ward area. R2 0.531.
+  **Reverse causality is measurably absent** - corr(pre-period index, log spend)
+  = -0.083, p = 0.39; spend tracks **ward area** (rho +0.474) and raw counts
+  (+0.355) but not relative flooding need, and only 20% of works sit under
+  per-ward budget heads, so allocation is discretionary yet still untargeted.
+  Residualising spend changes nothing because there is nothing to residualise.
+  **But the response is NOT monotone**: quintile deltas +0.232, +0.108, -0.146,
+  -0.162, **+0.105**, untreated +0.251 - the top spend quintile got worse and
+  the coefficient is carried by Q1-Q4. Never publish it without that table.
+  **Jakkur: the spend came first** - Rs 346M in 2020 and Rs 494M in 2021-22 while
+  the index went 0.55 -> 0.93 -> 1.42; first spend 2020Q2 against first
+  above-norm quarter 2021Q2, cross-correlation negative at every lag. "Works as a
+  response to deterioration" is unsupported there (caveat: work-orders data ends
+  2022, so later blanks are censoring). **§24's register-contradiction claim is
+  RETRACTED** - across all 198 wards p = 0.789, top-20 enrichment p = 0.713; it
+  was a four-ward coincidence. **Persistence instrument corrected**: level, not
+  slope - top-10 slope-flagged wards end at mean index 1.77 vs 1.16 for all
+  wards, 10/10 above the city norm, p = 0.0001, and slope-flagging beats
+  level-flagging (1.77 vs 1.45). The detector finds *chronically above norm*,
+  not *accelerating*. **Wards 184-198 recovered** via BR date (validated: +22d
+  median offset, 76.2% within 90d), adding 125 drainage works. New:
+  `ward_dose_response_panel.csv`, `ward_persistence.csv`. 57 tests pass.

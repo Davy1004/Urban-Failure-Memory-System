@@ -82,6 +82,15 @@ Generated 7 Sep 2026 from the files as downloaded from
 > **§24: the work orders are feasible** — ~1,350 usable drainage works across
 > 166 wards, ward/date/cost complete for 183 of 198 wards. Dose-response on
 > spend, not treated-vs-control (only 32 untreated wards exist).
+>
+> **§25 is the project's one positive quantitative result.** Drainage spend is
+> associated with a fall in a ward's relative flooding index — **−0.0240 per log
+> rupee, p = 0.0138, n = 110** — and the reverse-causality confound is
+> *measurably absent* (spend vs pre-period index r = −0.083, p = 0.39; spend
+> tracks ward **area**, ρ = +0.474). But the response is **not monotone** — the
+> highest-spend quintile got worse — so never quote the coefficient without
+> §25.5's table. §24's register-contradiction observation is **retracted** in
+> §25.7: it was a four-ward coincidence (p = 0.79 across all 198).
 
 ---
 
@@ -2469,3 +2478,214 @@ the near-absence of untreated controls — are all manageable and none is fatal.
 
 This is the strongest of the three outputs on data availability, and it is the
 only one with a source independent of the complaint feed.
+
+---
+
+## 25. Intervention effectiveness: drainage spend does reduce relative flooding
+
+Added 8 Sep 2026. The third output, the one with an independent data source.
+**Result: a significant negative dose-response — more drainage spend, larger
+reduction in the relative flooding index — with the reverse-causality confound
+measurably absent rather than merely argued away.**
+
+### 25.1 Two fixes first
+
+**Recovering wards 184–198.** The 15 legacy files carry no `End Date`, but their
+`brnumber` string concatenates BR / CBR / Rtgs numbers and dates. Which is the
+right proxy was validated on the 183 main-schema files, which carry both:
+
+| Candidate | n | Median offset from End Date | Within 90 d | Same year |
+|---|---:|---:|---:|---:|
+| **BR Date** | 42,560 | **+22 d** | **76.2%** | **83.2%** |
+| CBR Date | 29,621 | +621 d | 6.4% | 13.3% |
+| Order Date | 43,465 | −92 d | 44.6% | 60.5% |
+
+**BR date is the completion proxy**; CBR is the bill-clearance date roughly two
+years later and would be badly wrong. Applied to the legacy block: 4,178 rows
+recovered, 100% with at least one date, 44.0% drainage, adding **125 drainage
+works across the 15 missing wards** inside the study window. Modest in works but
+it restores Bilekahalli, Begur, Gottigere and Arakere to the panel.
+
+**The split-half question — the instrument was wrong.** §23.3 reported slope
+persistence at ρ = 0.035 and read it as instability. But a ward that
+deteriorates and then *stays* bad has a positive first-half slope and a flat
+second-half slope, so genuine emergence produces low slope correlation by
+construction. Testing **level** persistence instead — did what we flagged stay
+bad:
+
+| Flag rule (first 10 quarters) | n | mean level, 1st half | 2nd half | vs other wards |
+|---|---:|---:|---:|---:|
+| p < 0.20 | 10 | 1.01 | 1.23 | p = 0.380 |
+| **top 10 by first-half slope** | 10 | 1.42 | **1.77** | **p = 0.0001** |
+| top 20 by first-half slope | 20 | 1.37 | 1.45 | p = 0.0051 |
+
+**All 10 of the top-flagged wards ended the second half above the city norm**,
+and 8 of 10 rose in level, against 53% of eligible wards rising.
+
+The necessary control — is this just "already-bad wards stay bad"? First-half
+slope and level are nearly independent (ρ = 0.132), and flagging by slope
+outperforms flagging by level (mean second-half level **1.77 vs 1.45**, against
+1.16 for all wards). In an OLS of second-half level on first-half level and
+slope, slope enters at **p = 0.051** and adds R² +0.030 over level alone.
+
+So: **the claim rests on level persistence, and it holds.** The detector
+identifies wards that stay above the city norm. It does *not* show them
+continuing to accelerate — flagged wards do not significantly exceed their own
+first-half level (p = 0.23). It finds *chronically and increasingly above norm*,
+not *accelerating*.
+
+### 25.2 The design
+
+Change in relative flooding index, post minus pre, regressed on log drainage
+spend, controlling for the pre-period index and log ward area.
+
+- Treatment window: works completed 2021-01 → 2022-12 (1,353 main + 125
+  recovered).
+- Pre: 2020Q2–2020Q4 (3 quarters). Post: 2023Q1–2025Q1 (9 quarters).
+- Panel: 110 wards with ≥8 strict events across pre and post. **103 treated,
+  7 untreated** — confirming that treated-versus-control is not available.
+- Spend among treated: median ₹20.2 M, max ₹631.6 M.
+
+### 25.3 Reverse causality is measurably absent
+
+This was expected to be the analysis's main threat. It is not, and that is
+itself the most surprising result here.
+
+**Correlation between the pre-period relative index and log drainage spend:
+r = −0.083, p = 0.39.** BBMP's drainage spending is not aimed at wards that are
+disproportionately flood-prone.
+
+What spend *does* track:
+
+| Spend correlates with | Spearman ρ | p |
+|---|---:|---:|
+| **Ward area** | **+0.474** | <0.0001 |
+| Absolute strict event count | +0.355 | 0.0001 |
+| **Relative flooding index (pre)** | **+0.082** | **0.392** |
+
+| Spend quartile | n | Median events (window) | Median area km² |
+|---|---:|---:|---:|
+| Q1 (low) | 28 | 16 | 1.95 |
+| Q2 | 27 | 14 | 1.70 |
+| Q3 | 27 | 21 | 3.40 |
+| Q4 (high) | 28 | 28 | 7.05 |
+
+**Spend tracks how big a ward is.** It correlates with raw complaint counts
+because bigger wards generate more of everything — but once each ward is
+benchmarked against its own complaint mix, the relationship disappears.
+
+This is not a budget formula: only 20% of works (14% of spend) sit under
+explicitly per-ward heads; the rest are Zone Works, Mayor-sanctioned, or
+Minister discretionary grants. So allocation is discretionary and *still*
+uncorrelated with relative flooding need — a sharper institutional-memory
+finding than the one §24 proposed, and one that survives testing.
+
+Because the confound is absent, residualising spend on the pre-period index
+changes nothing, and the two specifications coincide exactly.
+
+### 25.4 The result
+
+| Specification | Coefficient on log spend | se | p | 95% CI |
+|---|---:|---:|---:|---|
+| **Control for pre-index + log area** | **−0.0240** | 0.0096 | **0.0138** | [−0.0428, −0.0052] |
+| **Spend residualised on pre-index** | **−0.0240** | 0.0096 | **0.0137** | [−0.0428, −0.0052] |
+
+R² = 0.531, **n = 110 wards**. The pre-period index enters at −0.788
+(p < 0.0001) — strong mean reversion, as expected.
+
+Interpretation: a tenfold increase in drainage spend is associated with a fall
+of about **0.055** in the relative flooding index (−0.0240 × ln 10), against a
+city norm of 1.00. Real, but small.
+
+### 25.5 The scatter is not monotone, and that matters
+
+| Spend quintile (treated) | n | Median spend | Mean pre | Mean post | **Mean Δ** |
+|---|---:|---:|---:|---:|---:|
+| Q1 | 21 | ₹3.1 M | 1.01 | 1.24 | **+0.232** |
+| Q2 | 20 | ₹10.4 M | 0.98 | 1.08 | **+0.108** |
+| Q3 | 21 | ₹20.2 M | 1.13 | 0.99 | **−0.146** |
+| Q4 | 20 | ₹60.6 M | 1.22 | 1.06 | **−0.162** |
+| **Q5** | 21 | **₹167.2 M** | 1.13 | 1.24 | **+0.105** |
+| Untreated | 7 | ₹0 | 1.39 | 1.64 | +0.251 |
+
+Q1 → Q4 falls cleanly and the untreated wards are the worst of all. **But Q5
+reverses.** The linear coefficient is carried by the Q1–Q4 gradient; the
+highest-spend wards got worse.
+
+Do not report the coefficient without this table. Three candidate explanations,
+none tested: targeting does operate at the extreme even though it is absent on
+average; very large works disrupt drainage while under construction; or the
+biggest-spend wards are rapid-development corridors where the problem outgrows
+the works. **Jakkur and Someshwara, the top two spenders, are both in the last
+category** — which is §25.6.
+
+### 25.6 Jakkur: the spend came first
+
+The single FDR-surviving emerging ward is also the second-highest drainage
+spender. Whether the works failed or merely followed a deterioration already
+under way is datable, and the answer is clear.
+
+| Quarter | Rel index | Events | Drainage spend |
+|---|---:|---:|---:|
+| 2020Q2 | 0.22 | 0 | ₹41.4 M |
+| 2020Q3 | 0.79 | 2 | ₹104.3 M |
+| 2020Q4 | 0.66 | 3 | ₹200.4 M |
+| 2021Q2 | 1.01 | 3 | ₹122.9 M |
+| 2021Q3 | 1.24 | 5 | ₹250.6 M |
+| 2022Q1 | 0.36 | 0 | ₹47.3 M |
+| 2022Q4 | 1.55 | 4 | — |
+| 2023Q4 | **2.46** | 10 | — |
+| 2024Q4 | 1.61 | **19** | — |
+| 2025Q1 | 1.64 | 6 | — |
+
+| | Pre (2020) | During works (2021–22) | Post (2023–25) |
+|---|---:|---:|---:|
+| Mean relative index | **0.55** | 0.93 | **1.42** |
+| Drainage spend | ₹346 M | ₹494 M | — |
+
+**Spend preceded the rise.** The first drainage spend is 2020Q2; the first
+quarter above the city norm is 2021Q2. Cross-correlation of spend against the
+index is negative at every lag (k=2: −0.53). Trend over 20 quarters:
+Spearman +0.586, p = 0.0066.
+
+**So the "works were a response to deterioration" reading is not supported for
+Jakkur.** ₹840 M went in, and the ward went from roughly half the city norm to
+roughly 1.5× it.
+
+One essential caveat: **the work-orders dataset ends in 2022** (993 works in
+2022, 12 in 2023), so the blank spend after 2022Q1 is censoring, not evidence
+that BBMP stopped. What can be said is that within the observable window the
+money came first and the deterioration followed.
+
+### 25.7 The register contradiction does not hold
+
+§24 observed that three of the four register-absent wards were top-four drainage
+spenders and suggested it might be "one of the strongest sentences available to
+this project". Tested across all 198 wards, **it is not there**:
+
+| | n | Median spend | Mean spend |
+|---|---:|---:|---:|
+| On the flood register | 102 | ₹17.3 M | ₹43.9 M |
+| Not on the register | 96 | ₹16.6 M | ₹44.8 M |
+
+Mann-Whitney (off > on), one-sided **p = 0.789**. Top-20 spenders off the
+register: **9 of 20**, against a 48% base rate — hypergeometric **p = 0.713**.
+
+The §24 observation was a four-ward coincidence. **Do not use it.** The
+surviving and stronger version is §25.3: drainage spend tracks ward area, not
+relative flooding need.
+
+### 25.8 What this output can and cannot claim
+
+**Can:** drainage spend is associated with a reduction in a ward's relative
+flooding index (p = 0.014, n = 110); the targeting confound is measurably weak
+in this data (r = −0.083, p = 0.39), which is unusually favourable for a
+non-experimental design; and the effect is small and non-monotone at the top.
+
+**Cannot:** claim causality. Spend is discretionary, not randomised, and the
+absence of correlation with the *relative* index does not rule out selection on
+something unobserved. The Q5 reversal is unexplained. And the outcome is a
+complaint-derived index, so §21's label caveat applies in full.
+
+**This is the project's one positive quantitative result.** It is modest, it is
+honest, and unlike the other two it is not primarily a statement about limits.

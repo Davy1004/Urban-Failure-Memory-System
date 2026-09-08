@@ -39,6 +39,47 @@ ceiling is and why, which nobody working with civic complaint data had done. A
 higher number would have meant we were measuring the wrong thing."
 
 ---
+### The one sentence the whole project comes down to
+
+Three separate analyses, using different methods on different questions, all
+landed in the same place: **the data supports statements about the city, and not
+about individual places.**
+
+- How much better could a nightly ranking be? Real room exists, but almost none
+  of it belongs to any particular ward.
+- Can weather predict how bad tonight is? Yes at the extremes, no in the middle.
+- Which places are getting worse? More places are worsening than chance allows
+  — and we can name almost none of them.
+
+Three independent supports for one claim. And it has a blunt practical
+consequence: systems built on citizen-complaint data should be designed to
+answer *"is the city getting worse?"*, not *"which junction do I fix?"* — which
+is what nearly every such system is built to answer.
+
+**If challenged:** "We found the same limit three times by three different
+routes. That convergence is the result — and it says these systems are being
+built to answer a question their data cannot support."
+
+---
+
+### We nearly got a wrong answer by comparing against the wrong baseline
+
+We tested whether individual wards were getting worse by asking "is this ward's
+flooding rate rising?" The answer came back: none are, ten are improving.
+
+That was wrong. Flooding complaints were falling city-wide by 22%. So a ward
+that fell only slightly was actually getting *worse relative to the city* — but
+the test scored it as improving.
+
+Comparing each ward against the city trend instead of against zero: nine wards
+rising, and a permutation test says that's real (p = 0.001).
+
+**If challenged:** "The correct null hypothesis for a per-unit trend is the
+population trend, not zero. Testing against zero in a declining population
+manufactures false negatives, and we caught it."
+
+---
+
 
 ### The project is a decision support system, not a prediction system
 

@@ -100,9 +100,29 @@ Done:
   Rs 632M), not treated-vs-control. Jakkur - the one FDR-surviving emerging
   ward - is the 2nd-highest drainage spender at Rs 494M, which is a ready-made
   case study.
-- **Proof One is a measured ceiling; Proof Two is real but barely nameable.**
-  The positive contribution most likely comes from intervention effectiveness.
-  **This is a project-level decision - see REPORT.md and NEXT.md.**
+- **INTERVENTION EFFECTIVENESS IS THE ONE POSITIVE RESULT** (profile §25).
+  Drainage spend vs change in relative flooding index: **coefficient -0.0240 on
+  log spend, p = 0.0138, 95% CI [-0.0428, -0.0052], n = 110 wards**. The
+  reverse-causality confound is **measurably absent** - spend vs pre-period
+  index r = -0.083 (p = 0.39); spend tracks **ward area** (rho +0.474), not
+  flooding need. **Never quote the coefficient without the quintile table** -
+  the response is not monotone, the top spend quintile got worse. Do not claim
+  causality: spend is discretionary, not randomised.
+- **Jakkur: the spend came first.** Rs 346M in 2020 and Rs 494M in 2021-22,
+  while the relative index went 0.55 (pre) -> 0.93 (during) -> 1.42 (post). The
+  "works were a response to deterioration" reading is not supported. Caveat: the
+  work-orders data ends in 2022, so post-2022 blank spend is censoring.
+- **RETRACTED:** §24's claim that register-absent wards get more drainage spend.
+  Across all 198 wards, p = 0.789. It was a four-ward coincidence.
+- **Emerging detection: test LEVEL persistence, not slope.** Slope correlation
+  across halves (0.035) is low by construction. Top-10 slope-flagged wards end
+  at mean relative index 1.77 vs 1.16 for all wards, **10/10 above the city
+  norm, p = 0.0001**. The detector finds *chronically above norm*, not
+  *accelerating*.
+- **Proof One is a measured ceiling; Proof Two is real but barely nameable;
+  intervention effectiveness is positive.** **The analysis should now stop
+  expanding and the queue should turn to building** - the system has not moved
+  since Phase 0 and the mid-review is ~7 December.
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,

@@ -101,9 +101,22 @@ Restricting to the **pre-specified** emerging pool — the 42 eligible wards off
 BBMP's register, per §12.5 — leaves exactly **one: Jakkur** (q ≤ 0.10). Declare
 that restriction as pre-specified or it is fishing.
 
-Split-half slopes correlate at ρ = 0.035 with 4/10 top-riser overlap, so *which*
-ward is rising is unstable. Treat the ward-level riser list as indicative, not
-as an output.
+**On persistence, the instrument was wrong (corrected 8 Sep, profile §25.1).**
+Slope correlation across halves (ρ = 0.035) is not the right test: a ward that
+deteriorates and then stays bad has a positive first-half slope and a flat
+second-half slope, so real emergence produces low slope correlation by
+construction.
+
+Test **level** persistence. Wards in the top 10 by first-half slope end the
+second half at mean relative index **1.77**, against 1.45 for wards flagged by
+first-half *level* and 1.16 for all eligible wards — **10 of 10 finished above
+the city norm**, and the gap versus other wards is **p = 0.0001**. Slope and
+level are nearly independent (ρ = 0.132), and slope still enters an OLS of
+second-half level at p = 0.051 after controlling for level.
+
+**The claim rests on level persistence and it holds.** But flagged wards do not
+significantly exceed their own first-half level (p = 0.23), so the detector
+finds *chronically above norm*, not *accelerating*. Say that, not more.
 
 **Rules that follow:**
 
@@ -465,3 +478,35 @@ Report it as advisory only: the binary "is tonight in the worst third" question
 reaches AUC 0.749, and 9 of the 10 most confidently flagged nights were
 genuinely severe — but the middle of the distribution is near chance. **Quote
 the extremes, never a headline R².**
+
+## Intervention effectiveness — the one positive result (profile §25)
+
+Drainage spend is associated with a fall in a ward's relative flooding index:
+**coefficient −0.0240 on log spend, se 0.0096, p = 0.0138, 95% CI
+[−0.0428, −0.0052], n = 110 wards**, controlling for the pre-period index and
+log ward area. A tenfold spend increase maps to roughly a 0.055 fall against a
+city norm of 1.00. Real, small.
+
+**The reverse-causality confound is measurably absent**, which is the unusual
+part. Correlation between the pre-period relative index and log spend is
+**r = −0.083, p = 0.39**. Spend tracks **ward area** (ρ = +0.474) and raw event
+counts (ρ = +0.355), but not relative flooding need. Residualising spend on the
+pre-period index therefore changes the coefficient not at all.
+
+**Three rules for reporting it:**
+
+1. **Never publish the coefficient without the quintile table.** The response is
+   not monotone: Q1 +0.232, Q2 +0.108, Q3 −0.146, Q4 −0.162, **Q5 +0.105**,
+   untreated +0.251. The highest-spend wards got worse and that is unexplained.
+2. **Do not claim causality.** Spend is discretionary, not randomised. Absence
+   of correlation with the relative index does not exclude selection on
+   something unobserved.
+3. **Treated-versus-control is unavailable** — 103 of 110 eligible wards were
+   treated. Dose-response on log spend is the design.
+
+**Retracted:** §24's observation that register-absent wards receive more
+drainage spend. Tested across all 198 wards it fails — median ₹16.6 M off the
+register vs ₹17.3 M on it, Mann-Whitney p = 0.789; 9 of the top 20 spenders are
+off the register against a 48% base rate, hypergeometric p = 0.713. It was a
+four-ward coincidence. The surviving version is that spend tracks ward size
+rather than relative flooding need.
