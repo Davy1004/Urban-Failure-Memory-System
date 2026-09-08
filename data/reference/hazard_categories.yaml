@@ -1,0 +1,171 @@
+# BBMP hazard category map — a methodological artifact, not a config file.
+#
+# This file defines which complaints count as which hazard, and within
+# waterlogging it defines the strict/broad split that is one of the paper's
+# findings (profile §12.4, §12.5). Changing it changes published numbers.
+#
+# RULES
+#   * Source strings are byte-exact. Do not tidy them. `Storm  Water Drain(SWD)`
+#     has TWO spaces; `water stagnation` is lower-case; matching is done on the
+#     exact string, not a normalised form.
+#   * `rows` is the count in the six grievance CSVs (2020-02-08 .. 2025-06-19,
+#     766,648 rows). It is recorded so vocabulary drift shows up in a diff: if a
+#     reload changes a count, the source data changed and someone must look.
+#   * `parent` records the Category the sub-category actually sits under. It is
+#     documentation, not a matching key — filtering on Category would lose 84%
+#     of the waterlogging signal (profile §10.1).
+#
+# Counts verified 2026-09-08 against the six CSVs as downloaded.
+
+meta:
+  source: BBMP Grievances 2020-2025, OpenCity
+  total_source_rows: 766648
+  verified: 2026-09-08
+  match_on: sub_category      # NOT category — see profile §10.1
+
+# ---------------------------------------------------------------------------
+# WATERLOG — failure_types.code = WATERLOG, scope 'modelled'
+# ---------------------------------------------------------------------------
+# The strict/broad split is a finding, not a convenience. `event` complaints
+# respond to rainfall at lift 3.07x; `maintenance` complaints at 1.33x
+# (profile §12.4). Modelling them together asks a model to predict a
+# maintenance backlog from rainfall.
+waterlog:
+  code: WATERLOG
+
+  # ---- event: something is flooded right now. THE STRICT LABEL.
+  # Every published headline number uses exactly these three.
+  event_total_rows: 8293
+  event:
+    - sub_category: "water stagnation"
+      parent: "Road Maintenance(Engg)"
+      rows: 8274
+      note: the single most direct waterlogging label in the dataset
+    - sub_category: "Stagnation of water on road/ Water logging"
+      parent: "Projects Central"
+      rows: 10
+      note: late vocabulary addition, 2024-2025 only; build no logic on it
+    - sub_category: "Drainage blockage"
+      parent: "Projects Central"
+      rows: 9
+      note: late vocabulary addition, 2024-2025 only; build no logic on it
+
+  # ---- maintenance: a drain needs work. Real demand, but not a flood event.
+  # `Road side drains` alone is 24,344 rows and barely responds to rain, which
+  # is why it must not sit in the event label.
+  maintenance_total_rows: 33711
+  maintenance:
+    - sub_category: "Road side drains"
+      parent: "Road Maintenance(Engg)"
+      rows: 24344
+    - sub_category: "Maintenance of SWD"
+      parent: "Storm  Water Drain(SWD)"      # two spaces in the parent string
+      rows: 3951
+    - sub_category: "water leakage on road"
+      parent: "Road Maintenance(Engg)"
+      rows: 1783
+    - sub_category: "Sewerage water left in SWD"
+      parent: "Storm  Water Drain(SWD)"
+      rows: 1718
+    - sub_category: "Water related issue"
+      parent: "Water Crisis"
+      rows: 963
+    - sub_category: "Garbage thrown in storm water drain"
+      parent: "Storm  Water Drain(SWD)"
+      rows: 952
+
+  broad_total_rows: 42004        # event + maintenance
+
+# ---------------------------------------------------------------------------
+# GARBAGE — failure_types.code = GARBAGE, scope 'operational'
+# ---------------------------------------------------------------------------
+# Matched on the Category string, unlike waterlogging: the Solid Waste category
+# is coherent and its 13 sub-categories are all genuinely solid waste.
+garbage:
+  code: GARBAGE
+  match_on: category
+  category: "Solid Waste (Garbage) Related"
+  total_rows: 195153
+  sub_categories:
+    - {sub_category: "Garbage vehicle not arrived", rows: 73106}
+    - {sub_category: "Garbage dump", rows: 66680}
+    - {sub_category: "Sweeping not done", rows: 20774}
+    - {sub_category: "Garbage dumping in vacant sites", rows: 8409}
+    - {sub_category: "Dead animal(s)", rows: 7433}
+    - {sub_category: "Burning of Garbage in Open Space", rows: 6274}
+    - {sub_category: "Complaint against SW collector/ SWM official for violation of SWM Rules", rows: 4036}
+    - {sub_category: "Garbage transfer not as per norms & area not kept clean", rows: 3760}
+    - {sub_category: "Public dustbins not cleaned", rows: 2091}
+    - {sub_category: "Garbage nuisance while transporting", rows: 1803}
+    - {sub_category: "Segregation of waste is not done", rows: 785}
+    - {sub_category: "Debris Removal / Construction Material", rows: 1,
+       note: "mis-filed; 14,809 other rows of this sub-category sit under Road Maintenance(Engg)"}
+    - {sub_category: "Others", rows: 1}
+
+# ---------------------------------------------------------------------------
+# CONSIDERED AND EXCLUDED — recorded so nobody re-litigates them
+# ---------------------------------------------------------------------------
+excluded:
+  - sub_category: "No water supply in public toilet(s)"
+    parent: "Sanitation"
+    rows: 91
+    reason: water supply, not waterlogging
+  - sub_category: "Lake water misused"
+    parent: "Lakes"
+    rows: 29
+    reason: lake governance, not a street-level failure
+  - sub_category: "Water quality"
+    parent: "Indira Canteen"
+    rows: 11
+    reason: canteen drinking water; the parent category makes it unambiguous
+  - sub_category: "Debris Removal / Construction Material"
+    parent: "Road Maintenance(Engg)"
+    rows: 14809
+    reason: >
+      construction debris is neither a flood event nor household solid waste.
+      A deliberate call, not an oversight — see profile §10.2. Revisit if the
+      garbage module ever needs a construction-waste stream.
+
+# ---------------------------------------------------------------------------
+# STATUS MAP — Grievance Status -> models.enums.ComplaintStatus
+# ---------------------------------------------------------------------------
+# `Resolved` disappears after 2021 and `Rejected` after 2022; their volume is
+# absorbed by `Closed` and `Non Relevant` (profile §9.5). Mapping them onto the
+# same terminal states is what stops a spurious 2022 discontinuity.
+status_map:
+  "Closed":             {to: closed,       rows: 701878}
+  "Registered":         {to: registered,   rows: 20404}
+  "Rejected":           {to: not_relevant, rows: 16803, note: "retired after 2022"}
+  "Non Relevant":       {to: not_relevant, rows: 16050}
+  "Resolved":           {to: closed,       rows: 6953,  note: "retired after 2021"}
+  "ReOpen":             {to: reopened,     rows: 2699}
+  "In Progress":        {to: in_progress,  rows: 1255}
+  "Long Term Solution": {to: long_term,    rows: 532}
+  # the literal 4-character string "null" appears in 74 rows (profile §4)
+  "null":               {to: unknown,      rows: 74}
+
+# ---------------------------------------------------------------------------
+# WORK ORDERS — drainage classification for the effectiveness analysis
+# ---------------------------------------------------------------------------
+# DIFFERENT IN KIND from everything above, and the difference matters.
+# `Name of Work` is free text, 49,915 distinct-ish descriptions, so an exact
+# string map is impossible. This is a pattern list, case-insensitive, applied to
+# the lower-cased description. Counts are recorded the same way so drift is
+# visible, but a pattern match is weaker evidence than an exact string match and
+# any result resting on it should say so.
+#
+# Known imprecision: many road works also mention drains ("Improvements to roads
+# and drains in ..."), so this over-selects. Profile §25-§26 use it; re-running
+# those with a tighter rule is queue item 5.
+work_orders:
+  drainage_patterns:
+    - {pattern: "drain",        rows: 15097, new_vs_prior: 15097}
+    - {pattern: "swd",          rows: 457,   new_vs_prior: 242}
+    - {pattern: "storm water",  rows: 142,   new_vs_prior: 3}
+    - {pattern: "rajakaluve",   rows: 17,    new_vs_prior: 6}
+    - {pattern: "culvert",      rows: 1976,  new_vs_prior: 766}
+    - {pattern: "desilt",       rows: 1184,  new_vs_prior: 114}
+    - {pattern: "de-silt",      rows: 19,    new_vs_prior: 4}
+    - {pattern: "silt",         rows: 1717,  new_vs_prior: 416}
+  union_rows: 16648
+  total_work_order_rows: 49915

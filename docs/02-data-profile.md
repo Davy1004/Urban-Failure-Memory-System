@@ -87,7 +87,10 @@ Generated 7 Sep 2026 from the files as downloaded from
 > associated with a fall in a ward's relative flooding index — **−0.0240 per log
 > rupee, p = 0.0138, n = 110** — and the reverse-causality confound is
 > *measurably absent* (spend vs pre-period index r = −0.083, p = 0.39; spend
-> tracks ward **area**, ρ = +0.474). **§26 closes the analysis**: the apparent
+> tracks ward **area**, ρ = +0.474). **§27.2 RETRACTS the outcome claim** — the
+> effect vanishes when refitted on treated wards only (p = 0.833); it was
+> leverage from 7 untreated wards. What survives is the allocation finding.
+> **§26 closes the analysis**: the apparent
 > non-monotonicity in §25.5 is not real (quadratic F = 1.26, p = 0.265; only the
 > lowest-spend quintile differs from zero), and the targeting objection is
 > answered — spend vs absolute events collapses from ρ = +0.274 to **−0.050
@@ -2586,7 +2589,13 @@ finding than the one §24 proposed, and one that survives testing.
 Because the confound is absent, residualising spend on the pre-period index
 changes nothing, and the two specifications coincide exactly.
 
-### 25.4 The result
+### 25.4 The result — **RETRACTED, see §27.2**
+
+> **This estimate does not survive.** Refitting on treated wards only gives
+> −0.0064 (p = 0.833): the effect is carried entirely by 7 untreated wards at
+> `log1p(0)`, i.e. it is a treated-versus-control contrast, not a dose-response
+> — and §25.2 already established that those wards are not a valid control.
+> Kept intact below with its working, per the convention in §25.7.
 
 | Specification | Coefficient on log spend | se | p | 95% CI |
 |---|---:|---:|---:|---|
@@ -2601,6 +2610,12 @@ of about **0.055** in the relative flooding index (−0.0240 × ln 10), against 
 city norm of 1.00. Real, but small.
 
 ### 25.5 The scatter is not monotone, and that matters
+
+> **Corrected by §26.3:** the apparent non-monotonicity is not statistically
+> real (only the lowest-spend quintile differs from zero; a quadratic term gives
+> F = 1.26, p = 0.265). The instruction below is retained in corrected form —
+> publish the table *with confidence intervals*. And see §27.2: the underlying
+> coefficient is itself retracted.
 
 | Spend quintile (treated) | n | Median spend | Mean pre | Mean post | **Mean Δ** |
 |---|---:|---:|---:|---:|---:|
@@ -2690,8 +2705,11 @@ absence of correlation with the *relative* index does not rule out selection on
 something unobserved. The Q5 reversal is unexplained. And the outcome is a
 complaint-derived index, so §21's label caveat applies in full.
 
-**This is the project's one positive quantitative result.** It is modest, it is
-honest, and unlike the other two it is not primarily a statement about limits.
+~~**This is the project's one positive quantitative result.**~~ **Retracted in
+§27.4.** The outcome claim does not survive refitting on treated wards only.
+What remains from this section is the *allocation* finding in §25.3 — spend
+tracks ward size, not flooding need — which is independent of any outcome model
+and is untouched.
 
 ---
 
@@ -2846,3 +2864,138 @@ Three outputs, characterised:
 | **Effectiveness** | **Positive.** −0.0240 per log rupee, p = 0.0138, n = 110, monotone, targeting confound measurably absent (§25, §26). |
 
 **The analysis stops here.** Everything remaining is building.
+
+---
+
+## 27. The database reconciles — and the effectiveness result does not survive
+
+Added 8 Sep 2026. Two things happened in this section, and the second is the
+important one.
+
+### 27.1 The reconciliation passes exactly
+
+Every published figure was computed by CSV scripts. The database pipeline now
+recomputes the relative flooding index and **matches to better than 1e-9**:
+same 110 wards, same `ev_pre` and `ev_post` counts, same `pre` and `post`
+values. Nine assertions in `tests/test_reconciliation.py`, run against the
+loaded database, plus checks that the loader's row counts match
+`hazard_categories.yaml` and that no complaint carries a time component.
+
+**One design gap surfaced.** The index denominator is the ward's *total*
+complaints across every category, but `CLAUDE.md` rule 7 forbids loading all
+766,648 rows and the loader keeps only the 237,157-row hazard subset — so the
+database alone cannot rebuild the index. The denominator is persisted instead
+as `data/reference/ward_period_totals.csv` (4,356 ward-quarter rows, written by
+the same pass that reads the CSVs). Its proper home is a `ward_period_totals`
+table; that needs a migration and Alembic still has no baseline.
+
+### 27.2 The added-variable plot broke the headline result
+
+`NEXT.md` asked for an added-variable plot — residualise both Δ index and log
+spend on the controls, then scatter — as the honest visual counterpart of the
+fitted specification. It is the right figure, and it exposed a leverage
+structure that the coefficient hid.
+
+| | n | Coefficient on log spend | p |
+|---|---:|---:|---:|
+| **All wards (as published in §25.4)** | 110 | **−0.0240** | **0.0138** |
+| **Treated wards only** | **103** | **−0.0064** | **0.833** |
+| Spend > ₹1 M | 99 | −0.0174 | 0.614 |
+| Spend per km², treated only | 103 | −0.0064 | 0.833 |
+| Spend rank among treated | 103 | −0.0566 | 0.727 |
+
+**Among wards that actually received drainage work, spend does not predict the
+outcome at all.** The published estimate is carried entirely by 7 untreated
+wards sitting at `log1p(0) = 0` while every treated ward clusters near 16–20.
+The regression is fitted through two clusters separated by a gap, not along a
+dose gradient.
+
+Replacing the dose with a bare treated/untreated indicator confirms it:
+
+| Specification | Coefficient | p |
+|---|---:|---:|
+| Treated **indicator** (no dose at all) | **−0.4497** | **0.0084** |
+| log spend, treated only | −0.0064 | 0.833 |
+
+The indicator is *stronger* than the dose. There is no dose-response here.
+
+### 27.3 And the contrast rests on seven wards we already rejected
+
+§25.2 said plainly that treated-versus-control was unavailable, because "the
+untreated wards are untreated *because BBMP judged they needed nothing* — that
+is selection, not a control group". The published result then rested on exactly
+that comparison without either of us noticing, because the `log1p` transform
+disguised it as a continuous dose.
+
+The seven wards, in full:
+
+| Ward | pre | post | Δ | events |
+|---|---:|---:|---:|---:|
+| A.Narayanapura | 3.00 | 1.45 | **−1.55** | 35 |
+| Hoodi | 2.15 | 1.30 | −0.85 | 121 |
+| Domlur | 1.11 | 1.05 | −0.06 | 18 |
+| J.P.Park | 0.60 | 1.37 | +0.77 | 20 |
+| Gandhi Nagar | 0.78 | 1.69 | +0.91 | 43 |
+| K.R.Market | 1.04 | 2.08 | +1.05 | 24 |
+| Dharmarayaswamy Temple Ward | 1.06 | 2.55 | **+1.49** | 53 |
+
+Deltas run from −1.55 to +1.49. §26.3 already reported that this group's mean
+is +0.251 with a 95% CI of [−0.778, +1.280] — not distinguishable from zero.
+**A result resting on seven wards whose own mean is not significant, in a
+comparison the same document called invalid, is not a result.**
+
+### 27.4 What is retracted and what survives
+
+**Retracted.** The §25 headline — "drainage spend is associated with a
+reduction in a ward's relative flooding index, −0.0240 per log rupee,
+p = 0.0138" — does not survive. It is an artefact of leverage from seven
+untreated wards. **The project does not currently have a positive
+intervention-effectiveness result.**
+
+**Survives, unchanged.** §25.3 and §26.5 are about how spend is *allocated*,
+not about outcomes, and are untouched by this:
+
+- Spend is uncorrelated with the pre-period relative index (r = −0.083, p = 0.39).
+- Spend tracks ward area (ρ = +0.474); its correlation with absolute complaint
+  counts (ρ = +0.274) collapses to −0.050 (p = 0.603) once area is controlled.
+- **BBMP allocates drainage spend by ward size, not by flooding need.** That is
+  a finding about institutional memory, it is independent of any outcome model,
+  and it is now the strongest thing this output produced.
+
+**Survives as description, not as evidence.** The Jakkur timeline (§25.6) is
+still a correct account of one ward: ₹840 M spent, index 0.55 → 0.93 → 1.42,
+spend preceding the rise. It illustrates; it does not identify an effect.
+
+### 27.5 Why this was missed, and the rule that follows
+
+The `log1p(spend)` transform is standard and looks harmless. With 7 zeros and
+103 values near 16–20 it created an 16-unit gap with nothing in between, so the
+fitted slope was determined almost entirely by the two group means. The quintile
+table in §25.5 could not reveal this either, because the untreated wards were
+reported as a separate row rather than as part of the gradient.
+
+Neither the coefficient, its CI, the residualisation check, nor the quintile
+table caught it. The added-variable plot did, immediately, because the leverage
+is the first thing visible in it.
+
+> **Rule: before reporting a dose-response, refit on treated units only.** If
+> the coefficient does not survive dropping the zero-dose group, it is a
+> treated-versus-control contrast wearing a dose-response's clothes, and it
+> must be reported as the former — with the control group's validity argued
+> explicitly.
+
+Added to `docs/01-evaluation-rules.md`.
+
+### 27.6 Where the three outputs now stand
+
+| Output | Status |
+|---|---|
+| **Triage** | Ceiling measured. 1.58 of 23.64 points reachable by any ward-level score (§19). Unchanged. |
+| **Emerging** | Real in aggregate (permutation p = 0.0010), one nameable ward, level-persistent (§23, §25.1). Unchanged. |
+| **Effectiveness** | **Outcome claim retracted.** No dose-response among treated wards (p = 0.833). What remains is the allocation finding: spend tracks ward size, not need. |
+
+This is the third appealing pattern in this project to fail on testing, after
+the register contradiction (§25.7) and the Q5 reversal (§26.3). All three are
+recorded with the test that killed them. The pattern is consistent enough to be
+worth stating in the paper: **on this data, every result that was not
+deliberately attacked turned out to be an artefact.**

@@ -25,80 +25,70 @@ before starting anything here.
 
 ---
 
-## Current task — hazard categories YAML, then the complaints loader
+## Current task — decide what happens to intervention effectiveness
 
-**Analysis is closed.** Build from here.
+**Read REPORT.md §7 first — there is a decision here, not just work.**
 
-**First: `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
-source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
-waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly -
-note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
-each entry so vocabulary drift shows in a diff. Profile §10.1 has the counts,
-§12.4 the event/maintenance evidence.
+The complaints loader is in and the reconciliation passes exactly. But the
+added-variable plot retracted the effectiveness outcome claim: there is no
+dose-response (treated-only coefficient -0.0064, p = 0.833), and the published
+estimate was leverage from 7 untreated wards that §25.2 had already ruled out as
+a control group.
 
-Give it a **work-order section too**, replacing the keyword regex used for
-drainage classification in §25-§26. Same discipline: exact strings, counts.
+**The choice, and it is yours because it reopens closed analysis:**
 
-**Then: `app/ingestion/bbmp_complaints.py`.** Idempotent on `Complaint ID`
-(globally unique across all six files). Truncates timestamps to DATE
-deliberately - the source lost its AM/PM marker, so any time-of-day value would
-be fiction. Applies the ward crosswalk, keeps `in_flood_register=false` wards in
-the panel, and logs excluded counts unconditionally. Expect ~237k rows.
+**(a) Accept it.** The output keeps its allocation finding - BBMP allocates
+drainage spend by ward size, not flooding need - and has no outcome finding.
+Zero further work. The paper is then three measured limits plus one allocation
+result.
 
-Everything it needs exists: all 198 ward names resolve to a ward number and a
-`locations` row, `apply_to_ward_series()` returns the keep-mask and report, and
-`upsert_chunk` handles idempotency.
+**(b) Try within-ward identification, one session.** Compare each ward's index
+before and after *its own* works using ward fixed effects. That needs no control
+group at all, which is exactly what killed the current design, and the timing
+variation is real: works completed across 2021-01..2022-12 at different dates in
+different wards. A different identification strategy, not a re-run. If it fails
+it fails cleanly and (a) is where we land anyway.
+
+**(c) Drop the output.** Only if (b) is judged not worth the session.
+
+My read: (b) is worth one session. But you closed analysis deliberately and I am
+not reopening it unilaterally.
+
+**If (a) or (c): the next build task is the memory engine**, queue item 3, and
+the analysis stays closed.
 
 ---
 
-## Design note for Phase 4 — what the dashboard should now show
+## Note for later, not now
 
-The original plan built a triage dashboard. Triage is now proven near-
-unimprovable, so building a screen that implies otherwise would contradict the
-project's own findings. The system should **demonstrate what the analysis
-found**, which is a coherent and more honest product:
-
-1. **Standing priority list** — the static top-20. Still worth 14% against 4.7%
-   random. Present it as a stable watchlist, not a nightly prediction, and show
-   the ceiling beside it.
-2. **Relative flooding index per ward, over time** — the quantity that actually
-   works. This is the map and the trend chart, and it is the core screen.
-3. **Emerging watch** — the rank-based detector, labelled honestly as
-   *chronically above norm* rather than *accelerating*, since that is what §2
-   established it detects.
-4. **Intervention effectiveness** — spend versus change in relative index. This
-   is the positive result and the most demonstrable thing in the project. Show
-   the quintile bars **with confidence intervals**: §26 established the apparent
-   Q5 tail is not real (only the lowest-spend quintile differs from zero;
-   quadratic F = 1.26, p = 0.265), so a chart implying a U-shape would misstate
-   our own finding. Note that the raw scatter looks weak — the effect is
-   conditional on controlling for mean reversion.
-
-Four screens, each backed by a measured result. That is a better mid-review demo
-than a triage screen making a claim the data refuses.
+`docs/02-data-profile.md` is, at this point, most of the paper's results
+section already written — with methods, tests, retractions and confidence
+intervals in place. When the paper starts, it is a reorganisation job rather
+than a writing job. Worth knowing before the mid-review, and worth not
+disturbing.
 
 ---
 
 ## Queue
 
-**1. Hotspot register dedup decision.** Three KML layers loaded unmerged (398
-points, `hotspot_source` per layer). Establish what each represents before
-choosing a threshold.
+**1. Alembic baseline + `weather_cells.model` + a `ward_period_totals` table.**
+Promoted from tidiness to dependency: the index denominator now lives in a CSV
+because the database cannot hold it without a migration (profile §27.1).
+Baseline against an empty database, hand-add the three views with `op.execute`,
+verify against `ufms_schema.sql`, stamp dev, then add both.
 
-**2. Housekeeping bundle.** Restate the §12-§14 headlines on IFS so the profile
-stops quoting two weather sources. Baseline Alembic against an empty database,
-hand-add the three views with `op.execute`, verify against `ufms_schema.sql`,
-stamp dev, then add `weather_cells.model` as the first real migration.
+**2. Restate the §12-§14 headlines on IFS** so the profile stops quoting two
+weather sources in one document.
 
 **3. Memory engine and the model ladder M0-M3** - to demonstrate the bound, not
 to beat it. Report within-night AUC or precision@k, never a pooled AUC.
 
 **4. Frontend (Phase 4)** - the four screens in the design note above.
 
-**5. Re-run §25-§26 drainage classification off the YAML** instead of keywords,
-once the YAML exists. Expect the coefficient to move slightly; if it moves a
-lot, the keyword match was doing more work than assumed and that is worth
-knowing.
+**5. Hotspot register dedup decision.** Three KML layers loaded unmerged.
+
+**6. Re-run the drainage classification off the YAML** instead of keywords, if
+any effectiveness work resumes.
 
 ## Done log
 
@@ -273,3 +263,24 @@ knowing.
   effect is significant conditional on controls, not raw (Spearman -0.163,
   p = 0.099); the main spec gets there by controlling for mean reversion
   (-0.788), so a raw scatter looks weak. 57 tests pass.
+- **2026-09-08 — Complaints loaded; effectiveness outcome claim retracted.**
+  `hazard_categories.yaml` built (9 waterlogging sub-categories split event 3 /
+  maintenance 6, Solid Waste 13, 4 documented exclusions, 9-value status map,
+  work-order patterns, every entry carrying its row count). Loader: **237,157
+  complaints** upserted of 766,648 read - WATERLOG 42,004, GARBAGE 195,153,
+  event 8,293, maintenance 33,711, exactly the YAML totals, idempotent.
+  **The reconciliation test passes exactly**: the database rebuilds the relative
+  index matching `ward_dose_response_panel.csv` to < 1e-9 across all 110 wards,
+  same event counts, 9 assertions. It surfaced one design gap - the denominator
+  is the ward's TOTAL complaints, which rule 7 forbids loading, so it is
+  persisted as `ward_period_totals.csv` (4,356 rows) pending a table.
+  **Then the added-variable plot retracted §25's headline.** Refitting on
+  treated wards only: **-0.0064, p = 0.833** against the published -0.0240
+  (p = 0.0138). `log1p(spend)` put 7 untreated wards at 0 against treated wards
+  at 16-20, so the slope was fitted through two clusters; a bare treated
+  indicator (-0.4497, p = 0.0084) is *stronger* than the dose. Those 7 wards are
+  the ones §25.2 had already ruled out as a control group and their own mean is
+  insignificant (CI [-0.778, +1.280]). **No dose-response exists.** New rule:
+  refit any dose-response on treated units only before reporting it. The
+  ALLOCATION finding survives untouched - spend tracks ward area (rho +0.474),
+  not flooding need (r = -0.083). 66 tests pass.

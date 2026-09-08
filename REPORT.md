@@ -1,168 +1,182 @@
-# REPORT — closing the analysis: Q5 and the targeting objection
+# REPORT — the loader lands, and the effectiveness result does not survive
 
-Task: NEXT.md "close the analysis, then stop". Completed 2026-09-08.
-**This is the last analysis report.**
+Task: NEXT.md "hazard categories, then the complaints loader". Completed
+2026-09-08.
 
-**Q5: both hypotheses are wrong, and so was the premise. There is no reversal to
-explain. Only the lowest-spend quintile differs from zero (p = 0.022); Q5's
-+0.105 has a CI of [−0.142, +0.353], p = 0.385; and a quadratic term in log
-spend is not significant (F = 1.26, p = 0.265). §25.5 over-read its own table.**
+**The build worked: 237,157 complaints are in the database, idempotent, and the
+reconciliation test passes exactly — the pipeline reproduces every published
+figure to better than 1e-9.**
 
-**Targeting: settled exactly as you predicted. Spend versus absolute events is
-ρ = +0.274 raw, and −0.050 (p = 0.603) controlling for ward area. The
-correlation is entirely area.**
+**But the added-variable plot you asked for broke the headline result. There is
+no dose-response. Refitting on treated wards only gives −0.0064 (p = 0.833)
+against the published −0.0240 (p = 0.0138). The effect was leverage from 7
+untreated wards sitting at `log1p(0)` — a treated-versus-control contrast, using
+exactly the seven wards §25.2 had already ruled out as a control group.**
 
-Full write-up: profile §26.
+**The project no longer has a positive intervention-effectiveness result.** The
+allocation finding survives and is unaffected.
+
+Profile §27. Retraction banners added to §25.4 and §25.8.
 
 ---
 
-## 1. The development confounder — tested and rejected
+## 1. What was built
 
-You thought this the likelier explanation. It is not there.
+**`data/reference/hazard_categories.yaml`** — 9 waterlogging sub-categories
+split `event` (3, the strict label) / `maintenance` (6), the Solid Waste
+category with its 13 sub-categories, 4 explicit exclusions with reasons, the
+9-value status map, and the work-order drainage patterns. Every entry carries
+its row count so drift shows in a diff. Strings are byte-exact, including the
+double space in `Storm  Water Drain(SWD)`.
 
-| | ρ | p |
+I recorded the **exclusions** deliberately — `No water supply in public
+toilet(s)`, `Lake water misused`, `Water quality`, `Debris Removal` — so nobody
+re-litigates them. The work-order section is flagged as **different in kind**:
+free text means patterns, not exact strings, and it says so.
+
+**`app/ingestion/bbmp_complaints.py`** — driven entirely by the YAML.
+
+```
+237,157 complaints upserted of 766,648 read
+  by hazard   : {'GARBAGE': 195153, 'WATERLOG': 42004}
+  by severity : {'operational': 195153, 'maintenance': 33711, 'event': 8293}
+  dropped     : 529,491 non-hazard, 0 null ward, 0 unresolved ward, 0 bad date
+```
+
+Exactly the YAML's expected totals. Idempotent — re-running leaves 237,157.
+PyYAML added to `requirements.txt`.
+
+## 2. The reconciliation test — passes, and found a design gap
+
+`tests/test_reconciliation.py`, 9 assertions: same 110 wards, `ev_pre` and
+`ev_post` identical, `pre` and `post` matching to **< 1e-9**, loader counts
+matching the YAML, no complaint carrying a time component, window
+2020-02-08 → 2025-06-19. **All pass.** The database and the paper agree.
+
+**The gap it surfaced:** the index denominator is the ward's *total* complaints
+across every category, but rule 7 forbids loading all 766,648 rows and the
+loader keeps only the 237,157-row subset. **The database alone cannot rebuild
+the index.**
+
+I persisted the denominator as `data/reference/ward_period_totals.csv` — 4,356
+ward-quarter rows, written by the same pass that reads the CSVs, version
+controlled and diffable like the other reference artifacts. Its proper home is a
+`ward_period_totals` table, which needs a migration, and Alembic still has no
+baseline. **That is now a real dependency, not just tidiness.**
+
+## 3. The added-variable plot, and what it did
+
+You were right that it is the correct figure. It shows the relationship the raw
+scatter hides:
+
+| | r | p |
 |---|---:|---:|
-| log spend vs log complaint-volume growth | −0.112 | 0.243 |
-| log volume growth vs Δ index | −0.032 | 0.742 |
+| Raw scatter, log spend vs Δ | −0.115 | 0.230 |
+| **Added-variable (both residualised on controls)** | **−0.236** | **0.0130** |
 
-And the quintiles are flat in growth — **Q5 wards grow no faster than Q1 wards:**
+Then I binned the residuals to describe the figure, and bin 1 sat at
+x = −6.667 while bins 2–6 spanned −0.16 to +3.13. That gap is the 7 untreated
+wards at `log1p(0)`.
 
-| Quintile | Median spend | **Median volume growth** | Mean Δ |
+| Specification | n | Coefficient | p |
 |---|---:|---:|---:|
-| Q1 | ₹3.1 M | 1.94× | +0.232 |
-| Q2 | ₹10.4 M | 1.95× | +0.108 |
-| Q3 | ₹20.2 M | **2.19×** | −0.146 |
-| Q4 | ₹60.6 M | 2.02× | −0.162 |
-| **Q5** | **₹167.2 M** | **1.98×** | +0.105 |
+| **All wards (published §25.4)** | 110 | **−0.0240** | **0.0138** |
+| **Treated wards only** | **103** | **−0.0064** | **0.833** |
+| Spend > ₹1 M | 99 | −0.0174 | 0.614 |
+| Spend per km², treated only | 103 | −0.0064 | 0.833 |
+| Spend rank among treated | 103 | −0.0566 | 0.727 |
+| Treated **indicator**, no dose | 110 | **−0.4497** | **0.0084** |
 
-Adding log volume growth to the main specification:
+**Among wards that received drainage work, spend does not predict the outcome
+at all.** And a bare treated/untreated indicator is *stronger* than the dose —
+which is the signature of a two-cluster fit, not a gradient.
 
-| Term | Baseline | With development control |
-|---|---:|---:|
-| **log(1+spend)** | **−0.0240** (p = 0.0138) | **−0.0247** (p = 0.0118) |
-| log(volume growth) | — | −0.1065 (p = 0.458) |
-| R² | 0.531 | 0.533 |
+## 4. Why this is fatal rather than a caveat
 
-Growth-adjusted quintile deltas are unchanged to three decimals (Q5
-+0.105 → +0.102). Jakkur and Someshwara *are* development corridors, but they do
-not carry the quintile.
+§25.2 says, in its own words, that treated-versus-control is unavailable
+because "the untreated wards are untreated *because BBMP judged they needed
+nothing* — that is selection, not a control group."
 
-## 2. The disruption hypothesis — also rejected
+The published result then rested on exactly that comparison. `log1p` disguised
+it as a continuous dose and neither of us noticed.
 
-| Quintile | Pre | 2023 | 2024–25 | Δ(2023) | Δ(24–25) |
-|---|---:|---:|---:|---:|---:|
-| Q3 | 1.13 | 1.06 | 0.93 | −0.073 | −0.205 |
-| Q4 | 1.22 | 1.02 | 1.08 | −0.197 | −0.134 |
-| **Q5** | 1.13 | 1.25 | 1.22 | **+0.122** | **+0.092** |
+The seven wards:
 
-Q5 does not recover. Paired within Q5, 2024–25 versus 2023 is **−0.030,
-p = 0.834**. Neither period differs from pre (p = 0.340, 0.539). Re-estimating
-separately, the spend coefficient is stable — **−0.0243 (p = 0.025)** on 2023,
-**−0.0238 (p = 0.065)** on 2024–25. No disruption signature.
+| Ward | pre | post | Δ | events |
+|---|---:|---:|---:|---:|
+| A.Narayanapura | 3.00 | 1.45 | **−1.55** | 35 |
+| Hoodi | 2.15 | 1.30 | −0.85 | 121 |
+| Domlur | 1.11 | 1.05 | −0.06 | 18 |
+| J.P.Park | 0.60 | 1.37 | +0.77 | 20 |
+| Gandhi Nagar | 0.78 | 1.69 | +0.91 | 43 |
+| K.R.Market | 1.04 | 2.08 | +1.05 | 24 |
+| Dharmarayaswamy Temple Ward | 1.06 | 2.55 | **+1.49** | 53 |
 
-## 3. Why both failed: there was nothing to explain
+§26.3 already reported this group's mean as +0.251 with CI [−0.778, +1.280] —
+not distinguishable from zero. A result resting on seven wards whose own mean is
+insignificant, in a comparison the same document called invalid, is not a
+result.
 
-I should have checked this before testing either hypothesis. Per-quintile means
-with CIs:
+## 5. What survives
 
-| Quintile | n | Mean Δ | 95% CI | p vs 0 |
-|---|---:|---:|---|---:|
-| **Q1** | 21 | **+0.232** | [+0.038, +0.425] | **0.022** |
-| Q2 | 20 | +0.108 | [−0.228, +0.444] | 0.508 |
-| Q3 | 21 | −0.146 | [−0.308, +0.015] | 0.073 |
-| Q4 | 20 | −0.162 | [−0.474, +0.150] | 0.291 |
-| **Q5** | 21 | **+0.105** | **[−0.142, +0.353]** | **0.385** |
-| Untreated | 7 | +0.251 | [−0.778, +1.280] | 0.572 |
+**Untouched — the allocation findings.** They are about how spend is
+distributed, not about outcomes:
 
-**Only Q1 is distinguishable from zero.** And a quadratic term in log spend
-gives +0.0021 (p = 0.265), F-test for the added term **F = 1.26, p = 0.265** —
-**no statistical evidence of non-monotonicity at all.**
+- Spend vs pre-period relative index: r = −0.083, p = 0.39.
+- Spend vs ward area: ρ = +0.474. Spend vs absolute events: ρ = +0.274,
+  collapsing to −0.050 (p = 0.603) once area is controlled.
+- **BBMP allocates drainage spend by ward size, not by flooding need.**
 
-The quintile means are a noisy discretisation of 110 wards into bins of ~20. The
-linear estimate uses every ward and is the reliable one.
+That is now the strongest thing this output produced, and it is a finding about
+institutional memory in a project about institutional memory.
 
-**So §25.5's instruction was half right.** Publish the table — but *with* its
-confidence intervals, which show the U-shape is not real. I have corrected the
-profile and the rules file rather than leaving the stronger claim standing.
+**Survives as description only.** The Jakkur timeline is still correct — ₹840 M,
+index 0.55 → 0.93 → 1.42, spend preceding the rise. It illustrates; it does not
+identify an effect.
 
-That is the second time in this project that an appealing pattern failed on
-proper testing (after the register contradiction). Both are now recorded with
-their tests visible.
+## 6. The rule I added
 
-## 4. One deflation you should see
+> **Before reporting a dose-response, refit on treated units only.** If the
+> coefficient does not survive dropping the zero-dose group, it is a
+> treated-versus-control contrast wearing a dose-response's clothes.
 
-The effect is significant **conditional on the controls**, not as a raw
-association:
-
-| | ρ | p |
-|---|---:|---:|
-| Spearman(spend, Δ index), treated wards | −0.163 | 0.099 |
-| Spearman(spend, Δ index), untreated as spend = 0 | −0.175 | 0.067 |
-
-The main specification reaches p = 0.014 by controlling for the pre-period
-index, which carries strong mean reversion (−0.788, p < 0.0001). Controlling for
-it is correct — regression to the mean would otherwise swamp everything — but it
-means **a raw scatter of spend against outcome shows only a marginal trend**. A
-reader who plots it will not see the result. Better we say that than they
-discover it.
-
-## 5. The targeting objection — settled
-
-| | ρ | p |
-|---|---:|---:|
-| Spend vs absolute events, raw | +0.274 | 0.0038 |
-| **Spend vs absolute events, controlling for ward area** | **−0.050** | **0.603** |
-| Spend vs ward area | +0.474 | <0.0001 |
-| Absolute events vs ward area | +0.649 | <0.0001 |
-| Spend vs relative index, controlling for area | +0.051 | 0.599 |
-
-**The partial correlation collapses.** Area fully explains the association. Your
-predicted framing holds, and I have written it into the rules file in the order
-you specified:
-
-> Drainage spend tracks ward area (ρ = +0.474). It correlates with absolute
-> complaint counts (ρ = +0.274) because large wards generate more complaints of
-> every kind — controlling for area, that correlation vanishes (ρ = −0.050,
-> p = 0.60). Benchmarked against each ward's own complaint mix, allocation is
-> uncorrelated with need (ρ = +0.051, p = 0.60).
-
-"BBMP targets absolute complaint volume" is dead, not deflected.
-
-## 6. Where the analysis closes
-
-| Output | Result |
-|---|---|
-| **Triage** | Ceiling measured: 1.58 of 23.64 points reachable by any ward-level score; static list 14.08% against a 37.72% oracle. |
-| **Emerging** | Real in aggregate (permutation p = 0.0010), one nameable ward (Jakkur). Finds *chronically above norm*, not *accelerating*. |
-| **Effectiveness** | **Positive:** −0.0240 per log rupee, p = 0.0138, n = 110, monotone, targeting confound measurably absent. |
-
-**No new analysis threads.** The queue is building only.
+Neither the coefficient, its CI, the residualisation check, nor the quintile
+table caught this. The added-variable plot caught it immediately. It is now the
+standard figure for any regression this project reports.
 
 ## 7. What I want a second opinion on
 
-Only one thing, and it is small.
-
-**Whether §25.5 should be edited or annotated.** I edited it — the profile and
-rules now say the non-monotonicity is not real, with §26 carrying the working.
-The alternative was to leave §25.5 intact and let §26 correct it, preserving the
-sequence of reasoning the way the retraction in §25.7 is preserved. I chose
-editing because §25.5 contained an *instruction* ("never publish the coefficient
-without the quintile table") that would have propagated a wrong emphasis into
-the paper, whereas §25.7's retraction was a claim, not an instruction. If you
-prefer the other convention, it is a two-line change.
-
-I have no other open questions. The design note for Phase 4 in NEXT.md is clear
-and I have carried it into the queue.
+1. **Whether to attempt a defensible effectiveness design at all.** Options as I
+   see them: (a) accept that this output has an allocation finding and no
+   outcome finding; (b) find within-ward timing variation — compare a ward's
+   index before and after its own works, using ward fixed effects, which does
+   not need a control group; (c) drop the output. **(b) is genuinely worth one
+   session** and is a different identification strategy rather than a re-run,
+   but it is analysis and you closed analysis. Your call whether it reopens.
+2. **Whether the retraction convention is being applied consistently.** This is
+   the third retraction (register contradiction, Q5, now this). I kept §25.4
+   intact with a banner, per §25.7's convention, since it is a claim rather than
+   an instruction. But §25.8 contained the sentence "this is the project's one
+   positive quantitative result", which is closer to a framing instruction — I
+   struck it through and pointed to §27.4. Say if you would rather it were left
+   whole.
+3. **The `ward_period_totals` table.** It is now blocking a clean
+   database-only pipeline, so the Alembic baseline has moved from tidiness to
+   dependency. I left it in the queue rather than promoting it, because the
+   frontend can read the CSV. Confirm or promote.
 
 ## 8. Verification
 
-57 tests pass. Database unchanged — still Phase 0 plus weather.
+**66 tests pass** (9 new in `test_reconciliation.py`). Database: `locations`
+596, `complaints` **237,157**, `weather_observations` 1,309,896, `weather_daily`
+54,579.
 
-`data/reference/ward_dose_response_panel.csv` regenerated with the extra columns
-this analysis needed: `p23`, `p45`, `d23`, `d45` (post-window split), `growth`,
-`log_growth`, `ev_all`.
+```
+python -m app.ingestion.cli complaints --city Bengaluru   # idempotent
+python -m app.ingestion.cli complaints --totals           # denominator only
+python -m app.ingestion.cli status
+```
 
-Method: same relative index and panel as §25. Partial correlations computed on
-ranks (Spearman) by residualising both variables on log ward area. Quadratic
-test is a nested F-test on the added term. Quintile CIs are t-intervals on the
-mean, n ≈ 20 per bin.
+New: `data/reference/hazard_categories.yaml`,
+`data/reference/ward_period_totals.csv`, `app/ingestion/bbmp_complaints.py`,
+`tests/test_reconciliation.py`. PyYAML pinned in `requirements.txt`.

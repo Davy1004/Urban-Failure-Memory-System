@@ -479,21 +479,47 @@ reaches AUC 0.749, and 9 of the 10 most confidently flagged nights were
 genuinely severe — but the middle of the distribution is near chance. **Quote
 the extremes, never a headline R².**
 
-## Intervention effectiveness — the one positive result (profile §25)
+## Intervention effectiveness — outcome claim RETRACTED (profile §27)
 
-Drainage spend is associated with a fall in a ward's relative flooding index:
-**coefficient −0.0240 on log spend, se 0.0096, p = 0.0138, 95% CI
-[−0.0428, −0.0052], n = 110 wards**, controlling for the pre-period index and
-log ward area. A tenfold spend increase maps to roughly a 0.055 fall against a
-city norm of 1.00. Real, small.
+**There is no dose-response.** The published estimate (−0.0240 on log spend,
+p = 0.0138, n = 110) does not survive refitting on treated wards only:
 
-**The reverse-causality confound is measurably absent**, which is the unusual
-part. Correlation between the pre-period relative index and log spend is
+| | n | Coefficient | p |
+|---|---:|---:|---:|
+| All wards (published) | 110 | −0.0240 | 0.0138 |
+| **Treated wards only** | **103** | **−0.0064** | **0.833** |
+| Treated **indicator**, no dose | 110 | −0.4497 | 0.0084 |
+
+`log1p(spend)` placed 7 untreated wards at 0 while every treated ward clusters
+near 16–20, so the slope was fitted through two clusters across a 16-unit gap.
+It is a treated-versus-control contrast, and §25.2 had already established that
+those 7 wards are not a valid control — they are untreated because BBMP judged
+they needed nothing. Their own deltas run from −1.55 to +1.49 with a mean CI of
+[−0.778, +1.280].
+
+### Rule: refit any dose-response on treated units only, before reporting it
+
+If the coefficient does not survive dropping the zero-dose group, it is a
+treated-versus-control contrast wearing a dose-response's clothes. Report it as
+the former, and argue the control group's validity explicitly.
+
+Neither the coefficient, its CI, the residualisation check nor the quintile
+table caught this. **The added-variable plot did, immediately** — residualise
+both outcome and dose on the controls and scatter the residuals; leverage is the
+first thing visible. Use it as the standard figure for any regression this
+project reports.
+
+### What survives from §25
+
+The **allocation** findings are about how spend is distributed, not about
+outcomes, and are untouched:
+
+**The reverse-causality confound is measurably absent.** Correlation between the pre-period relative index and log spend is
 **r = −0.083, p = 0.39**. Spend tracks **ward area** (ρ = +0.474) and raw event
 counts (ρ = +0.355), but not relative flooding need. Residualising spend on the
 pre-period index therefore changes the coefficient not at all.
 
-**Three rules for reporting it:**
+**Rules retained for the allocation findings and for any future outcome model:**
 
 1. **Publish the quintile table WITH its confidence intervals — the apparent
    reversal is not real** (corrected 8 Sep, profile §26). Only Q1 differs from

@@ -16,4 +16,5 @@ numpy==2.2.1
 scikit-learn==1.6.0
 pyarrow==18.1.0
 python-dateutil==2.9.0.post0
+PyYAML==6.0.2   # data/reference/hazard_categories.yaml
 pytest==8.3.4

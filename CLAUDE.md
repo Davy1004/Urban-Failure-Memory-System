@@ -100,12 +100,19 @@ Done:
   Rs 632M), not treated-vs-control. Jakkur - the one FDR-surviving emerging
   ward - is the 2nd-highest drainage spender at Rs 494M, which is a ready-made
   case study.
-- **INTERVENTION EFFECTIVENESS IS THE ONE POSITIVE RESULT** (profile §25).
-  Drainage spend vs change in relative flooding index: **coefficient -0.0240 on
-  log spend, p = 0.0138, 95% CI [-0.0428, -0.0052], n = 110 wards**. The
+- **INTERVENTION EFFECTIVENESS: OUTCOME CLAIM RETRACTED** (profile §27.2).
+  **There is no dose-response.** The published -0.0240 (p = 0.0138) vanishes
+  when refitted on treated wards only: **-0.0064, p = 0.833**. `log1p(spend)`
+  put 7 untreated wards at 0 against treated wards at 16-20, so it was a
+  treated-vs-control contrast - and those 7 are not a valid control. **Rule:
+  refit any dose-response on treated units only before reporting it**, and use
+  an added-variable plot, which is what caught this. What survives is the
+  ALLOCATION finding, which is untouched and independent of any outcome model:
+  the
   reverse-causality confound is **measurably absent** - spend vs pre-period
   index r = -0.083 (p = 0.39); spend tracks **ward area** (rho +0.474), not
-  flooding need. **The targeting objection is answered** (§26.5): spend vs
+  flooding need - **BBMP allocates drainage spend by ward size, not need.**
+  **The targeting objection is answered** (§26.5): spend vs
   absolute events is +0.274 raw but **-0.050 (p = 0.60) controlling for area**.
   **The apparent non-monotonicity is NOT real** (§26.3) - only the lowest-spend
   quintile differs from zero, and a quadratic term is not significant

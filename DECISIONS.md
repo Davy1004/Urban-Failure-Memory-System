@@ -53,9 +53,16 @@ where things are worst — so spending looks like it *causes* flooding. We check
 BBMP's drainage spending tracks **ward size**, not flooding severity. Because
 allocation ignores need, the comparison is clean.
 
-One honest wrinkle: the very highest-spending wards got worse, not better. We
-don't yet know if that's construction disruption or fast-growing areas
-outrunning their drainage.
+One honest wrinkle, and it is about statistics rather than drainage. Grouped
+into five spend bands, the highest-spending band appears to get worse. That
+appearance does not survive testing — the bands hold only about twenty wards
+each, the confidence intervals overlap zero, and a formal test for a curve finds
+nothing. The straight-line estimate uses all 110 wards and is the reliable one.
+
+The effect is also measured *after* accounting for where each ward started.
+That is the standard approach and the right one, but it means a plain scatter of
+spend against outcome shows only a weak trend. We say so rather than let a
+reader discover it.
 
 **If challenged:** "Allocation is uncorrelated with our outcome measure, which
 removes the usual reverse-causality problem. We report the effect and the

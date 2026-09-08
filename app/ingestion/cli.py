@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from app.core.logging import configure_logging
 from app.db.session import SessionLocal
 from app.models.geography import IngestionRun, Location
-from app.models.observation import WeatherDaily, WeatherObservation
+from app.models.observation import Complaint, WeatherDaily, WeatherObservation
 
 logger = logging.getLogger("ufms.ingestion.cli")
 
@@ -62,6 +62,30 @@ def cmd_wards(args) -> int:
     return 0
 
 
+def cmd_complaints(args) -> int:
+    import pathlib as _p
+    from app.ingestion.bbmp_complaints import load_complaints
+
+    from app.ingestion.bbmp_complaints import write_ward_period_totals
+
+    raw = _p.Path(args.raw_dir) if args.raw_dir else _p.Path("data/raw")
+    if args.totals:
+        t = write_ward_period_totals(raw)
+        print(f"{len(t):,} ward-period totals written")
+        return 0
+    with SessionLocal() as db:
+        rep = load_complaints(db, raw, args.city)
+    write_ward_period_totals(raw)
+    print(f"{rep['rows_kept']:,} complaints upserted of {rep['rows_read']:,} read")
+    print(f"  by hazard   : {rep['by_code']}")
+    print(f"  by severity : {rep['by_severity']}")
+    print(f"  dropped     : {rep['dropped_not_hazard']:,} non-hazard, "
+          f"{rep['dropped_null_ward']:,} null ward, "
+          f"{rep['dropped_unresolved_ward']:,} unresolved ward, "
+          f"{rep['dropped_bad_date']:,} bad date")
+    return 0
+
+
 def cmd_status(args) -> int:
     with SessionLocal() as db:
         obs = db.execute(select(func.count()).select_from(WeatherObservation)).scalar()
@@ -70,7 +94,9 @@ def cmd_status(args) -> int:
             select(func.min(WeatherDaily.obs_date), func.max(WeatherDaily.obs_date))
         ).one()
         locs = db.execute(select(func.count()).select_from(Location)).scalar()
+        comp = db.execute(select(func.count()).select_from(Complaint)).scalar()
         print(f"locations            : {locs:>9,}")
+        print(f"complaints           : {comp:>9,}")
         print(f"weather_observations : {obs:>9,}")
         print(f"weather_daily        : {daily:>9,}   {span[0]} .. {span[1]}")
         print("\nrecent ingestion runs:")
@@ -105,6 +131,13 @@ def main(argv=None) -> int:
     wd.add_argument("--city", default="Bengaluru")
     wd.add_argument("--raw-dir", dest="raw_dir", default=None)
     wd.set_defaults(fn=cmd_wards)
+
+    c = sub.add_parser("complaints", help="load BBMP grievances")
+    c.add_argument("--city", default="Bengaluru")
+    c.add_argument("--raw-dir", dest="raw_dir", default=None)
+    c.add_argument("--totals", action="store_true",
+                   help="only regenerate ward_period_totals.csv")
+    c.set_defaults(fn=cmd_complaints)
 
     s = sub.add_parser("status", help="row counts and recent runs")
     s.set_defaults(fn=cmd_status)
