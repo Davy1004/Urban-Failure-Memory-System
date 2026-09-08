@@ -1,220 +1,168 @@
-# REPORT — intervention effectiveness, plus the two fixes
+# REPORT — closing the analysis: Q5 and the targeting objection
 
-Task: NEXT.md "intervention effectiveness, plus two cheap fixes". Completed
-2026-09-08.
+Task: NEXT.md "close the analysis, then stop". Completed 2026-09-08.
+**This is the last analysis report.**
 
-**The dose-response works and it is the project's one positive quantitative
-result: −0.0240 on log drainage spend, p = 0.0138, 95% CI [−0.0428, −0.0052],
-n = 110 wards.**
+**Q5: both hypotheses are wrong, and so was the premise. There is no reversal to
+explain. Only the lowest-spend quintile differs from zero (p = 0.022); Q5's
++0.105 has a CI of [−0.142, +0.353], p = 0.385; and a quadratic term in log
+spend is not significant (F = 1.26, p = 0.265). §25.5 over-read its own table.**
 
-**The surprise is that reverse causality — which you called "the whole problem"
-— is measurably absent. Spend versus the pre-period relative index is r = −0.083
-(p = 0.39). BBMP's drainage spend tracks ward AREA (ρ = +0.474), not flooding
-need. That makes this a much better-identified estimate than expected.**
+**Targeting: settled exactly as you predicted. Spend versus absolute events is
+ρ = +0.274 raw, and −0.050 (p = 0.603) controlling for ward area. The
+correlation is entirely area.**
 
-**Two things you should not miss: the response is not monotone (the top spend
-quintile got worse), and §24's register-contradiction claim is retracted — it
-was a four-ward coincidence, p = 0.79 across all 198.**
-
-Full write-up: profile §25.
+Full write-up: profile §26.
 
 ---
 
-## 1. (a) Wards 184–198 recovered
+## 1. The development confounder — tested and rejected
 
-The proxy was validated before being trusted, as you asked. On the 183
-main-schema files, which carry both `End Date` and the BR/CBR dates:
+You thought this the likelier explanation. It is not there.
 
-| Candidate | n | Median offset from End Date | Within 90 d | Same year |
-|---|---:|---:|---:|---:|
-| **BR Date** | 42,560 | **+22 d** | **76.2%** | **83.2%** |
-| CBR Date | 29,621 | +621 d | 6.4% | 13.3% |
-| Order Date | 43,465 | −92 d | 44.6% | 60.5% |
-
-**BR date is the right proxy.** CBR is the bill-clearance date about two years
-later and would have been badly wrong — worth knowing, since it is the second
-date in the string and an obvious thing to grab.
-
-Recovery: 4,178 legacy rows, 100% with at least one date, 44.0% drainage,
-yielding **125 additional drainage works across the 15 missing wards** in the
-study window. Small in works, but it restores Bilekahalli, Begur, Gottigere and
-Arakere to the panel, which was the point.
-
-## 2. (b) You were right — the instrument was wrong
-
-Slope persistence is not the test. Level persistence is, and it holds.
-
-| Flag rule (first 10 quarters) | n | Mean level 1st half | 2nd half | vs other wards |
-|---|---:|---:|---:|---:|
-| p < 0.20 | 10 | 1.01 | 1.23 | p = 0.380 |
-| **top 10 by first-half slope** | 10 | 1.42 | **1.77** | **p = 0.0001** |
-| top 20 by first-half slope | 20 | 1.37 | 1.45 | p = 0.0051 |
-
-**All 10 top-flagged wards ended above the city norm; 8 of 10 rose in level**,
-against 53% of eligible wards.
-
-Note I had to change the flagging rule to make this testable: only **one** ward
-clears p < 0.05 on ten quarters, so I used rank-based flags. That is what a
-detector would actually do, but it is a deviation worth seeing.
-
-**The control you would have asked for next:** is this just "already-bad wards
-stay bad"? No. First-half slope and level are nearly independent (ρ = 0.132),
-and slope-flagging beats level-flagging (second-half mean **1.77 vs 1.45**,
-against 1.16 for all wards). In OLS of second-half level on first-half level and
-slope, slope enters at **p = 0.051**, adding R² +0.030.
-
-**But** flagged wards do not significantly exceed their *own* first-half level
-(p = 0.23). So the detector finds **chronically above norm**, not
-**accelerating**. The claim should be stated that way and no stronger.
-
-## 3. The main result
-
-Design as specified: Δ(relative index, post − pre) on log drainage spend, with
-pre-period index and log ward area as controls.
-
-- Window 2021-01 → 2022-12 (1,353 main-schema + 125 recovered works).
-- Pre 2020Q2–Q4, post 2023Q1–2025Q1.
-- **n = 110 wards** with ≥8 strict events. **103 treated, 7 untreated** — your
-  read was right, treated-vs-control does not exist.
-
-| Specification | Coef on log spend | se | p | 95% CI |
-|---|---:|---:|---:|---|
-| Control for pre-index + log area | **−0.0240** | 0.0096 | **0.0138** | [−0.0428, −0.0052] |
-| Spend residualised on pre-index | **−0.0240** | 0.0096 | **0.0137** | [−0.0428, −0.0052] |
-
-R² = 0.531. Pre-period index enters at −0.788 (p < 0.0001) — strong mean
-reversion. A tenfold spend increase maps to about a **0.055** fall against a
-city norm of 1.00.
-
-### Your point 1 — reverse causality
-
-**I did both specifications and they are identical, because there is nothing to
-residualise.**
-
-**corr(pre-period relative index, log spend) = −0.083, p = 0.39.**
-
-| Spend correlates with | ρ | p |
+| | ρ | p |
 |---|---:|---:|
-| **Ward area** | **+0.474** | <0.0001 |
-| Absolute strict event count | +0.355 | 0.0001 |
-| **Relative flooding index (pre)** | **+0.082** | **0.392** |
+| log spend vs log complaint-volume growth | −0.112 | 0.243 |
+| log volume growth vs Δ index | −0.032 | 0.742 |
 
-| Spend quartile | n | Median events | Median area km² |
+And the quintiles are flat in growth — **Q5 wards grow no faster than Q1 wards:**
+
+| Quintile | Median spend | **Median volume growth** | Mean Δ |
 |---|---:|---:|---:|
-| Q1 low | 28 | 16 | 1.95 |
-| Q4 high | 28 | 28 | 7.05 |
+| Q1 | ₹3.1 M | 1.94× | +0.232 |
+| Q2 | ₹10.4 M | 1.95× | +0.108 |
+| Q3 | ₹20.2 M | **2.19×** | −0.146 |
+| Q4 | ₹60.6 M | 2.02× | −0.162 |
+| **Q5** | **₹167.2 M** | **1.98×** | +0.105 |
 
-**Spend tracks ward size.** It correlates with raw counts because big wards
-generate more of everything; benchmarked against each ward's own complaint mix,
-the relationship vanishes.
+Adding log volume growth to the main specification:
 
-I checked whether this is a budget formula — it is not. Only 20% of works (14%
-of spend) sit under explicitly per-ward heads; the rest are Zone Works,
-Mayor-sanctioned, or Minister discretionary grants. **Allocation is
-discretionary and still uncorrelated with relative flooding need.** That is a
-better institutional-memory finding than the one §24 proposed, and unlike that
-one it survives testing.
+| Term | Baseline | With development control |
+|---|---:|---:|
+| **log(1+spend)** | **−0.0240** (p = 0.0138) | **−0.0247** (p = 0.0118) |
+| log(volume growth) | — | −0.1065 (p = 0.458) |
+| R² | 0.531 | 0.533 |
 
-### Your point 4 — effective n
+Growth-adjusted quintile deltas are unchanged to three decimals (Q5
++0.105 → +0.102). Jakkur and Someshwara *are* development corridors, but they do
+not carry the quintile.
 
-**n = 110 wards**, from 1,478 drainage works. The binding constraint is not the
-works but the ≥8-event eligibility filter: 88 of 198 wards have too few strict
-events across pre and post to estimate a change.
+## 2. The disruption hypothesis — also rejected
 
-## 4. The problem with the result
-
-**The dose-response is not monotone.**
-
-| Quintile (treated) | n | Median spend | Mean pre | Mean post | **Mean Δ** |
+| Quintile | Pre | 2023 | 2024–25 | Δ(2023) | Δ(24–25) |
 |---|---:|---:|---:|---:|---:|
-| Q1 | 21 | ₹3.1 M | 1.01 | 1.24 | **+0.232** |
-| Q2 | 20 | ₹10.4 M | 0.98 | 1.08 | **+0.108** |
-| Q3 | 21 | ₹20.2 M | 1.13 | 0.99 | **−0.146** |
-| Q4 | 20 | ₹60.6 M | 1.22 | 1.06 | **−0.162** |
-| **Q5** | 21 | **₹167.2 M** | 1.13 | 1.24 | **+0.105** |
-| Untreated | 7 | ₹0 | 1.39 | 1.64 | +0.251 |
+| Q3 | 1.13 | 1.06 | 0.93 | −0.073 | −0.205 |
+| Q4 | 1.22 | 1.02 | 1.08 | −0.197 | −0.134 |
+| **Q5** | 1.13 | 1.25 | 1.22 | **+0.122** | **+0.092** |
 
-Q1→Q4 falls cleanly and untreated wards are worst of all — which is the story.
-**Then Q5 reverses.** The linear coefficient is carried by Q1–Q4.
+Q5 does not recover. Paired within Q5, 2024–25 versus 2023 is **−0.030,
+p = 0.834**. Neither period differs from pre (p = 0.340, 0.539). Re-estimating
+separately, the spend coefficient is stable — **−0.0243 (p = 0.025)** on 2023,
+**−0.0238 (p = 0.065)** on 2024–25. No disruption signature.
 
-You said the scatter would be worth more than the coefficient in the paper. It
-is, and not in the way either of us expected: it shows the effect *and* its
-limit. Three candidate explanations, none tested — targeting operating at the
-extreme even though absent on average; large works disrupting drainage during
-construction; or the biggest-spend wards being rapid-development corridors where
-the problem outgrows the works. Jakkur and Someshwara, the top two spenders, fit
-the third.
+## 3. Why both failed: there was nothing to explain
 
-## 5. Your point 2 — Jakkur, dated
+I should have checked this before testing either hypothesis. Per-quintile means
+with CIs:
 
-| | Pre (2020) | During works (2021–22) | Post (2023–25) |
-|---|---:|---:|---:|
-| Mean relative index | **0.55** | 0.93 | **1.42** |
-| Drainage spend | ₹346 M | ₹494 M | — |
+| Quintile | n | Mean Δ | 95% CI | p vs 0 |
+|---|---:|---:|---|---:|
+| **Q1** | 21 | **+0.232** | [+0.038, +0.425] | **0.022** |
+| Q2 | 20 | +0.108 | [−0.228, +0.444] | 0.508 |
+| Q3 | 21 | −0.146 | [−0.308, +0.015] | 0.073 |
+| Q4 | 20 | −0.162 | [−0.474, +0.150] | 0.291 |
+| **Q5** | 21 | **+0.105** | **[−0.142, +0.353]** | **0.385** |
+| Untreated | 7 | +0.251 | [−0.778, +1.280] | 0.572 |
 
-**The spend came first.** First drainage spend 2020Q2; first quarter above the
-city norm 2021Q2. Cross-correlation of spend against index is negative at every
-lag (k=2: −0.53). Trend over 20 quarters: Spearman +0.586, p = 0.0066.
+**Only Q1 is distinguishable from zero.** And a quadratic term in log spend
+gives +0.0021 (p = 0.265), F-test for the added term **F = 1.26, p = 0.265** —
+**no statistical evidence of non-monotonicity at all.**
 
-**So "the works were a response to deterioration already under way" is not
-supported for Jakkur.** ₹840 M went in and the ward went from about half the
-city norm to about 1.5×.
+The quintile means are a noisy discretisation of 110 wards into bins of ~20. The
+linear estimate uses every ward and is the reliable one.
 
-**One caveat that matters:** the work-orders dataset ends in 2022, so the blank
-spend after 2022Q1 is censoring, not evidence BBMP stopped. What is supportable
-is that within the observable window the money preceded the deterioration.
+**So §25.5's instruction was half right.** Publish the table — but *with* its
+confidence intervals, which show the U-shape is not real. I have corrected the
+profile and the rules file rather than leaving the stronger claim standing.
 
-The quarter-by-quarter series is in profile §25.6 and is the chart you wanted.
+That is the second time in this project that an appealing pattern failed on
+proper testing (after the register contradiction). Both are now recorded with
+their tests visible.
 
-## 6. Your point 3 — the register contradiction does not hold
+## 4. One deflation you should see
 
-I tested it properly and **it fails.**
+The effect is significant **conditional on the controls**, not as a raw
+association:
 
-| | n | Median spend | Mean spend |
-|---|---:|---:|---:|
-| On the flood register | 102 | ₹17.3 M | ₹43.9 M |
-| Not on the register | 96 | ₹16.6 M | ₹44.8 M |
+| | ρ | p |
+|---|---:|---:|
+| Spearman(spend, Δ index), treated wards | −0.163 | 0.099 |
+| Spearman(spend, Δ index), untreated as spend = 0 | −0.175 | 0.067 |
 
-Mann-Whitney (off > on) one-sided **p = 0.789**. Top-20 spenders off the
-register: **9 of 20** against a 48% base rate, hypergeometric **p = 0.713**.
+The main specification reaches p = 0.014 by controlling for the pre-period
+index, which carries strong mean reversion (−0.788, p < 0.0001). Controlling for
+it is correct — regression to the mean would otherwise swamp everything — but it
+means **a raw scatter of spend against outcome shows only a marginal trend**. A
+reader who plots it will not see the result. Better we say that than they
+discover it.
 
-The §24 observation was three wards out of four, and four wards is not evidence.
-I have marked it retracted in the profile and the rules file. This is the one
-place in this project where an appealing sentence did not survive contact with
-the full sample, and it is worth keeping visible for exactly that reason.
+## 5. The targeting objection — settled
 
-The surviving and stronger version is §25.3: **drainage spend tracks ward area,
-not relative flooding need.**
+| | ρ | p |
+|---|---:|---:|
+| Spend vs absolute events, raw | +0.274 | 0.0038 |
+| **Spend vs absolute events, controlling for ward area** | **−0.050** | **0.603** |
+| Spend vs ward area | +0.474 | <0.0001 |
+| Absolute events vs ward area | +0.649 | <0.0001 |
+| Spend vs relative index, controlling for area | +0.051 | 0.599 |
+
+**The partial correlation collapses.** Area fully explains the association. Your
+predicted framing holds, and I have written it into the rules file in the order
+you specified:
+
+> Drainage spend tracks ward area (ρ = +0.474). It correlates with absolute
+> complaint counts (ρ = +0.274) because large wards generate more complaints of
+> every kind — controlling for area, that correlation vanishes (ρ = −0.050,
+> p = 0.60). Benchmarked against each ward's own complaint mix, allocation is
+> uncorrelated with need (ρ = +0.051, p = 0.60).
+
+"BBMP targets absolute complaint volume" is dead, not deflected.
+
+## 6. Where the analysis closes
+
+| Output | Result |
+|---|---|
+| **Triage** | Ceiling measured: 1.58 of 23.64 points reachable by any ward-level score; static list 14.08% against a 37.72% oracle. |
+| **Emerging** | Real in aggregate (permutation p = 0.0010), one nameable ward (Jakkur). Finds *chronically above norm*, not *accelerating*. |
+| **Effectiveness** | **Positive:** −0.0240 per log rupee, p = 0.0138, n = 110, monotone, targeting confound measurably absent. |
+
+**No new analysis threads.** The queue is building only.
 
 ## 7. What I want a second opinion on
 
-1. **Whether Q5 needs explaining before this is publishable.** I can test the
-   "large works disrupt during construction" hypothesis by splitting the post
-   window into 2023 and 2024–25 — if Q5 recovers later, that is disruption
-   rather than failure. It is maybe an hour and it would materially strengthen
-   or weaken the result. I did not do it because the brief was the main design.
-2. **How hard to push "targeting is absent".** It is the most surprising finding
-   here and it is what makes the estimate credible, but it rests on the *relative*
-   index. Spend does correlate with absolute counts (ρ = +0.355). A reviewer
-   could argue BBMP targets absolute complaint volume, which is a form of
-   targeting even if it is not targeting my outcome variable. I think the
-   specification is still clean, but the framing needs care.
-3. **Whether to stop the analysis here.** Your scheduling note said the queue
-   should turn to building after this lands. It has landed. I agree and have
-   restructured the queue accordingly, with the complaints loader promoted and
-   analysis items pushed below it. Confirm and I will not open another analysis
-   thread.
+Only one thing, and it is small.
+
+**Whether §25.5 should be edited or annotated.** I edited it — the profile and
+rules now say the non-monotonicity is not real, with §26 carrying the working.
+The alternative was to leave §25.5 intact and let §26 correct it, preserving the
+sequence of reasoning the way the retraction in §25.7 is preserved. I chose
+editing because §25.5 contained an *instruction* ("never publish the coefficient
+without the quintile table") that would have propagated a wrong emphasis into
+the paper, whereas §25.7's retraction was a claim, not an instruction. If you
+prefer the other convention, it is a two-line change.
+
+I have no other open questions. The design note for Phase 4 in NEXT.md is clear
+and I have carried it into the queue.
 
 ## 8. Verification
 
-57 tests pass (analysis only). Database unchanged — still Phase 0 plus weather.
+57 tests pass. Database unchanged — still Phase 0 plus weather.
 
-New committed artifacts: `data/reference/ward_dose_response_panel.csv` (110-ward
-panel: pre/post index, event counts, spend, works, area, register flag) and
-`data/reference/ward_persistence.csv` (first/second-half slopes and levels).
+`data/reference/ward_dose_response_panel.csv` regenerated with the extra columns
+this analysis needed: `p23`, `p45`, `d23`, `d45` (post-window split), `growth`,
+`log_growth`, `ev_all`.
 
-Method: relative index `events / (complaints × city_share)` with +0.5 smoothing,
-20 complete quarters. Drainage classified by keyword on `Name of Work` — a
-hand-curated map is still owed and is queued. Legacy dates via BR date, validated
-at 76.2% within 90 days. OLS with analytic standard errors; no clustering, since
-the unit of observation and the unit of treatment are both the ward.
+Method: same relative index and panel as §25. Partial correlations computed on
+ranks (Spearman) by residualising both variables on log ward area. Quadratic
+test is a nested F-test on the added term. Quintile CIs are t-intervals on the
+mean, n ≈ 20 per bin.

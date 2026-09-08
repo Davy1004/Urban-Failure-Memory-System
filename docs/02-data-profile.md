@@ -87,10 +87,13 @@ Generated 7 Sep 2026 from the files as downloaded from
 > associated with a fall in a ward's relative flooding index — **−0.0240 per log
 > rupee, p = 0.0138, n = 110** — and the reverse-causality confound is
 > *measurably absent* (spend vs pre-period index r = −0.083, p = 0.39; spend
-> tracks ward **area**, ρ = +0.474). But the response is **not monotone** — the
-> highest-spend quintile got worse — so never quote the coefficient without
-> §25.5's table. §24's register-contradiction observation is **retracted** in
-> §25.7: it was a four-ward coincidence (p = 0.79 across all 198).
+> tracks ward **area**, ρ = +0.474). **§26 closes the analysis**: the apparent
+> non-monotonicity in §25.5 is not real (quadratic F = 1.26, p = 0.265; only the
+> lowest-spend quintile differs from zero), and the targeting objection is
+> answered — spend vs absolute events collapses from ρ = +0.274 to **−0.050
+> (p = 0.60)** once ward area is controlled. §24's register-contradiction
+> observation is **retracted** in §25.7: a four-ward coincidence, p = 0.79
+> across all 198.
 
 ---
 
@@ -2689,3 +2692,157 @@ complaint-derived index, so §21's label caveat applies in full.
 
 **This is the project's one positive quantitative result.** It is modest, it is
 honest, and unlike the other two it is not primarily a statement about limits.
+
+---
+
+## 26. Closing the analysis: the Q5 reversal, and the targeting objection
+
+Added 8 Sep 2026. **The last analysis section.** Two loose ends in §25, both
+now settled — and the first has a different answer from either hypothesis.
+
+### 26.1 Q5 is not rapid development
+
+The hypothesis: the highest-spend wards are fast-growing corridors where
+development brings both drainage money and worsening flooding, so the reversal
+is a confound. Tested with the per-ward complaint-volume growth ratios already
+in `ward_socioeconomic.csv`.
+
+| | ρ | p |
+|---|---:|---:|
+| log spend vs log volume growth | −0.112 | 0.243 |
+| log volume growth vs Δ index | −0.032 | 0.742 |
+
+Neither link exists. And the quintiles are flat in growth:
+
+| Quintile | Median spend | **Median volume growth** | Mean Δ |
+|---|---:|---:|---:|
+| Q1 | ₹3.1 M | 1.94× | +0.232 |
+| Q2 | ₹10.4 M | 1.95× | +0.108 |
+| Q3 | ₹20.2 M | **2.19×** | −0.146 |
+| Q4 | ₹60.6 M | 2.02× | −0.162 |
+| **Q5** | **₹167.2 M** | **1.98×** | +0.105 |
+
+**Q5 wards grow no faster than Q1 wards.** Adding log volume growth to the main
+specification leaves the result untouched:
+
+| Term | Baseline | With development control |
+|---|---:|---:|
+| **log(1+spend)** | **−0.0240** (p = 0.0138) | **−0.0247** (p = 0.0118) |
+| pre-period index | −0.7877 | −0.7888 |
+| log(area) | −0.0033 | −0.0046 |
+| log(volume growth) | — | −0.1065 (p = 0.458) |
+| R² | 0.531 | 0.533 |
+
+Growth-adjusted quintile deltas are unchanged to three decimals (Q5:
++0.105 → +0.102).
+
+**The hypothesis is rejected.** Jakkur and Someshwara *are* development
+corridors, but they do not carry the quintile.
+
+### 26.2 There is no disruption-then-recovery either
+
+Splitting the post window into 2023 (4 quarters) and 2024–25 (5 quarters):
+
+| Quintile | Pre | 2023 | 2024–25 | Δ(2023) | Δ(24–25) |
+|---|---:|---:|---:|---:|---:|
+| Q1 | 1.01 | 1.18 | 1.29 | +0.170 | +0.281 |
+| Q2 | 0.98 | 0.97 | 1.17 | −0.005 | +0.198 |
+| Q3 | 1.13 | 1.06 | 0.93 | −0.073 | −0.205 |
+| Q4 | 1.22 | 1.02 | 1.08 | −0.197 | −0.134 |
+| **Q5** | 1.13 | 1.25 | 1.22 | **+0.122** | **+0.092** |
+
+Q5 does not recover. Paired within Q5, 2024–25 versus 2023 is **−0.030,
+p = 0.834** — flat. Neither period differs from the pre-period
+(p = 0.340 and 0.539).
+
+Re-estimating on each post period separately, the spend coefficient is stable:
+**−0.0243 (p = 0.025)** on 2023 and **−0.0238 (p = 0.065)** on 2024–25. No
+disruption signature.
+
+### 26.3 The actual answer: there is no reversal to explain
+
+Both hypotheses failed because the premise was wrong. Per-quintile means with
+confidence intervals:
+
+| Quintile | n | Mean Δ | 95% CI | p vs 0 |
+|---|---:|---:|---|---:|
+| **Q1** | 21 | **+0.232** | [+0.038, +0.425] | **0.022** |
+| Q2 | 20 | +0.108 | [−0.228, +0.444] | 0.508 |
+| Q3 | 21 | −0.146 | [−0.308, +0.015] | 0.073 |
+| Q4 | 20 | −0.162 | [−0.474, +0.150] | 0.291 |
+| **Q5** | 21 | **+0.105** | **[−0.142, +0.353]** | **0.385** |
+| Untreated | 7 | +0.251 | [−0.778, +1.280] | 0.572 |
+
+**Only Q1 is distinguishable from zero.** Q5's +0.105 has a CI spanning zero
+comfortably.
+
+And formally: adding a quadratic term in log spend gives a coefficient of
++0.0021 (p = 0.265) and an F-test for the added term of **F = 1.26, p = 0.265**.
+**There is no statistical evidence of non-monotonicity.**
+
+So §25.5 over-read its own table. The quintile means are a noisy discretisation
+of 110 wards into bins of ~20; the linear estimate, which uses every ward, is
+the reliable one. **The instruction to publish the quintile table stands — but
+it should be presented with its confidence intervals, which show that only the
+lowest-spend group differs from zero and that the apparent U-shape is not
+real.**
+
+### 26.4 One honest deflation
+
+The effect is significant *conditional on the controls*, not as a raw
+association:
+
+| | ρ | p |
+|---|---:|---:|
+| Spearman(spend, Δ index), treated wards only | −0.163 | 0.099 |
+| Spearman(spend, Δ index), untreated as spend = 0 | −0.175 | 0.067 |
+
+The main specification reaches p = 0.014 because it controls for the pre-period
+index, which carries a strong mean-reversion effect (−0.788, p < 0.0001).
+Controlling for it is correct — regression to the mean is real and would
+otherwise swamp everything — but it means **the relationship is not visible in a
+raw scatter of spend against outcome.** Say so rather than let a reader plot it
+and conclude the result was overstated.
+
+### 26.5 The targeting objection, settled with one number
+
+§25.3 showed spend is uncorrelated with the *relative* index (r = −0.083) but
+does correlate with *absolute* event counts (ρ = +0.355 there, +0.274 on this
+panel). A reviewer could reasonably say BBMP targets absolute complaint volume,
+which is targeting even if it is not targeting the outcome variable.
+
+| | ρ | p |
+|---|---:|---:|
+| Spend vs absolute events, raw | +0.274 | 0.0038 |
+| **Spend vs absolute events, controlling for ward area** | **−0.050** | **0.603** |
+| Spend vs ward area | +0.474 | <0.0001 |
+| Absolute events vs ward area | +0.649 | <0.0001 |
+| Spend vs relative index, raw | +0.082 | 0.392 |
+| Spend vs relative index, controlling for area | +0.051 | 0.599 |
+
+**The partial correlation collapses to −0.050 (p = 0.603).** Ward area fully
+explains the association between spend and absolute complaint counts.
+
+**The sentence for the paper, in this order — conceding the objection before it
+is raised:**
+
+> Drainage spend tracks ward area (ρ = +0.474). It correlates with absolute
+> complaint counts (ρ = +0.274) because large wards generate more complaints of
+> every kind — controlling for area, that correlation vanishes (ρ = −0.050,
+> p = 0.60). Benchmarked against each ward's own complaint mix, allocation is
+> uncorrelated with need (ρ = +0.051, p = 0.60).
+
+That is the strongest form of the identification argument available here, and it
+is what makes the dose-response estimate credible despite being observational.
+
+### 26.6 Where the analysis closes
+
+Three outputs, characterised:
+
+| Output | Result |
+|---|---|
+| **Triage** | Ceiling measured. 1.58 of 23.64 points reachable by any ward-level score; static list 14.08% against a 37.72% oracle (§19). |
+| **Emerging** | Real in aggregate (permutation p = 0.0010), one nameable ward (Jakkur). Detector finds *chronically above norm*, not *accelerating* (§23, §25.1). |
+| **Effectiveness** | **Positive.** −0.0240 per log rupee, p = 0.0138, n = 110, monotone, targeting confound measurably absent (§25, §26). |
+
+**The analysis stops here.** Everything remaining is building.

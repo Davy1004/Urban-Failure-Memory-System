@@ -25,50 +25,57 @@ before starting anything here.
 
 ---
 
-## Current task — stop analysing, start building
+## Current task — hazard categories YAML, then the complaints loader
 
-The analysis has landed. All three outputs are characterised and the system has
-not moved since Phase 0. The mid-review is around 7 December and the deliverable
-is a system *and* a paper. Your scheduling note called this and it is now due.
-
-**Build the complaints loader**, and the small artifact it depends on.
+**Analysis is closed.** Build from here.
 
 **First: `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
 source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
 waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly -
 note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
 each entry so vocabulary drift shows in a diff. Profile §10.1 has the counts,
-§12.4 the event/maintenance evidence. This also replaces the keyword match used
-for drainage classification in §25, so give it a work-order section too.
+§12.4 the event/maintenance evidence.
+
+Give it a **work-order section too**, replacing the keyword regex used for
+drainage classification in §25-§26. Same discipline: exact strings, counts.
 
 **Then: `app/ingestion/bbmp_complaints.py`.** Idempotent on `Complaint ID`
 (globally unique across all six files). Truncates timestamps to DATE
 deliberately - the source lost its AM/PM marker, so any time-of-day value would
 be fiction. Applies the ward crosswalk, keeps `in_flood_register=false` wards in
-the panel, and logs excluded counts unconditionally. Expect ~237k rows after
-filtering.
+the panel, and logs excluded counts unconditionally. Expect ~237k rows.
 
 Everything it needs exists: all 198 ward names resolve to a ward number and a
 `locations` row, `apply_to_ward_series()` returns the keep-mask and report, and
 `upsert_chunk` handles idempotency.
 
-**Do not open another analysis thread** unless the build turns up a data problem
-that blocks it.
-
 ---
 
-## A scheduling note, not a task  (ACTED ON 8 Sep - see current task)
+## Design note for Phase 4 — what the dashboard should now show
 
-Worth naming: **the analysis has advanced enormously and the system has not
-moved since Phase 0.** Complaints are still not in the database, there is no
-frontend, no memory engine, no alerts. Everything above has been computed from
-CSVs directly.
+The original plan built a triage dashboard. Triage is now proven near-
+unimprovable, so building a screen that implies otherwise would contradict the
+project's own findings. The system should **demonstrate what the analysis
+found**, which is a coherent and more honest product:
 
-That is the right order — building a dashboard on a thesis that turned out to be
-wrong would have been the expensive mistake. But the mid-review is around
-7 December and the deliverable is a system *and* a paper. After intervention
-effectiveness lands, the queue should turn to building, and the analysis should
-stop expanding.
+1. **Standing priority list** — the static top-20. Still worth 14% against 4.7%
+   random. Present it as a stable watchlist, not a nightly prediction, and show
+   the ceiling beside it.
+2. **Relative flooding index per ward, over time** — the quantity that actually
+   works. This is the map and the trend chart, and it is the core screen.
+3. **Emerging watch** — the rank-based detector, labelled honestly as
+   *chronically above norm* rather than *accelerating*, since that is what §2
+   established it detects.
+4. **Intervention effectiveness** — spend versus change in relative index. This
+   is the positive result and the most demonstrable thing in the project. Show
+   the quintile bars **with confidence intervals**: §26 established the apparent
+   Q5 tail is not real (only the lowest-spend quintile differs from zero;
+   quadratic F = 1.26, p = 0.265), so a chart implying a U-shape would misstate
+   our own finding. Note that the raw scatter looks weak — the effect is
+   conditional on controlling for mean reversion.
+
+Four screens, each backed by a measured result. That is a better mid-review demo
+than a triage screen making a claim the data refuses.
 
 ---
 
@@ -86,13 +93,12 @@ stamp dev, then add `weather_cells.model` as the first real migration.
 **3. Memory engine and the model ladder M0-M3** - to demonstrate the bound, not
 to beat it. Report within-night AUC or precision@k, never a pooled AUC.
 
-**4. Frontend (Phase 4).** Tonight's Priority List, Leaflet, Recharts. Include
-the magnitude advisory badge (§20) - half a day once the frontend exists.
+**4. Frontend (Phase 4)** - the four screens in the design note above.
 
-**5. Open analysis questions, only if time allows.** (a) Does the Q5 spend
-quintile recover if the post window is split 2023 vs 2024-25? That would
-separate construction disruption from failure (§25.5). (b) Re-run §25 drainage
-classification off the hand-curated YAML instead of keywords.
+**5. Re-run §25-§26 drainage classification off the YAML** instead of keywords,
+once the YAML exists. Expect the coefficient to move slightly; if it moves a
+lot, the keyword match was doing more work than assumed and that is worth
+knowing.
 
 ## Done log
 
@@ -250,3 +256,20 @@ classification off the hand-curated YAML instead of keywords.
   not *accelerating*. **Wards 184-198 recovered** via BR date (validated: +22d
   median offset, 76.2% within 90d), adding 125 drainage works. New:
   `ward_dose_response_panel.csv`, `ward_persistence.csv`. 57 tests pass.
+- **2026-09-08 — Analysis closed. Q5 was never a reversal.** Both explanations
+  tested and rejected: **development** (corr(log spend, log volume growth)
+  = -0.112, p = 0.243; Q5 median growth 1.98x vs Q1's 1.94x; adding the control
+  moves the coefficient -0.0240 -> -0.0247) and **disruption** (Q5 2024-25 vs
+  2023 = -0.030, p = 0.834; spend coefficient stable at -0.0243 on 2023 and
+  -0.0238 on 2024-25). The premise was wrong: **only the lowest-spend quintile
+  differs from zero** (Q1 +0.232, p = 0.022; Q5 +0.105, CI [-0.142, +0.353],
+  p = 0.385), and a quadratic term in log spend is not significant (F = 1.26,
+  p = 0.265). §25.5 over-read its own table; corrected in place because it
+  carried an *instruction* that would have propagated a wrong emphasis.
+  **Targeting objection settled**: spend vs absolute events is +0.274 raw and
+  **-0.050 (p = 0.603) controlling for ward area** - area fully explains it
+  (spend vs area +0.474, events vs area +0.649). "BBMP targets absolute
+  complaint volume" is dead, not deflected. **One deflation recorded**: the
+  effect is significant conditional on controls, not raw (Spearman -0.163,
+  p = 0.099); the main spec gets there by controlling for mean reversion
+  (-0.788), so a raw scatter looks weak. 57 tests pass.

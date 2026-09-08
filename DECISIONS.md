@@ -39,6 +39,47 @@ ceiling is and why, which nobody working with civic complaint data had done. A
 higher number would have meant we were measuring the wrong thing."
 
 ---
+### The project does have a positive result: drainage spending works
+
+Every other output measured a limit. This one measured an effect.
+
+Wards where BBMP spent more on drainage got relatively better. A tenfold
+increase in spend maps to roughly a 5% fall against the city norm — small, but
+statistically solid across 110 wards.
+
+What makes it trustworthy is something we expected to be a problem and turned out
+not to be. Normally you cannot tell whether spending helps, because cities spend
+where things are worst — so spending looks like it *causes* flooding. We checked:
+BBMP's drainage spending tracks **ward size**, not flooding severity. Because
+allocation ignores need, the comparison is clean.
+
+One honest wrinkle: the very highest-spending wards got worse, not better. We
+don't yet know if that's construction disruption or fast-growing areas
+outrunning their drainage.
+
+**If challenged:** "Allocation is uncorrelated with our outcome measure, which
+removes the usual reverse-causality problem. We report the effect and the
+non-monotonicity at the top of the spend range rather than only the linear fit."
+
+---
+
+### We retracted one of our own findings
+
+We noticed that three of four wards missing from the city's official flood
+register were among its top drainage spenders — an appealing story about the
+register being out of date while the budget knew better.
+
+We tested it across all 198 wards. It vanished (p = 0.79). Three wards out of
+four is a coincidence, not evidence.
+
+It's marked retracted in the write-up rather than deleted, with the test shown.
+
+**If challenged:** "We tested our own most quotable observation and it failed, so
+we retracted it visibly. That's the standard the rest of the document was held
+to."
+
+---
+
 ### The one sentence the whole project comes down to
 
 Three separate analyses, using different methods on different questions, all

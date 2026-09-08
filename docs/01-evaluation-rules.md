@@ -495,14 +495,36 @@ pre-period index therefore changes the coefficient not at all.
 
 **Three rules for reporting it:**
 
-1. **Never publish the coefficient without the quintile table.** The response is
-   not monotone: Q1 +0.232, Q2 +0.108, Q3 −0.146, Q4 −0.162, **Q5 +0.105**,
-   untreated +0.251. The highest-spend wards got worse and that is unexplained.
+1. **Publish the quintile table WITH its confidence intervals — the apparent
+   reversal is not real** (corrected 8 Sep, profile §26). Only Q1 differs from
+   zero (+0.232, p = 0.022); Q5 is +0.105 with CI [−0.142, +0.353], p = 0.385.
+   A quadratic term in log spend is not significant (F = 1.26, p = 0.265), so
+   **there is no statistical evidence of non-monotonicity.** Both explanations
+   were tested and rejected: Q5 wards are not faster-growing (median volume
+   growth 1.98× vs Q1's 1.94×; adding log growth moves the coefficient from
+   −0.0240 to −0.0247), and there is no disruption-then-recovery (Q5 2024–25 vs
+   2023 = −0.030, p = 0.834). The quintile means are a noisy discretisation;
+   the linear estimate on all 110 wards is the reliable one.
 2. **Do not claim causality.** Spend is discretionary, not randomised. Absence
    of correlation with the relative index does not exclude selection on
    something unobserved.
+   **And state the deflation:** the effect is significant *conditional on the
+   controls*, not as a raw association — Spearman(spend, Δ) is −0.163 (p = 0.099)
+   among treated wards. The main specification reaches p = 0.014 by controlling
+   for the pre-period index, which carries strong mean reversion (−0.788).
+   Correct, but it means the relationship is not visible in a raw scatter.
 3. **Treated-versus-control is unavailable** — 103 of 110 eligible wards were
    treated. Dose-response on log spend is the design.
+
+**The targeting objection is answered, not deflected** (profile §26.5). Spend
+correlates with absolute complaint counts at ρ = +0.274, but **controlling for
+ward area that collapses to ρ = −0.050, p = 0.603.** Area fully explains it
+(spend vs area +0.474; events vs area +0.649). State it in this order:
+
+> Drainage spend tracks ward area. It correlates with absolute complaint counts
+> because large wards generate more complaints of every kind — controlling for
+> area, that correlation vanishes. Benchmarked against each ward's own complaint
+> mix, allocation is uncorrelated with need (ρ = +0.051, p = 0.60).
 
 **Retracted:** §24's observation that register-absent wards receive more
 drainage spend. Tested across all 198 wards it fails — median ₹16.6 M off the

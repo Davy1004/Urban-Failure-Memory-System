@@ -105,9 +105,13 @@ Done:
   log spend, p = 0.0138, 95% CI [-0.0428, -0.0052], n = 110 wards**. The
   reverse-causality confound is **measurably absent** - spend vs pre-period
   index r = -0.083 (p = 0.39); spend tracks **ward area** (rho +0.474), not
-  flooding need. **Never quote the coefficient without the quintile table** -
-  the response is not monotone, the top spend quintile got worse. Do not claim
-  causality: spend is discretionary, not randomised.
+  flooding need. **The targeting objection is answered** (§26.5): spend vs
+  absolute events is +0.274 raw but **-0.050 (p = 0.60) controlling for area**.
+  **The apparent non-monotonicity is NOT real** (§26.3) - only the lowest-spend
+  quintile differs from zero, and a quadratic term is not significant
+  (F = 1.26, p = 0.265). Publish the quintile table with CIs. Do not claim
+  causality: spend is discretionary, not randomised, and the effect is
+  significant only conditional on controls (raw Spearman -0.163, p = 0.099).
 - **Jakkur: the spend came first.** Rs 346M in 2020 and Rs 494M in 2021-22,
   while the relative index went 0.55 (pre) -> 0.93 (during) -> 1.42 (post). The
   "works were a response to deterioration" reading is not supported. Caveat: the
