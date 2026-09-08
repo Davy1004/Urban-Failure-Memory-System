@@ -70,8 +70,18 @@ Generated 7 Sep 2026 from the files as downloaded from
 > and ward growth is not uniform (0.87×–4.81×). On raw event counts **7 wards
 > show a significant rising trend; after normalising by each ward's own complaint
 > volume, 0 do** — under any of three denominators — while 10 decline. The naive
-> emerging-hotspot test would be **entirely false positives**, and after
-> correcting it there is no emerging signal at ward level at all.
+> emerging-hotspot test would be **entirely false positives**.
+>
+> **§23 then corrects §22's own null and Proof Two comes back.** Testing a ward
+> against **zero** was wrong when the city itself declined 22%; benchmarked to
+> the city trend the same data gives **9 rising wards**, and a permutation null
+> puts that at **p = 0.0010**. But FDR leaves exactly **one nameable ward
+> (Jakkur)**, and split-half slopes correlate at ρ = 0.035. Real in aggregate,
+> barely identifiable per ward.
+>
+> **§24: the work orders are feasible** — ~1,350 usable drainage works across
+> 166 wards, ward/date/cost complete for 183 of 198 wards. Dose-response on
+> spend, not treated-vs-control (only 32 untreated wards exist).
 
 ---
 
@@ -2216,3 +2226,246 @@ fraction of BBMP's complaint mix, and ten wards decline significantly. That is
 consistent with drainage works actually helping, which would be a finding in the
 intervention-effectiveness output rather than a nuisance — option 2 above may be
 better supported than it currently looks.
+
+---
+
+## 23. Proof Two re-tested against the right null — it is not dead
+
+Added 8 Sep 2026. **§22 tested each ward's normalised-share slope against zero.
+That was the wrong null and it manufactured the negative.** The citywide share
+fell 22% over the window, so a ward declining 5% is *diverging upward* from its
+city and was being scored as "declining".
+
+### 23.1 The correct null
+
+For each ward-quarter, a standardised incidence ratio — observed events over
+what the citywide mix would predict for that ward's complaint volume:
+
+```
+rel(w,q) = events(w,q) / [ complaints(w,q) × city_share(q) ]
+```
+
+`rel = 1` means the ward sits exactly at the city norm that quarter. Theil–Sen
+slope plus Mann-Kendall on `rel` asks whether a ward is diverging from the city,
+which is the difference-in-differences framing already planned for intervention
+effectiveness. Smoothed as `(events + 0.5) / (expected + 0.5)`.
+
+Citywide reference: share 0.854% → 0.667%, Theil–Sen −0.000094/quarter,
+Mann-Kendall p = 0.0104. The city trend is real and downward, which is exactly
+why zero was the wrong benchmark.
+
+### 23.2 The same table, three nulls
+
+103 wards with ≥15 strict event-days, 20 complete quarters:
+
+| Test | Rising | Declining |
+|---|---:|---:|
+| Raw event count (no normalisation) | 7 | 3 |
+| Normalised share, null = **zero** (§22) | **0** | 10 |
+| Normalised share, null = **city trend** | **9** | 4 |
+
+**The 0 was an artefact of the null.** Nine wards diverge upward from the city
+at p < 0.05, twelve at p < 0.10:
+
+| Ward | On register | rel slope | p | rel first 4q → last 4q | events |
+|---|---|---:|---:|---|---:|
+| **Jakkur** | **NO** | +0.0603 | **0.0047** | 0.55 → 1.17 | 97 |
+| Chowdeshwari Ward | NO | +0.0368 | 0.0237 | 0.61 → 2.00 | 16 |
+| Dharmarayaswamy Temple Ward | yes | +0.0735 | 0.0283 | 0.92 → 2.57 | 53 |
+| Bharathi Nagar | yes | +0.1454 | 0.0283 | 1.06 → 4.97 | 46 |
+| Kempegowda Ward | yes | +0.0758 | 0.0283 | 0.78 → 1.80 | 43 |
+| Bommanahalli | yes | +0.0559 | 0.0336 | 0.53 → 1.63 | 29 |
+| Jalahalli | NO | +0.0270 | 0.0398 | 0.79 → 2.09 | 20 |
+| Sudam Nagar | NO | +0.0465 | 0.0398 | 1.15 → 1.86 | 23 |
+| Vijanapura | yes | +0.0376 | 0.0398 | 0.32 → 1.54 | 19 |
+
+### 23.3 But multiple testing bites hard
+
+103 tests at p < 0.05 yields ~5 false positives by chance, so nine is not
+self-evidently signal. Two checks:
+
+**Permutation null** — shuffle each ward's quarters in time, destroying trend
+while preserving every ward's distribution and the city benchmark, 2,000 draws:
+
+| | |
+|---|---:|
+| Rising wards under the null | mean 2.4, sd 1.6, 95th pct 5, max 9 |
+| **Observed** | **9** |
+| **Permutation p for ≥9 rising** | **0.0010** |
+
+**The aggregate excess is real.** More wards diverge upward than chance allows.
+
+**Benjamini–Hochberg FDR**, one-sided rising hypothesis:
+
+| Population tested | q=0.05 | q=0.10 | q=0.20 |
+|---|---:|---:|---:|
+| All 103 eligible wards | 0 | 0 | 0 |
+| **42 non-register wards** (the pre-specified emerging pool, §12.5) | 0 | **1** | **1** |
+| 61 register wards (contrast) | 0 | 0 | 0 |
+
+**Exactly one ward survives: Jakkur**, and only under the pre-specified
+restriction to wards off BBMP's register. That restriction is legitimate — the
+project decided in §12.5 that triage owns the register wards and emerging
+detection scans the rest — but it must be declared as pre-specified, because
+post-hoc it would be fishing.
+
+**Split-half stability is poor.** Slopes computed on the first and second ten
+quarters correlate at ρ = 0.035, with 4/10 overlap among top risers. Which ward
+is rising in one half is close to independent of the other. Some of that is
+power — ten quarters is thin — but it is a warning, not a footnote.
+
+Risers are *not* enriched off the register (4 of 9, against 42 of 103 eligible;
+hypergeometric p = 0.54), so register-absence does not by itself predict rising.
+
+### 23.4 Jakkur
+
+| | |
+|---|---|
+| Events, first 4 quarters → last 4 | 6 → 35 |
+| Complaints, first 4 quarters → last 4 | 1,411 → 4,396 |
+| Relative index | 0.55 → 1.17 (1.00 = city norm) |
+| Theil–Sen slope | +0.0603 / quarter, Mann-Kendall p = 0.0047 |
+| Strict event-days in window | 97 |
+
+Events grew 5.8× while its own complaints grew 3.1× — it is outpacing its own
+reporting growth, which is precisely what the normalisation is designed to
+detect. It is off BBMP's flood register, so it is a genuine "failing but not yet
+official" candidate. It survives every test run on it: first on raw growth,
+fourth on the zero null, first on the city null, and the only FDR survivor.
+
+**Proof Two can demonstrate its method on one validated case. It cannot yet
+deliver a defensible list.** That is a much better position than §22 suggested
+and a much weaker one than the original plan assumed.
+
+### 23.5 Question 3 settled: the declines
+
+Under the correct null only four wards decline significantly, and **all four
+fell in absolute terms too**, in a city where absolute strict events rose 78%
+(862 → 1,533) while complaints rose 128%:
+
+| Ward | Events first4 → last4 | Complaints first4 → last4 | rel |
+|---|---|---|---|
+| Bagalagunte | 10 → 4 | 783 → 1,433 | 1.32 → 0.52 |
+| A.Narayanapura | 12 → 4 | 356 → 757 | 2.68 → 0.91 |
+| Padmanabha Nagar | 4 → 3 | 580 → 1,476 | 0.83 → 0.43 |
+| Ramamurthy Nagar | 25 → 13 | 1,679 → 2,998 | 1.76 → 0.71 |
+
+**Improvement is on the table for these four.** Absolute counts fell while the
+city's rose and while their own complaint volumes roughly doubled — that cannot
+be a denominator effect.
+
+For contrast, of the ten wards that "declined" against the *zero* null, four had
+absolute events **rise** (Hoodi 25→32, Horamavu 43→46, Varthur 15→27,
+Vishwanathnagenahalli 7→8). Those are pure denominator growth and must never be
+reported as improvement. The zero-null test could not tell the two apart; the
+city null does.
+
+---
+
+## 24. Work orders: feasible, and richer than the label suggests
+
+Added 8 Sep 2026. Feasibility check only — nothing built.
+
+`data/raw/work_orders/` holds 198 CSVs, one per ward, from the OpenCity BBMP
+work-orders dataset. 27 MB.
+
+### 24.1 Structure and completeness
+
+| | |
+|---|---:|
+| Files downloaded | 198 / 198 |
+| Files with a usable header | **183** |
+| **Files with a legacy schema, no dates** | **15 (wards 184–198)** |
+| Rows parsed | 45,737 |
+| Distinct column schemas among the 183 | 2 (differ only by a leading index column) |
+| End Date parseable | 43,465 (95.0%) |
+| Nett cost present | 45,737 (100%) |
+| Ward string present | 45,737 (100%) |
+
+**Wards 184–198 are unusable.** They carry `id, wo num, wodetails, contractor,
+brnumber, amount, nett, deduction` — no date column at all, with dates buried
+inside a concatenated `brnumber` string, and the works are 2014–2016, predating
+the complaint window. That is the whole Bommanahalli/South periphery block.
+
+Date quality is otherwise good, with a few impossible values to filter: 8 rows
+dated 1900 and 1 dated 2027.
+
+Completion years peak in 2018 (6,138) and fall away through 2021 (3,386) and
+2022 (993) — **the dataset thins exactly where the complaint window opens.**
+
+### 24.2 Drainage is well represented
+
+Classifying `Name of Work` by keyword:
+
+| Work type | Rows | Share |
+|---|---:|---:|
+| **drain / stormwater** | **16,647** | **36.4%** |
+| roads / asphalt | 9,136 | 20.0% |
+| other / unclassified | 6,640 | 14.5% |
+| buildings / civil | 5,971 | 13.1% |
+| water supply / sewer | 3,854 | 8.4% |
+| electrical / lights | 3,429 | 7.5% |
+| solid waste | 60 | 0.1% |
+
+Drainage is separable and it is the single largest category. Descriptions are
+specific enough to work with ("Construction of drain and providing grills at BB
+road in Kempegowda ward no 01"). Note many road works also mention drains, so
+a hand-curated classification — like the hazard YAML — will be needed rather
+than these keywords.
+
+### 24.3 The number that was asked for
+
+Complaints run 2020-02-08 → 2025-06-19, so a work needs complaint history on
+both sides of its completion:
+
+| Completion window | Before / after | Drainage works | Wards | Median cost |
+|---|---|---:|---:|---:|
+| 2020-08 → 2022-12 | 6m / 2.5y | **1,894** | 177 | ₹3.53 M |
+| **2021-01 → 2022-12** | **11m / 2.5y** | **1,353** | **166** | ₹3.92 M |
+| 2021-07 → 2022-12 | 17m / 2.5y | 728 | 145 | ₹3.96 M |
+
+**Roughly 1,350 usable drainage works across 166 wards.** That is far more than
+the thin overlap the brief anticipated.
+
+### 24.4 The design problem is the opposite of the one expected
+
+Treated versus control does **not** work: 166 of 198 wards received drainage
+work in 2021–22, leaving only **32 untreated controls** — and those 32 are
+plausibly the wards BBMP thought needed nothing, so they are not exchangeable.
+
+But spend varies enormously across treated wards — median ₹19.5 M, maximum
+₹631.6 M — so **dose-response on spend is the right design**, not binary
+treatment. That is a stronger design anyway.
+
+Top drainage spenders in the window:
+
+| Ward | Works | Drainage spend |
+|---|---:|---:|
+| **Someshwara** | 45 | ₹631,617,283 |
+| **Jakkur** | 51 | ₹494,203,600 |
+| Ullalu | 58 | ₹474,788,529 |
+| **Basavanapura** | 40 | ₹370,378,240 |
+| Yelahanka old Satellite Town | 31 | ₹344,416,781 |
+| Thanisandra | 34 | ₹220,354,017 |
+
+**Three of the four register-absent wards from §21 are in the top four
+spenders.** BBMP is spending heavily on drainage in wards its own flood register
+does not list — which is itself worth a sentence in the paper.
+
+And **Jakkur, the only ward that survives FDR as a rising emerging hotspot, is
+the second-highest drainage spender at ₹494 M.** Its flooding share rose
+significantly *while* that money was spent. Two readings — the works did not
+work, or the works were a response to a worsening problem — and separating them
+is exactly what intervention-effectiveness analysis is for. It is a strong case
+study and it is available now.
+
+### 24.5 Verdict
+
+**Feasible.** Ward, date and cost are present and complete for 183 of 198 wards;
+drainage is separable at 36% of rows; ~1,350 works fall in a usable window
+across 166 wards; and dose-response on spend gives a workable design with real
+variance. The specific caveats — the 15 dateless wards, the 2022 thinning, and
+the near-absence of untreated controls — are all manageable and none is fatal.
+
+This is the strongest of the three outputs on data availability, and it is the
+only one with a source independent of the complaint feed.

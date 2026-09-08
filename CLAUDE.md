@@ -77,21 +77,32 @@ Done:
   are on BBMP's agency-observed register against a 52% base rate (p = 0.006),
   but severity agreement is only moderate (Spearman 0.334). The label finds real
   places; its error is in timing and degree. Say this in the limitations.
-- **PROOF TWO'S NAIVE TEST IS ALL FALSE POSITIVES** (profile §22). Complaint
-  volume doubled 2021-2024 and ward growth is not uniform (0.87x-4.81x). Raw
-  event counts: **7 wards significantly rising**. Normalised by each ward's own
-  complaint volume: **0** - under any of three denominators - while 10 decline.
-  **Normalisation is mandatory**, and after it there is no emerging signal at
-  ward level at all (closest p = 0.139). Likely a granularity wall: a ward is
-  3.7 km2, an emerging hotspot is a junction, and the complaints carry no
-  sub-ward geography. Do not report Bellandur, Varthur or Hoodi as emerging.
+- **PROOF TWO: normalise, and NEVER test against zero** (profile §22-§23).
+  Raw event counts give 7 rising wards - all reporting-growth artefacts, so
+  normalisation by each ward's own complaint volume is mandatory. But testing
+  the normalised slope against **zero** is also wrong, because the citywide
+  share fell 22%: that gave a false 0-rising. Benchmarked to the **city trend**
+  (`events / (complaints x city_share)`) the answer is **9 rising, 4 declining**,
+  permutation p = 0.0010. **FDR leaves exactly one nameable ward: Jakkur**
+  (pre-specified non-register pool, q <= 0.10); split-half slope correlation is
+  0.035. Real in aggregate, barely identifiable per ward. Do not report
+  Bellandur, Varthur or Hoodi as emerging - Hoodi is significantly declining.
+  **Never call a share decline "improvement" without checking absolute counts**;
+  4 of 10 zero-null decliners had absolute events rise.
 - **Reporting growth is idiosyncratic, not an equity gradient** (§22.2). SC+ST
   share vs growth rho = -0.057 (p = 0.42); no core/periphery effect. A noise
   problem, not a bias problem.
-- **Both proofs are now negative-shaped.** Proof One is a measured ceiling,
-  Proof Two a measured confound. The positive contribution has to come from
-  intervention effectiveness, which has an independent data source (BBMP ward
-  work orders 2013-2022). **This is a project-level decision - see REPORT.md.**
+- **Work orders are feasible and are the strongest output on data** (§24).
+  ~1,350 usable drainage works across 166 wards, 2021-01..2022-12; ward, date
+  and cost complete for 183 of 198 wards; drainage separable at 36% of rows.
+  **Wards 184-198 use a legacy schema with no dates - unusable.** Only 32 wards
+  are untreated, so use **dose-response on spend** (median Rs 19.5M, max
+  Rs 632M), not treated-vs-control. Jakkur - the one FDR-surviving emerging
+  ward - is the 2nd-highest drainage spender at Rs 494M, which is a ready-made
+  case study.
+- **Proof One is a measured ceiling; Proof Two is real but barely nameable.**
+  The positive contribution most likely comes from intervention effectiveness.
+  **This is a project-level decision - see REPORT.md and NEXT.md.**
 
 Not started:
 - `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,

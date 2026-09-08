@@ -25,62 +25,117 @@ before starting anything here.
 
 ---
 
-## Current task — housekeeping bundle
+## Current task — intervention effectiveness, first real build
 
-One afternoon, two jobs, agreed three rounds ago and repeatedly deferred.
+Profile §24 says the work orders are feasible: ~1,350 usable drainage works
+across 166 wards, ward/date/cost complete for 183 of 198. This is now the
+project's most promising output and the only one with a source independent of
+the complaint feed.
 
-**(a) Restate the §12-§14 headlines on IFS** so the profile stops quoting two
-weather sources in one document: 13.55% -> 14.08% static baseline, 37.36% ->
-37.72% ceiling, 4.72% -> 4.79% random. Keep the ERA5 figures as an explicitly
-labelled before/after, not as the headline. §17-§22 already use IFS, so the
-inconsistency is internal to `docs/02-data-profile.md`.
+**Build the dose-response analysis**, not treated-vs-control — only 32 wards are
+untreated and they are not exchangeable.
 
-**(b) Baseline Alembic, then add `weather_cells.model`.** Generate the baseline
-against an **empty** database so migrations build the schema from scratch (Phase
-7 needs that), hand-add the three views with `op.execute`, verify a fresh
-`alembic upgrade head` gives an `information_schema` identical to loading
-`ufms_schema.sql`, then `alembic stamp head` on dev. Then add `model` to
-`weather_cells` as the project's first real migration, backfill it (cells 1-9
-`era5`, 10-23 `ecmwf_ifs`), and update `ufms_schema.sql` to match.
+1. **Recover the 15 dateless wards first** if it is cheap. Wards 184-198 carry a
+   legacy schema; dates look regex-recoverable from the concatenated `brnumber`
+   string. An hour, and it restores Bilekahalli, Begur, Gottigere and Arakere -
+   active flood wards. Timebox it; if the regex is fragile, drop them and say so.
+2. **Hand-curate the drainage classification.** Keyword matching gave 36.4% but
+   many road works also mention drains. Same discipline as the hazard YAML:
+   exact source strings, counts beside each entry, committed as an artifact.
+3. **Design it as difference-in-differences on the relative index**, reusing
+   §23's `rel(w,q) = events / (complaints x city_share)`. Never test against
+   zero. Spend is the dose; the outcome is the change in `rel` after completion
+   versus before.
+4. **Jakkur is the case study.** Rs 494M of drainage spend and a significantly
+   *rising* flooding share. Either the works failed or they were a response to a
+   worsening problem - separating those is the whole point.
+
+Watch the obvious confound: **spend is not random.** BBMP spends where it thinks
+there is a problem, so naive dose-response will show "more spend, more flooding".
+Control for prior level, not just prior trend, and say plainly if the design
+cannot separate targeting from effect.
+
+---
+
+## The project-level call — read this one yourself
+
+Both proofs are negative-shaped. That needs saying out loud rather than being
+absorbed one report at a time.
+
+**What the project actually has now**, and it is more than it feels like:
+
+- A **measured predictability ceiling** for complaint-derived triage: 1.58 of
+  23.64 points reachable by any ward-level score whatsoever.
+- The **pooled-AUC trap**, with a clean variance decomposition. Publishable on
+  its own; anyone building a location-day triage model can be fooled the same way.
+- The **reporting-growth confound**: seven spurious emerging hotspots over five
+  years, every one explained by volume growth — including Bellandur and Varthur,
+  the two most notorious flooding wards in Bengaluru, appearing as *newly
+  emerging*. That example alone is worth the paper.
+- **Convergent validity**: two independent methods agreeing that place is
+  saturated and the residual is timing.
+- A working system, 57 tests, reproducible pipeline.
+
+**The honest thesis has changed** from "we built a predictor" to *"we measured
+what civic complaint data can and cannot support for urban failure prediction,
+and it is less than the literature assumes."* That is a better paper than a
+marginal accuracy win, and every claim in it is defensible line by line because
+it was measured rather than asserted.
+
+**The risk is not the science, it is the audience.** A jury expecting a working
+predictor may not immediately value a rigorous negative. That is a real risk and
+it is Tanmay's to manage, not ours.
+
+**Action for Tanmay, before December:** take this to your guide. Not the numbers
+— the framing. "Our results are turning out to be measured limits rather than a
+working predictor; is a rigorous negative acceptable for this project, or does
+the department expect a positive?" Five minutes, and the answer changes what the
+next three months optimise for. Do not discover it at the mid-review.
+
+**Update, 8 Sep 2026 — the framing above softens slightly, but not much.**
+Proof Two is no longer purely negative: benchmarked against the city trend there
+are 9 upward-diverging wards and a permutation p of 0.0010, plus one nameable
+case (Jakkur) validated against its own Rs 494M of drainage spend. And the work
+orders are feasible, so intervention effectiveness is a live positive output
+rather than a hope.
+
+So the honest thesis is now *"we measured what complaint data can and cannot
+support, and here is the narrow band where it can"* rather than a flat negative.
+**The conversation with the guide is still worth having** — the headline results
+are still limits rather than a working predictor — but you can now go in with
+one demonstrated emerging hotspot and a funded-works effectiveness analysis in
+progress, which is a materially easier conversation than a pure negative.
 
 ---
 
 ## Queue
 
-**1. BBMP ward work orders 2013-2022 — inspect before committing to it.**
-Promoted, because intervention effectiveness is now the only Learn output with
-a positive result available and an independent data source, and it is the one
-dataset in `docs/00-build-plan.md` nobody has opened. Profile it the way
-`02-data-profile.md` profiled the grievances: headers, coverage, ward
-identifier, date range, whether desilting/drain work is separable, and whether
-it joins to the ward crosswalk. **Find its fatal flaw now, not in December.**
+**1. Recover wards 184-198 from the legacy work-order schema** if not done as
+part of the current task.
 
 **2. `data/reference/hazard_categories.yaml`.** Hand-curated map from exact
 source category and sub-category strings to `WATERLOG` / `GARBAGE`, and within
-waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly;
-note the double space in `Storm  Water Drain(SWD)`. Record the row count beside
-each entry so vocabulary drift shows in a diff.
+waterlogging to `event` vs `maintenance`. Preserve source strings byte-exactly.
 
 **3. Complaints loader.** `app/ingestion/bbmp_complaints.py`, driven by that
-YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE deliberately.
-Applies the crosswalk, keeps `in_flood_register=false` wards in the panel, logs
-excluded counts unconditionally.
+YAML. Idempotent on `Complaint ID`. Truncates timestamps to DATE. Applies the
+crosswalk, keeps `in_flood_register=false` wards, logs excluded counts.
 
-**4. Decide what Proof Two becomes.** Profile §22.6 gives three options and
-REPORT.md §6 recommends one. Project-level call, same as the Proof One
-restatement was.
+**4. Housekeeping bundle.** Restate the §12-§14 headlines on IFS so the profile
+stops quoting two weather sources. Baseline Alembic against an empty database,
+hand-add the three views with `op.execute`, verify against `ufms_schema.sql`,
+stamp dev, then add `weather_cells.model` as the first real migration.
 
-**5. Hotspot register dedup decision.** Three KML layers already loaded
-unmerged (398 points, `hotspot_source` per layer). Establish what each layer
-represents before choosing a threshold.
+**5. Decide how Proof Two is presented.** §23 gives an aggregate result
+(permutation p = 0.0010) and exactly one nameable ward. REPORT.md §6 recommends
+reporting the aggregate as the finding and Jakkur as a worked case.
 
-**6. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
-All four landing near 14% against a 37.72% ceiling is the result. Report
-within-night AUC or precision@k, never a pooled AUC.
+**6. Hotspot register dedup decision.** Three KML layers loaded unmerged.
 
-**7. Magnitude advisory badge (Phase 4, half a day).** Profile §20: AUC 0.749
-on "is tonight in the worst third", 9 of the top 10 flagged nights genuinely
-severe. A dashboard badge, not an ML pipeline.
+**7. Model ladder M0-M3 — to demonstrate the bound, not to beat it.**
+Report within-night AUC or precision@k, never a pooled AUC.
+
+**8. Magnitude advisory badge (Phase 4, half a day).**
 
 ## Done log
 
@@ -192,3 +247,24 @@ severe. A dashboard badge, not an ML pipeline.
   **Both proofs are now negative-shaped; see REPORT.md §6 for the options.**
   New: `ward_socioeconomic.csv` (population, SC/ST, density from the BBMP 2014
   delimitation file), `ward_growth_trends.csv`. 57 tests pass.
+- **2026-09-08 — Proof Two is alive; the null was wrong. Work orders feasible.**
+  Testing each ward's normalised slope against **zero** was wrong because the
+  citywide share itself fell 22%. Benchmarked to the city trend
+  (`events / (complaints x city_share)`, a standardised incidence ratio) the
+  same data gives **9 rising / 4 declining** instead of 0 / 10. A permutation
+  null (2,000 draws, shuffling quarters within ward) expects 2.4 risers and
+  observed 9 — **p = 0.0010**, so the aggregate signal is real. **But BH-FDR
+  leaves 0 nameable wards over all 103, and exactly 1 — Jakkur — under the
+  pre-specified non-register pool (q <= 0.10)**; split-half slope correlation is
+  0.035. Real in aggregate, barely identifiable per ward — the third time this
+  project has landed on that shape. **Question 3 settled:** all four correct-null
+  decliners fell in absolute terms while the city rose 78%, so improvement is on
+  the table for Bagalagunte, A.Narayanapura, Padmanabha Nagar and Ramamurthy
+  Nagar — whereas 4 of the 10 zero-null "decliners" had absolute events *rise*
+  (Hoodi 25->32, Horamavu 43->46, Varthur 15->27). **Work orders: feasible.**
+  ~1,350 usable drainage works across 166 wards (2021-01..2022-12), ward/cost
+  100%, dates 95%, drainage separable at 36.4% of 45,737 rows. Wards 184-198 use
+  a legacy dateless schema and are unusable as-is. Only 32 untreated wards, so
+  **dose-response on spend**, not treated-vs-control. Jakkur is the 2nd-highest
+  drainage spender (Rs 494M) *and* the one FDR-surviving riser — a ready-made
+  case study. New: `ward_relative_trends.csv`. 57 tests pass.

@@ -70,9 +70,56 @@ What this means in practice:
   memorising the register.
 - **Due Phase 3, before the mid-review**, so there is time to adapt if it fails.
 
-## Proof Two — THE NAIVE TEST IS ALL FALSE POSITIVES (profile §22)
+## Proof Two — alive, but it can name one ward (profile §22–§23)
 
-**Measured 8 Sep 2026. Read before writing any emerging-detection code.**
+**Measured 8 Sep 2026, then corrected the same day. Read both parts.**
+
+**The null matters more than the normalisation.** §22 tested each ward's
+normalised-share slope against **zero** and found 0 rising / 10 declining. That
+was wrong: the citywide share fell 22% over the window, so a ward declining 5%
+is diverging *upward* and was scored as declining.
+
+Against the correct null — a standardised incidence ratio benchmarking each
+ward-quarter to the citywide mix, `events / (complaints × city_share)` — the
+same data gives **9 rising / 4 declining**.
+
+| Test | Rising | Declining |
+|---|---:|---:|
+| Raw event count | 7 | 3 |
+| Normalised share, null = zero | **0** | 10 |
+| **Normalised share, null = city trend** | **9** | 4 |
+
+**Two things are true at once, and both must be reported.**
+
+*The aggregate signal is real.* A permutation null that shuffles each ward's
+quarters in time gives a mean of 2.4 rising wards (sd 1.6, max 9 over 2,000
+draws) against 9 observed — **permutation p = 0.0010**.
+
+*But almost nothing is individually nameable.* Benjamini–Hochberg FDR over all
+103 eligible wards leaves **zero** survivors at q = 0.05, 0.10 or 0.20.
+Restricting to the **pre-specified** emerging pool — the 42 eligible wards off
+BBMP's register, per §12.5 — leaves exactly **one: Jakkur** (q ≤ 0.10). Declare
+that restriction as pre-specified or it is fishing.
+
+Split-half slopes correlate at ρ = 0.035 with 4/10 top-riser overlap, so *which*
+ward is rising is unstable. Treat the ward-level riser list as indicative, not
+as an output.
+
+**Rules that follow:**
+
+- **Never test a ward trend against zero.** Benchmark to the city, always. This
+  is the same difference-in-differences framing as intervention effectiveness.
+- **Report the permutation test alongside per-ward p-values.** "More wards rise
+  than chance allows" is defensible; "these nine wards are rising" is not.
+- **Never report a share decline as improvement without checking absolute
+  counts.** Of the ten zero-null "decliners", four had absolute events *rise*
+  (Hoodi 25→32, Horamavu 43→46, Varthur 15→27, Vishwanathnagenahalli 7→8) —
+  pure denominator growth. Of the four correct-null decliners, all four fell
+  absolutely while the city rose 78%; improvement is on the table only for those.
+- Normalisation is still mandatory, and the denominator barely matters
+  (all complaints / stable categories / solid-waste agree at ρ = 0.85–0.995).
+
+**Superseded framing (kept because the reasoning is still instructive):**
 
 Complaint volume doubled 2021→2024 and ward growth is **not** uniform
 (p10 1.42×, p50 2.00×, p90 3.00×, range 0.87×–4.81×). A trend test on raw

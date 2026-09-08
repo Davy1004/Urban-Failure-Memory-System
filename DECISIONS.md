@@ -9,6 +9,37 @@ pushes on it. No numbers you do not need.
 
 ---
 
+### What this project turned out to be
+
+We set out to build a system that predicts which places will flood. What we
+actually produced is a measurement of **how predictable that is at all** — and
+the answer is: much less than everyone assumes.
+
+That is not a failure. Almost every project in this space builds a model,
+reports a good-looking score, and never checks whether the score means anything.
+We checked, repeatedly, and found specific reasons it does not.
+
+The three things we can state that others cannot:
+
+1. **A ceiling.** Even a ranking that cheats — using the test period's own
+   answers — beats ours by only 1.6 points out of 24. The limit is in the
+   phenomenon, not the method.
+2. **A trap.** A standard model score said our model worked. It made no
+   difference to the actual decision. We can explain exactly why, and anyone
+   building this kind of model can be fooled the same way.
+3. **A confound.** Complaint volume in Bengaluru doubled in four years. A naive
+   "which places are getting worse" test finds seven rising hotspots — and every
+   one disappears once you account for that growth. Two of them are Bellandur
+   and Varthur, the most notoriously flood-prone wards in the city, which the
+   naive test would have reported as *newly emerging*.
+
+**If challenged — "so your model doesn't work?":** "The model performs at the
+measured ceiling for this data. Our contribution is establishing where that
+ceiling is and why, which nobody working with civic complaint data had done. A
+higher number would have meant we were measuring the wrong thing."
+
+---
+
 ### The project is a decision support system, not a prediction system
 
 BBMP already publishes its flood-prone locations. A system that outputs "these
