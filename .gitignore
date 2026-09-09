@@ -30,3 +30,13 @@ models/*.pkl
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Frontend (frontend/ is an npm project inside this repository, not a sibling).
+# Anchored with a leading slash so these never match a Python directory that
+# happens to share the name.
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/coverage/
+/frontend/screenshots/
+*.local

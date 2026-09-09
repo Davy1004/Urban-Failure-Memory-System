@@ -4,13 +4,17 @@ Rendered from the running system against the loaded database — nothing here is
 mocked, redrawn or illustrative. The number in a figure is the number the API
 serves, so a figure and the text can only disagree if the data changed.
 
-Regenerate:
+Regenerate — three terminals, all paths from the repository root:
 
 ```bash
-cd ../../ufms-backend && uvicorn app.main:app          # :8000
-cd ../ufms-frontend    && npm run dev                  # :5173
-node scripts/paper-figures.mjs                         # writes back into here
+uvicorn app.main:app                    # terminal 1, :8000
+cd frontend && npm run dev              # terminal 2, :5173
+cd frontend && npm run figures          # terminal 3, writes back into here
 ```
+
+`npm run figures` drives a real browser, so on a new machine it needs
+`npx playwright install chromium` once. Without it, it fails immediately on a
+missing executable.
 
 Deterministic: the derived tables are built from fixed windows, so a re-run
 produces the same figures until the underlying data changes. 2× scale, so they

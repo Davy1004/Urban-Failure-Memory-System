@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 KML_NS = "{http://www.opengis.net/kml/2.2}"
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "data" / "raw" / "bbmp_ward_map_2015.kml"
-DEFAULT_OUT = ROOT.parent / "ufms-frontend" / "public" / "bbmp-wards.geojson"
+DEFAULT_OUT = ROOT / "frontend" / "public" / "bbmp-wards.geojson"
 
 N_WARDS = 198
 PRECISION = 4           # ~11 m at Bengaluru's latitude; a screen pixel is 20-40 m

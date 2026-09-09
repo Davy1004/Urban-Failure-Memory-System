@@ -291,5 +291,58 @@ demonstrate the gap and report the decision metric instead."
 
 ---
 
+### The dashboard forgets your sign-in when you close the tab, on purpose
+
+When you sign in, the browser is handed a token — a string that proves who you
+are for the next hour. Where that token is kept is a real choice, and there are
+three options.
+
+`localStorage` keeps it until something deletes it. Close the browser, come back
+tomorrow, and you are still signed in. That is how most web apps work, and it is
+the wrong answer here: this is a municipal system, and the machine an officer
+uses is plausibly shared. A token sitting in storage overnight is a signed-in
+session waiting for whoever sits down next.
+
+Memory only — which is what we shipped first — keeps it until the page reloads.
+Perfectly safe, and slightly too safe: pressing F5, or following a link straight
+to one screen, silently signed you out.
+
+We use **`sessionStorage`**, the middle one. The browser itself wipes it when
+the tab closes, and it is not shared with other tabs. So a refresh keeps you
+signed in and closing the tab signs you out, which is exactly the rule we wanted
+and not a compromise on it.
+
+**If challenged — "why not `localStorage`?":** "The rule is that a bearer token
+must not survive a tab close on a shared municipal machine. `sessionStorage`
+satisfies that by construction — the browser clears it — while surviving a
+refresh. `localStorage` would persist until something explicitly removed it,
+which is the case the rule exists to prevent."
+
+One detail worth knowing if asked: a stored token is only a claim, so on every
+fresh page load the app asks the server who it belongs to before showing
+anything. If the token has expired, it is discarded and you get the sign-in
+screen. Nothing trusts the browser's copy on its own.
+
+---
+
+### The frontend was living outside version control, and it isn't now
+
+For about a day, the four dashboard screens sat in a folder *next to* the
+repository rather than inside it, with no git of their own. They existed on one
+disk, in one place, with no backup and nothing on GitHub — a week before the
+evaluation. This is recorded because it is worth remembering how ordinary the
+mistake looked: everything worked, the tests passed, and nothing about using it
+day to day suggested a problem.
+
+It is now `frontend/` inside the repository, tracked and pushed. The backend was
+in the same state for a different reason — thirteen commits of finished work
+that had never been pushed — and that is fixed too.
+
+**If challenged:** nobody will ask. It is here so the answer to "where is the
+code" is one URL rather than two, and so the next person to reorganise this
+knows not to split it apart again.
+
+---
+
 *Updated as decisions are made. If something here is not true any more, it is a
 bug — tell Claude.*

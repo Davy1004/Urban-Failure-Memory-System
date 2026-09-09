@@ -155,10 +155,11 @@ Done:
   expanding and the queue should turn to building** - the system has not moved
   since Phase 0 and the mid-review is ~7 December.
 
-- **PHASE 4 IS DONE: the frontend exists** (9 Sep 2026). `../ufms-frontend`,
-  React 19 + Vite + Tailwind v4 + Recharts + Leaflet, four screens on the four
-  endpoints. `npm run dev` proxies `/api` to :8000. **Read
-  `ufms-frontend/README.md` before changing a screen** — several presentation
+- **PHASE 4 IS DONE: the frontend exists** (9 Sep 2026). `frontend/` **inside
+  this repository** (it was a sibling directory until 9 Sep and is not any
+  more — see below), React 19 + Vite + Tailwind v4 + Recharts + Leaflet, four
+  screens on the five endpoints. `npm run dev` proxies `/api` to :8000. **Read
+  `frontend/README.md` before changing a screen** — several presentation
   rules there are results, not taste. In particular precision@20 is drawn as a
   mark on a scale ending at the oracle ceiling, never as a stat tile: the
   context is structural, so it cannot be dropped without breaking the drawing.
@@ -413,8 +414,14 @@ app/
 
 See `docs/` for the build plan and the evaluation rules — read `docs/01-evaluation-rules.md` before writing any modelling code.
 
-The frontend lives in `../ufms-frontend`, a separate npm project. It talks to
-this API only — it holds no analysis of its own, and every caveat it renders
+The frontend lives in `frontend/`, a separate npm project **inside this
+repository**. It was a sibling directory (`../ufms-frontend`) until 9 Sep 2026,
+which meant it was in no version control at all; it is now tracked here, and
+`/frontend/node_modules/` and `/frontend/dist/` are ignored at the repo root.
+`scripts/export_ward_geojson.py` writes to `frontend/public/`, a path inside the
+repository, and `frontend/scripts/paper-figures.mjs` writes to `docs/figures/`.
+Do not restructure this into `backend/` + `frontend/` under a new root — every
+path in every doc is written against this layout. It talks to this API only — it holds no analysis of its own, and every caveat it renders
 arrives as a required response field so a redesign cannot silently drop one.
 
 `ufms_schema.sql` at the repo root is the canonical DDL. The SQLAlchemy

@@ -8,12 +8,24 @@ worked.
 Primary city: **Bengaluru** (BBMP). Demo city: **Delhi** (PWD list, no
 ground truth).
 
+This repository holds both halves of the system: the FastAPI backend at the
+root, and the React dashboard in **`frontend/`** (its own npm project, with its
+own README — read that before changing a screen; several presentation rules
+there are results, not taste).
+
+**For the evaluation demo, follow `docs/03-demo-runbook.md`, not this section.**
+It is the cold-start sequence written to be executed literally, with the
+failure modes and what to do about them.
+
 ## Quick start
 
 ```bash
-# 1. Database
+# 1. Database (MySQL on host port 3307, not 3306 - see CLAUDE.md)
 docker compose up -d
-docker exec -i ufms-mysql mysql -uroot -proot < ../ufms_schema.sql
+alembic upgrade head          # builds the schema, views included
+# ...or load the canonical DDL directly. The charset flag is NOT optional:
+# without it two column comments are stored double-encoded.
+# docker exec -i ufms-mysql mysql --default-character-set=utf8mb4 #     -uroot -proot < ufms_schema.sql
 
 # 2. Environment
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
@@ -69,7 +81,8 @@ alembic upgrade head
 |---|---|
 | `app/core/` | config, JWT + bcrypt, exception handlers, logging |
 | `app/db/` | engine, session factory, declarative base |
-| `app/models/` | 26 ORM models mirroring the SQL schema |
+| `app/models/` | 31 ORM models mirroring the SQL schema |
+| `app/derived/` | the four dashboard computations; reconciled, not ingested |
 | `app/schemas/` | Pydantic validation and response models |
 | `app/repositories/` | data access layer |
 | `app/services/` | business logic, owns transactions |
@@ -89,9 +102,19 @@ alembic upgrade head
 | POST | `/api/v1/locations` | admin |
 | PATCH | `/api/v1/locations/{id}` | admin |
 | DELETE | `/api/v1/locations/{id}` | admin |
+| GET | `/api/v1/index` | any |
+| GET | `/api/v1/index/{ward}` | any |
+| GET | `/api/v1/watchlist` | any |
+| GET | `/api/v1/emerging` | any |
+| GET | `/api/v1/allocation` | any |
 
-Next: ingestion (Open-Meteo, BBMP complaints, BBMP hotspot register), then
-the memory engine and the nightly triage endpoint.
+The five dashboard endpoints are read-only for both roles and are what
+`frontend/` consumes. Each carries its own caveats — `oracle_at_k`,
+`random_at_k`, `ground_truth_available`, `retraction` — as **required** response
+fields, so a screen cannot quietly drop the context a number needs.
+
+Next: the memory engine and the model ladder M0-M3 — to demonstrate the
+measured bound, not to beat it (see `docs/01-evaluation-rules.md`).
 
 ## Read `CLAUDE.md` first
 

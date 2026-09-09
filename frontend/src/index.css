@@ -1,0 +1,212 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* ---------------------------------------------------------------------------
+   Palette
+
+   Every value below is from the project's validated data-viz palette and was
+   checked with the palette validator before use, not chosen by eye:
+
+     categorical  #2a78d6 / #eb6834 / #1baf7a  — all-pairs, both modes, PASS
+     cool arm     #86b6ef #2a78d6 #184f95      — ordinal, light, PASS (2.06:1)
+     warm arm     #ec958c #d94a4a #9b302f      — ordinal, light, PASS (2.21:1)
+     cool arm     #184f95 #3987e5 #9ec5f4      — ordinal, dark,  PASS (2.15:1)
+     warm arm     #8f2d2a #d04b47 #e8938a      — ordinal, dark,  PASS (2.14:1)
+
+   The diverging arms are for the ward-index choropleth, where 1.00 is the city
+   norm and the midpoint has to read as "nothing". Blue/red are warm-cool
+   opposites; the midpoint is neutral gray, never a hue.
+
+   #1baf7a sits below 3:1 on the light surface, so anything drawn in it also
+   carries a visible label — the relief rule.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --surface-1: #fcfcfb;
+  --surface-page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --border-strong: rgba(11, 11, 11, 0.18);
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  /* A tint for chips and for the meter track: recessive against --series-1,
+     still clearly distinct from the surface. */
+  --series-1-soft: #cde2fb;
+  --series-2-soft: #fbe0d4;
+  /* The second shade of the same hue, for a two-shade mark pair (the dumbbell's
+     first-half dot). Distinct from the tint, which sits behind marks. */
+  --series-1-muted: #86b6ef;
+
+  /* Diverging, inner (at the norm) to outer (far from it). */
+  --div-cool-1: #86b6ef;
+  --div-cool-2: #2a78d6;
+  --div-cool-3: #184f95;
+  --div-mid: #f0efec;
+  --div-warm-1: #ec958c;
+  --div-warm-2: #d94a4a;
+  --div-warm-3: #9b302f;
+
+  /* Fixed, never themed. Always shipped with an icon and a label. */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  --no-data: #e6e5e0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --surface-1: #1a1a19;
+    --surface-page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.2);
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    /* #184f95 was too strong here: as a meter track it read as a third
+       filled segment rather than as the empty remainder of the scale. */
+    --series-1-soft: #17304f;
+    --series-2-soft: #4a2010;
+    --series-1-muted: #9ec5f4;
+
+    --div-cool-1: #184f95;
+    --div-cool-2: #3987e5;
+    --div-cool-3: #9ec5f4;
+    --div-mid: #383835;
+    --div-warm-1: #8f2d2a;
+    --div-warm-2: #d04b47;
+    --div-warm-3: #e8938a;
+
+    --no-data: #2c2c2a;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-1: #1a1a19;
+  --surface-page: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-1-soft: #17304f;
+  --series-2-soft: #4a2010;
+  --series-1-muted: #9ec5f4;
+
+  --div-cool-1: #184f95;
+  --div-cool-2: #3987e5;
+  --div-cool-3: #9ec5f4;
+  --div-mid: #383835;
+  --div-warm-1: #8f2d2a;
+  --div-warm-2: #d04b47;
+  --div-warm-3: #e8938a;
+
+  --no-data: #2c2c2a;
+}
+
+@theme inline {
+  --color-surface: var(--surface-1);
+  --color-page: var(--surface-page);
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-hairline: var(--border);
+  --color-hairline-strong: var(--border-strong);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-good: var(--status-good);
+  --color-warning: var(--status-warning);
+  --color-serious: var(--status-serious);
+  --color-critical: var(--status-critical);
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Recharts draws its own chrome; pin it to the tokens so it themes with
+   everything else instead of staying black on a dark surface. */
+.recharts-cartesian-axis-tick text,
+.recharts-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--axis);
+}
+
+.recharts-cartesian-grid line {
+  stroke: var(--grid);
+}
+
+.recharts-surface:focus,
+.recharts-wrapper:focus {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+}
+
+/* Leaflet's default panes are white; the map has to theme too. */
+.leaflet-container {
+  background: var(--surface-page);
+  font-family: inherit;
+}
+
+.leaflet-bar a,
+.leaflet-control-attribution {
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.leaflet-bar a:hover {
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
