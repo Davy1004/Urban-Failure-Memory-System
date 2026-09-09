@@ -44,143 +44,49 @@ means anything.
 
 ---
 
-## Current task — three things, in this order
+## Current task — the residual, and it is small
 
-Good report. All five questions answered in the next section; two of them
-changed my mind, and one of them turned out to be a bigger problem than you
-framed it as. That one is first.
+**All three items of the previous task are done, except the part that needs an
+account. Read `REPORT.md` before deciding anything here.**
 
-### 1. The frontend is not in version control at all. Fix this before anything else.
+The previous task's three items landed as follows:
 
-`ufms-frontend/` is a sibling of the repository, not inside it, and it contains
-no `.git` of its own. So four screens, 25 tests, the figure generator and the
-visual check exist in **exactly one place on one disk**, seven days before the
-evaluation, with no backup and nothing on GitHub. You flagged this as "slightly
-awkward for a deploy". It is worse than that: an accidental delete or a disk
-fault this week costs the entire Phase 4 and there is no recovery.
+1. **Frontend into version control — done, and it was worse than described.**
+   The frontend was untracked, and the *backend* was 13 commits and a 48-file
+   working tree ahead of a remote that only had Phase 0. Both are now pushed.
+2. **Deploy — prepared and proved locally, not provisioned.** Everything up to
+   account signup is done and verified end to end. The signup is not something
+   Claude can do.
+3. **Runbook — done.** `docs/03-demo-runbook.md`, plus `docs/04-deploy.md`.
 
-Move it in. A plain directory move, not a restructure:
+### What is left, in priority order
 
-- `../ufms-frontend/` → `frontend/` inside the repository.
-- Fold its `.gitignore` into the repo's, so `frontend/node_modules/` and
-  `frontend/dist/` are ignored. Confirm `node_modules` is not staged before you
-  commit — check the file count in `git status` rather than trusting the pattern.
-- Fix the path in `scripts/export_ward_geojson.py` that reached across the
-  boundary. It becomes a path inside the repository, which is the thing you
-  wanted.
-- Fix anything else that assumed the sibling layout: `npm run figures`, the
-  visual check, the dev proxy target, the two READMEs.
-- Run both suites again (143 + 25), commit, **push**.
+**1. Rehearse from the runbook on 15 September.** Follow
+`docs/03-demo-runbook.md` literally on the demo machine, change nothing, note
+every place it fails. This is the single highest-value system task remaining.
+Start with `python scripts/check_parity.py --base http://127.0.0.1:8000` — it
+must print `27/27 checks passed`.
 
-Do **not** restructure into `backend/` + `frontend/` under a new root. Every
-path in every doc breaks and we freeze in four days.
+**2. Provision the deploy, if it is still wanted — Tanmay only, ~1 hour.**
+`docs/04-deploy.md` is the click path. Three signups, none needing a card:
+Aiven (MySQL, free, 1 GB), Render (API, free), Vercel (static). The one step
+that was not verifiable without an account is Aiven's TLS against PyMySQL, and
+it is flagged in the doc with the error to expect. **Stop if a card is asked
+for, or after roughly three hours.** The demo runs from localhost regardless.
 
-While you are there: confirm the backend is actually pushed and current, and
-that `.env` is still untracked and still ignored. `git status --porcelain` and
-`git log origin/main..HEAD` — if anything is sitting unpushed, push it.
+**3. Nothing else, until the paper is signed.** See below — the paper is 30
+marks and the supervisor conversation cannot happen on the 15th.
 
-### 2. Deploy — time-boxed to one working session, and it is a bonus, not the demo.
+### A judgement call, flagged for whoever writes this file next
 
-You are right that finding out on the 15th would be bad. So attempt it now,
-under two conditions.
+I did **not** promote queue item 1 (the memory engine and the model ladder
+M0–M3) into the current task, even though the protocol says to promote the next
+queue item. Building the ladder is days of work, and the schedule in this file
+freezes the system on 13–14 September with "no new features". Promoting it would
+have put a multi-day modelling task into a four-day freeze window.
 
-**Condition one: the demo runs from localhost on the 16th regardless.** Free
-tiers sleep, college networks are hostile, and a cold start in front of an
-examiner is a worse failure than having no URL. A live URL is a nice line on a
-slide and a genuine config test; it is not the demonstration.
+The queue is therefore untouched. If that is wrong, say so and I will start it.
 
-**Condition two: a hard stop.** If a provider demands a card, or the total
-attempt passes roughly three hours, stop and write down exactly where it broke.
-Deployment is worth a mark or two out of 20; the paper is 30. Do not let it eat
-a day.
-
-The one design note that makes this tractable: **the deployed database does not
-need the full dataset.** The five endpoints read the derived tables — 
-`ward_quarter_index` (3,960 rows), `watchlist_snapshots` + `watchlist_entries`,
-`emerging_watch`, `ward_allocation` — plus `locations`, `users`, and whatever
-the index endpoint joins. None of them read the 1.3 M hourly weather rows or the
-237 K raw complaints. So dump *only* the tables the API actually reads, and
-restore that. It turns a multi-gigabyte upload into a few megabytes and it keeps
-rule 7 true by construction.
-
-Then prove it: **the deployed API must return the same numbers as local.** Add a
-smoke check that hits the five endpoints against both base URLs and diffs the
-JSON — precision@20 = 14.0809%, the frozen top-20 in rank order, Jakkur's index
-series, ρ = +0.474 / +0.082. If the deployed instance disagrees with local on any
-of those, it is not deployed, it is broken, and it must not be shown.
-
-Practical points, in the order they will bite:
-
-- **MySQL is the hard part.** Postgres has free tiers everywhere; MySQL 8 does
-  not. Check what is actually on offer this week rather than trusting anything I
-  or the plan file said months ago — and if the only free MySQL requires a card,
-  stop and say so. Do **not** port the schema to Postgres to get a free tier;
-  that is a rewrite four days before a freeze.
-- **CORS.** FastAPI must allow the deployed frontend origin. It is the single
-  most likely reason a working backend shows an empty dashboard.
-- **The API base URL** must be an environment variable in the frontend build,
-  not a hardcoded localhost. If it currently only works through the dev proxy,
-  that is the thing to fix.
-- **The demo accounts.** `demo.officer@ufms-demo.org` / `demo.admin@ufms-demo.org`
-  with the shared password are convenience accounts for a local machine. If
-  anything is publicly reachable they must be given fresh, non-obvious passwords
-  — or the deployed instance gets its own accounts and the local ones are never
-  seeded there. Record which you did.
-
-### 3. The runbook — `docs/03-demo-runbook.md`.
-
-Write it as something to be executed literally, not read. Assume the machine has
-the repository and nothing else running.
-
-- Cold start, in order, with the actual commands: database up, migrations,
-  seed/restore, API up, frontend up. Ports named.
-- What to do when MySQL is not running, when the port is taken, when the token
-  expires mid-demo.
-- The five-minute demo path: which screen, in which order, and the one sentence
-  to say on each. Screen 2 is the one that carries the argument — the mark
-  between the floor and the ceiling — so it should not be third.
-- The two caption warnings, repeated: precision never without its floor and
-  ceiling; the allocation scatter never with a trend line. Under evaluation
-  pressure these are exactly what gets said loosely.
-- A line stating what is *not* built: no alerting loop, no outcome recording,
-  `interventions` intentionally empty, `ground_truth_available: false` on the
-  emerging screen and why.
-
-The 15 September rehearsal is then defined: follow this file literally on the
-demo machine, change nothing, and note every place it fails.
-
----
-
-## Answers to your §9 questions
-
-**§9.1 — the refresh trade-off. Change it, and it costs nothing.** Your rule was
-that a bearer credential must not survive a tab close on a shared municipal
-machine. `sessionStorage` satisfies that rule exactly — it is cleared when the
-tab closes — while surviving a refresh and a deep link. In-memory was tighter
-than the threat you named, not more correct than it. Switch to `sessionStorage`,
-keep the expiry handling as it is, and add a line to `DECISIONS.md`: "why not
-`localStorage`" is a question an examiner may well ask, and the answer is crisp.
-
-**§9.2 — same repo. Yes, but for the backup reason, not the deploy reason.**
-See task 1.
-
-**§9.3 — keep `visual-check`.** It found five real defects on its first run,
-none of them reachable from the DOM, which is precisely the class of bug that a
-25-test DOM suite cannot cover. One `npx playwright install chromium` on a
-machine that will run it is cheap. Put that install line in the frontend README
-so the next machine is not confused by the failure. Do not build CI around it
-this week.
-
-**§9.4 — deploy, time-boxed.** Task 2 above.
-
-**§9.5 — keep the basemap off.** Your reasoning is right and it is also the
-defensible answer under questioning: a diverging choropleth over a road map is
-two encodings competing for the same pixels, and the ward polygons *are* the
-map. Confirm one thing only — that a ward is identifiable without the basemap,
-i.e. hover or click gives the ward name, its index and the quarter. If that is
-already true, do nothing.
-
----
 
 ## The paper and the deck exist. Do not write either one here.
 
@@ -251,6 +157,46 @@ Note this is now cosmetic: profile §28 closed effectiveness for good, so a
 better drainage classifier changes a descriptive spend figure, nothing more.
 
 ## Done log
+
+- **2026-09-10 — Everything is in version control and pushed; the demo is
+  runbookable; the deploy is proved locally but not provisioned.**
+  **The backup gap was bigger than the frontend.** `ufms-frontend/` was indeed
+  untracked, but `origin/main` was still on **Phase 0** — 13 unpushed commits
+  plus a 48-file working tree holding all of Phases 1–4. Both are pushed now;
+  `git status` is clean, `origin/main..HEAD` is empty, `.env` is untracked and
+  ignored. The frontend moved to `frontend/` as a plain directory move, verified
+  by file count (45 files staged, zero from `node_modules` or `dist`) rather than
+  by trusting the ignore pattern. `scripts/export_ward_geojson.py` now writes
+  inside the repo and **reproduces the committed geojson byte-for-byte** from the
+  new path; `paper-figures.mjs` writes to `docs/figures/`.
+  **The deploy design note is verified, not assumed.** The API's table closure is
+  nine tables and 4,820 rows — it never reads `weather_observations` (1.18 M
+  rows, 146 MB) or `complaints` (235 K, 64 MB) — so the dump is **612 KB against
+  a 215 MB database**. A fresh MySQL built by `alembic upgrade head` plus that
+  dump, served from a clean venv holding only `requirements-api.txt`, in
+  production mode, returned **byte-identical JSON on all five endpoints** to the
+  full local instance, and 27/27 frozen invariants on both.
+  `scripts/check_parity.py` is that check and doubles as the pre-demo smoke test.
+  **Providers checked this week**: Aiven always-free MySQL (1 GB, no card) and
+  Render free web services (no card) both still exist; **both sleep**, which is
+  why the runbook says localhost regardless. Not provisioned — that needs signup.
+  **Two security fixes for anything publicly reachable**: the API now refuses to
+  boot when `ENVIRONMENT=production` and `SECRET_KEY` is the placeholder
+  committed in `.env.example`, is under 32 characters, or `DEBUG=true` (it raised
+  nothing before, so a forgotten secret would have signed tokens with a publicly
+  known key); and the dump **excludes `users`** so the shared local demo password
+  cannot be published, with `scripts/create_user.py` seeding generated passwords
+  instead.
+  **§9 answers actioned**: token moved to `sessionStorage` with `/auth/me`
+  restore and a `DECISIONS.md` entry; `npx playwright install chromium` in the
+  frontend README; the choropleth tooltip now carries the quarter as well as the
+  ward name and index, which was the one §9.5 condition not already met.
+  **Doc errors found and fixed**: CLAUDE.md and README said 31 models where the
+  metadata maps 32; CLAUDE.md still claimed `ufms_schema.sql` opens with
+  `DROP DATABASE`, contradicting its own later note; the backend README's
+  schema-load command pointed at `../ufms_schema.sql` and omitted
+  `--default-character-set=utf8mb4`. **148 backend tests and 31 frontend tests
+  pass.**
 
 - **2026-09-09 — Phase 4: the frontend is built, and the watchlist context is
   structural rather than adjacent.** `ufms-frontend/`, React 19 + Vite 8 +
