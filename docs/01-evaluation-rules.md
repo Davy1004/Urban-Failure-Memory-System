@@ -242,6 +242,7 @@ database holds, and what `/api/v1/watchlist` serves.**
 | **Random 20 wards** | **4.79%** | 12.7% |
 | Weather only — IFS, 14 cells | 5.63% | 14.9% |
 | **Static "20 historically worst"** | **14.08%** | **37.3%** |
+| Same list re-ranked daily on all prior history | **14.23%** | 37.7% |
 | **Oracle ceiling** | **37.72%** | 100% |
 
 136 held-out rain days, 1,289 strict events. The random floor is a closed form,
@@ -249,6 +250,27 @@ not an estimate: k wards drawn without replacement from n catch `k × events/n`,
 so per-night precision is `events/n` exactly and independent of k. Profile
 §17.4's **4.80%** is a simulated estimate of the same quantity; the two agree to
 simulation noise, and 4.79% is the figure to publish.
+
+**The re-ranked row is measured on this basis, 10 Sep 2026** — it used to be an
+ERA5 number (13.70%) sitting in an otherwise-IFS table.
+`scripts/measure_reranked_baseline.py` reproduces it. Re-ranked means the top-20
+is rebuilt before every test night from every strict event day strictly earlier
+than that night, so it is given all the static list's history *plus* everything
+that happened during the test period up to the previous day. It gains
+**+0.15 points** (14.08% → 14.23%), against +0.14 on the ERA5 basis: the same
+answer either way, which is the point.
+
+Two things that make it concrete. The re-ranked top-20 changes by a mean of
+**0.08 wards between consecutive nights** — about one substitution every twelve
+nights — so it is very nearly the static list, and that is *why* three further
+years of history buy nothing. And the same script reproduces the published ERA5
+pair exactly (13.55% and 13.70%), which is what makes the IFS figure comparable
+rather than merely new.
+
+**The 1,289 events is the same on both bases, and that is a coincidence.** The
+two bases share only 126 of their rain days; the 12 ERA5-only days and the 10
+IFS-only days happen to carry 101 events each. Do not read it as the event count
+being basis-independent — the day sets genuinely differ.
 
 ### The earlier ERA5 basis, kept for reference
 
@@ -301,7 +323,8 @@ Two: five wards changed between halves, so the danger set genuinely moves.
 
 ## Where the headroom is, and is not
 
-Re-ranking on more history added nothing (13.70 vs 13.55, ERA5 basis).
+Re-ranking on more history added nothing: 14.23 vs 14.08 on the IFS basis,
+13.70 vs 13.55 on ERA5 — +0.15 and +0.14 points respectively.
 **Count-based memory
 features are saturated** — `recurrence_count`, `recurrence_rate` and
 `recurrence_percentile` reproduce the static list and little else. If the

@@ -1044,7 +1044,11 @@ precision@20 figure this project reports must be printed beside this ceiling or
 it will read as a failure when it is not. The static list achieves **36.3% of
 the achievable maximum**.
 
-**Re-ranking on more history adds nothing** (13.70% vs 13.55%). The static list
+**Re-ranking on more history adds nothing** (13.70% vs 13.55%). Both figures
+here are ERA5-basis, as is all of §14. The IFS-basis equivalents were measured
+on 10 Sep 2026 and say the same thing: 14.08% → **14.23%**, +0.15 points. See
+`docs/01-evaluation-rules.md` and `scripts/measure_reranked_baseline.py`.
+The static list
 is already saturated: three further years of complaint counts do not improve
 it. So the headroom between 13.6% and 37.4% is unreachable with memory alone —
 it has to come from weather and from location-level features. That is the

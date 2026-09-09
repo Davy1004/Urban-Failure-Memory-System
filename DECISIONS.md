@@ -344,5 +344,57 @@ knows not to split it apart again.
 
 ---
 
+### We cannot check whether our "emerging" wards really became hotspots
+
+This is the most honest limitation in the project and it is worth being able to
+state it cleanly.
+
+Our second output flags wards that are becoming flood problems but are not yet on
+BBMP's official list. The obvious way to check that we are right is to wait: if a
+ward we flagged in 2023 appears on the city's list in 2025, we called it.
+
+We cannot do that, because **BBMP's published list carries no dates.** We checked
+all three of the map files they publish. Two of them contain nothing but an
+internal id number per location. The third adds a name, a ward number and a zone.
+None of them says when a location was added. So there is no way to ask "what did
+the city add last year", and therefore no way to score our flags against it.
+
+We kept the empty column in the database rather than deleting it, and the system
+says so out loud — the emerging screen carries a banner reading
+`ground_truth_available: false` with the reason. Deleting the column would have
+looked tidier and quietly removed the evidence that the check is missing.
+
+**If challenged — "so how do you know the emerging detector works?":** "Against
+the city's own additions, we cannot, and we say so on the screen. What we can
+show is that flagged wards stay above the city norm afterwards — ten of ten did,
+p = 0.0001. That is internal validation, and we label it as such rather than
+implying external confirmation we do not have."
+
+---
+
+### The "is it on the official list?" flag lives in one specific place, deliberately
+
+A small thing that would be easy to get wrong later, recorded so it is not.
+
+Whether a ward is on BBMP's flood register is stored in
+`data/reference/ward_crosswalk.csv`, not in the database's `locations` table. The
+database does have a `is_known_hotspot` flag, but it is set on the 398 individual
+register *locations*, and it is deliberately false for all 198 *wards*.
+
+That looks like an oversight and is not. Only 200 of the 398 register locations
+carry a ward number at all, so a ward-level flag computed from the database would
+be built from half the register. The crosswalk was assembled by hand and checked,
+and where the two disagree — exactly one ward, number 65 — the hand check is the
+one that is right: the register calls it Kadu Malleshwar, the 2015 ward map calls
+it Subedarapalya, and we left it unpaired rather than guess.
+
+**Why it matters:** our emerging result is restricted in advance to the 42
+eligible wards that are *not* on the register. Code that read the flag from the
+database would find every ward marked "not on the register" and widen that pool
+to all 103 — which would turn a pre-declared restriction into fishing for a
+result. Same number, wrong place, invalid finding.
+
+---
+
 *Updated as decisions are made. If something here is not true any more, it is a
 bug — tell Claude.*

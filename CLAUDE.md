@@ -269,13 +269,53 @@ Done:
   a machine with `data/raw/`; **135 passed, 13 skipped** on a fresh clone; **31**
   frontend. A skip count above 13 means something is wrong, not merely absent.
 
+**Two register questions, decided 10 Sep 2026 — do not reopen without new data.**
+
+- **`first_listed_year`: KEEP the column, leave it NULL. The years do not
+  exist in anything we can download.** Checked all three register layers'
+  schemas directly: `bbmp_low_lying_areas.kml` and `flood_prone_locations.kml`
+  carry a single `OBJECTID` and nothing else; `flood_vulnerable_map.kml` carries
+  `OBJECTID, WARD_NAME, WARDNO, LocationName, KGISFVLID, ZONE`. **No date field
+  in any layer** — the four-digit numbers that turn up in a naive grep are
+  coordinate fragments and ids.
+  Not dropped, for two reasons. It is the socket for the one input that would
+  let Proof Two be validated externally, and BBMP plainly holds those dates
+  internally — dropping the column would record "we have decided never to
+  validate emerging detection", which is a stronger claim than the evidence
+  supports. And the gap is already *visible* rather than hidden: `/api/v1/emerging`
+  returns `ground_truth_available: false` and the screen renders it as a banner,
+  so a NULL column plus that banner is a documented gap, whereas dropping the
+  column is the same gap with the audit trail removed.
+  A migration purely to reword the column COMMENT was considered and rejected —
+  schema churn for prose, three days from the freeze. Optional post-freeze tidy.
+
+- **`is_known_hotspot` on ward rows: leave it FALSE. The ward-level register
+  fact stays in `ward_crosswalk.csv`.** Four reasons, and the third is the one
+  that settles it:
+  1. The predicate differs. For a register point it means "this point is on the
+     register"; for a ward the analogous fact is "this ward contains a register
+     point". Overloading one boolean with two meanings is what caused the
+     confusion in the first place.
+  2. **It is not derivable from `locations` anyway: only 200 of the 398 register
+     points carry a `ward_no`** — just the `flood_vulnerable_map` layer has a
+     `WARDNO` field. A flag computed from `locations` would be built from half
+     the register.
+  3. **Where the two instruments disagree, the crosswalk is deliberately right.**
+     The points name 103 wards, the crosswalk flags 102, and the single
+     difference is **ward 65** — the register calls it `Kadu Malleshwar`, the
+     2015 delimitation calls it `Subedarapalya`, and §15.2 left it unpaired
+     rather than guessed. Populating the flag from the KML's `WARDNO` would
+     silently overrule a recorded hand judgement.
+  4. Misreading it is expensive: `locations.is_known_hotspot` is FALSE for all
+     198 wards, so code that read it would call all 103 eligible wards
+     off-register and widen the pre-specified emerging pool from **42 to 103**,
+     turning a declared restriction into fishing.
+
 Not started:
-- **`is_known_hotspot` is set but `first_listed_year` is NULL for all 398
-  register points.** The KML layers carry no year, so the "which locations did
-  the city add this year" framing has no ground truth on the register side.
-  Decide whether to drop the field or source the years elsewhere.
 - **Hotspot register dedup.** The three KML layers are loaded unmerged, so the
   398 points contain an unknown number of duplicates across layers. Queue item.
+  Related to the decisions above: 198 of the 398 points carry no `ward_no`, so a
+  dedup pass would also be the moment to decide whether they should.
 - Memory engine and the model ladder M0-M3 — to demonstrate the bound, not to
   beat it. Report within-night AUC or precision@k, never a pooled AUC.
 
@@ -441,6 +481,9 @@ strict label, temporal split):
 - Random baseline 4.7%. Re-ranking the static list daily on all prior history
   gives 13.7% — i.e. **memory alone is saturated**, and the headroom to 37.4%
   has to come from weather and location features. That is M3's job.
+  (Every figure in this block is ERA5-basis, matching profile §14. On the IFS
+  basis the pair is 14.08% → **14.23%**, measured 10 Sep 2026 — same conclusion,
+  +0.15 points. `docs/01-evaluation-rules.md` leads with the IFS triple.)
 - **Judge Kendall's tau against 0.59**, the observed static persistence between
   period halves. A model ranking at tau >= 0.59 has reproduced the static list.
 - Stratify by rainfall band: the static baseline itself moves from 8.9% on

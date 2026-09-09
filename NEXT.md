@@ -199,37 +199,86 @@ before signing, not after. `DECISIONS.md`, first three entries, ten minutes.
 
 ## Queue
 
+Items 3, 4 and 5 were done on 10 Sep 2026 — see the Done log. Three left, none
+of them for this week.
+
 **1. Memory engine and the model ladder M0-M3** - to demonstrate the bound, not
 to beat it. Report within-night AUC or precision@k, never a pooled AUC.
+**Post-16-September.** It adds presentation, not evidence: the bound it would
+demonstrate is already measured, already in the paper and already on a slide.
 
-**2. Hotspot register dedup decision.** Three KML layers loaded unmerged.
+**2. Hotspot register dedup decision.** Three KML layers loaded unmerged, so the
+398 points hold an unknown number of cross-layer duplicates. Note from item 4:
+**198 of the 398 points carry no `ward_no`**, and only `flood_vulnerable_map.kml`
+has a `WARDNO` field at all — so a dedup pass is also the moment to decide
+whether the other two layers' points should be given one.
 
-**3. `locations.first_listed_year` is NULL for all 398 register points** —
-the KML carries no year. Drop the field or source the years elsewhere.
-**Now also blocks the emerging screen's only external validation**, which is
-why `/api/v1/emerging` returns `ground_truth_available: false`.
-
-**4. `locations.is_known_hotspot` is FALSE for all 198 ward rows.** The flag is
-set on the 398 register points only, so the ward-level register fact lives in
-`ward_crosswalk.csv` and `app/derived/emerging.py` reads it from there. Decide
-whether the ward rows should carry it; reading the wrong one would widen the
-pre-specified emerging pool from 42 wards to all 103.
-
-**5. Measure the re-ranked baseline on the IFS basis.** Drafting the paper
-surfaced a basis mix of the kind you caught in §17.3: the "same list, re-ranked
-on all prior history" figure of **13.70%** is an ERA5 number, and it was sitting
-in a table whose other five rows are IFS. It has been removed from the paper's
-Table II and the observation is now stated as an ERA5-basis pair (13.55% →
-13.70%), which is at least internally consistent. But the IFS-basis equivalent
-of 13.70% has never been measured. Measure it, record it in
-`docs/01-evaluation-rules.md` beside the other IFS figures, and check whether
-any other doc quotes 13.70% next to 14.08%.
-
-**6. Re-run the drainage classification off the YAML** instead of keywords.
+**3. Re-run the drainage classification off the YAML** instead of keywords.
 Note this is now cosmetic: profile §28 closed effectiveness for good, so a
 better drainage classifier changes a descriptive spend figure, nothing more.
 
+**4. Post-freeze efficiency: `dashboard_service.py` recomputes per request.**
+The allocation correlations and the emerging evidence are computed from the
+stored rows on every call — that is why the API needs pandas and scipy (a 335 MB
+runtime tree) and burns CPU per request. **It is also load-bearing**: it is why a
+database restored from `demo_data.sql` reproduces every figure to 1e-9, with no
+second copy of the numbers that could drift. Any change has to keep
+`scripts/check_parity.py` meaningful. Recorded in CLAUDE.md's deferred decisions.
+
 ## Done log
+
+- **2026-09-10 (second session) — Rehearsed the demo from a fresh clone five
+  days early; six defects found and fixed; queue items 5, 3 and 4 closed.**
+  **The rehearsal passed: a `git clone` reaches a working, correct dashboard.**
+  Followed `docs/03-demo-runbook.md` literally against a database built from
+  nothing: **135 tests pass, 13 skip** (all naming the gitignored raw data they
+  need), **27/27 parity invariants**, and **24/24 browser checks** over the four
+  screens — 198 ward polygons, zero basemap tiles, the tooltip carrying
+  ward/index/quarter, `chronically above norm` present, `accelerating` only in
+  its caveat, ρ = 0.474 against ρ = 0.082, the retraction rendered, no console
+  errors. F5 keeps the session and the screen; a fresh browser context is not
+  signed in.
+  **The most serious defect was invisible: `tests/test_migrations.py` was
+  skipping on every machine but this one.** It builds throwaway `ufms_t_*`
+  databases and the `ufms` user docker-compose creates cannot `CREATE DATABASE`;
+  the grant existed here only because someone added it by hand in an earlier
+  session and recorded it nowhere. So the check that caught 178 model-vs-schema
+  differences ran nowhere else, and it **skipped rather than failed** — a green
+  suite guarding nothing, the same shape as the `_env_file=None` trap.
+  `scripts/mysql-init/01-test-grants.sql` fixes it in version control. Also
+  fixed: `container_name` was hard-coded so `docker compose up -d` from a second
+  checkout dies **and exits 0**; the runbook activated the venv once but opened
+  three terminals; its "map has no shading" row told you to run a script that
+  **cannot work on a clone**; no row for 8000/5173 being in use; and the
+  `weather_observations`/`complaints` row counts I had quoted were
+  `information_schema` **estimates** (1,309,896 and 237,157, not 1,175,475 and
+  234,918 — the second contradicted CLAUDE.md's own figure).
+  **Queue item 5 — the IFS-basis re-ranked baseline is 14.23%.**
+  `scripts/measure_reranked_baseline.py`, scored by the same
+  `score_watchlist` that produces the API's 14.08%. It **reproduces the published
+  ERA5 pair exactly** (13.55% → 13.70%), which is what makes the IFS figure
+  comparable: 14.08% → **14.23%**, +0.15 points against +0.14 on ERA5 — the same
+  conclusion on either basis. The re-ranked top-20 changes by a mean of **0.08
+  wards between consecutive nights**, about one substitution every twelve nights,
+  which is *why* three more years of history buy nothing. Also found: the 1,289
+  event count is identical on both bases **by coincidence** — they share only 126
+  of their rain days, and the 12 ERA5-only and 10 IFS-only days carry 101 events
+  each. No document quoted 13.70% beside 14.08%.
+  **Queue item 3 — keep `first_listed_year`, leave it NULL; the years do not
+  exist.** All three register layers' schemas read directly: two carry only
+  `OBJECTID`, the third adds name/ward/zone. **No date field anywhere.** Not
+  dropped, because it is the socket for Proof Two's only external validation and
+  the gap is already visible through `ground_truth_available: false` — dropping
+  it would be the same gap with the audit trail removed.
+  **Queue item 4 — leave `is_known_hotspot` FALSE on ward rows.** It is not
+  derivable from `locations`: **only 200 of 398 register points carry a
+  `ward_no`**. The points name 103 wards, the crosswalk flags 102, and the single
+  disagreement is **ward 65** — `Kadu Malleshwar` vs `Subedarapalya`, left
+  unpaired by hand in §15.2 — so populating from the KML would silently overrule
+  a recorded judgement. Both decisions are in `DECISIONS.md` in examiner-facing
+  form. A migration to reword two column COMMENTs was considered and rejected as
+  schema churn for prose three days from the freeze.
+  **148 backend tests and 31 frontend tests pass; 27/27 parity.**
 
 - **2026-09-10 — Everything is in version control and pushed; the demo is
   runbookable; the deploy is proved locally but not provisioned.**
