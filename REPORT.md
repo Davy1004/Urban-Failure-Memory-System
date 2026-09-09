@@ -1,383 +1,304 @@
-# REPORT — 10 September 2026
+# REPORT — 10 September 2026 (second session)
 
-Task: the three items under "Current task" in `NEXT.md` — frontend into version
-control, a time-boxed deploy attempt, and the demo runbook. Plus the five §9
-answers, which were instructions rather than questions this time.
+Task: do the 15 September rehearsal today, from a fresh clone, as an adversary
+of my own documentation; then, if it passed cleanly, queue items 5, 3 and 4.
 
-**Items 1 and 3 are complete. Item 2 is complete up to the point where it needs
-somebody to create an account, and everything before that point is verified
-end to end rather than merely written down.**
+**The rehearsal passed: a `git clone` reaches a working, correct dashboard with
+no manual intervention beyond the documented steps.** Six defects were found on
+the way there and all six are fixed. Items 5, 3 and 4 are closed.
 
-Three commits, all pushed to `origin/main`:
+Two commits, both pushed:
 
 | | |
 |---|---|
-| `f127ccd` | the Phase 1–3 backend backlog that had never been pushed |
-| `1eb64c4` | the frontend moved into the repository, plus the §9 changes |
-| `33a7ba1` | the runbook, the deploy preparation, and the production guard |
+| `3ef7d23` | the six rehearsal defects |
+| `1773b45` | the IFS re-ranked measurement, and the two register decisions |
 
-`git status` is clean, `git log origin/main..HEAD` is empty, `.env` is untracked
-and ignored. **148 backend tests and 31 frontend tests pass** (up from 143 and
-25).
+`148` backend tests, `31` frontend tests, `27/27` parity, clean tree, nothing
+unpushed.
 
 ---
 
-## 1. The version-control problem was larger than you described
+## 1. The rehearsal
 
-You were right that this was worse than "slightly awkward for a deploy". It was
-also worse than the frontend.
+`git clone` from GitHub into a directory outside the working copy, then
+`docs/03-demo-runbook.md` followed literally, against a database created from
+nothing.
 
-`ufms-frontend/` was untracked, as you said. But **`origin/main` was still on
-`1730b71`, "Phase 0: schema, models, JWT auth, API scaffold"** — the commit from
-7 September. Ahead of it, locally and nowhere else, were:
+**The headline result, stated plainly because you asked for it plainly:**
 
-- **13 unpushed commits** covering the entire ingestion pipeline, the ward
-  crosswalk, the IFS switch, and every analysis result from §13 to §28;
-- **a 48-file uncommitted working tree** holding the Alembic bundle, the four
-  derived tables, `app/derived/`, the five endpoints, the three test files, and
-  the nine figures.
-
-So the exposure was not four screens and 25 tests. It was Phases 1 through 4 —
-every measured number in the paper — on one disk. The frontend was the visible
-half of the problem.
-
-I pushed the backend backlog first, before touching the move, on the grounds
-that the point of the exercise is to stop the work existing in one place and
-that ordering minimised the window. It went out as one commit rather than two;
-splitting the migration work from the derived-tables work would have required
-reconstructing which model edits belonged to which, with a real risk of a
-non-building intermediate commit, and the backup mattered more than the history.
-**Flagging that as a judgement call** in case you would rather it had been split.
-
-Verification, deliberately not by trusting the ignore pattern:
-
-- 45 files staged in the move commit; `git diff --cached --name-only | grep -cE
-  'node_modules|/dist/'` returned **0**.
-- `git check-ignore -v frontend/node_modules/react/package.json` names
-  `.gitignore:37:/frontend/node_modules/`. Patterns are anchored with a leading
-  slash so they cannot match a Python directory of the same name.
-- The frontend's own `.gitignore` was deleted, not left to shadow the root one.
-- `.gitattributes` already covers the new file types sensibly (`* text=auto
-  eol=lf`, `*.png binary`).
-
-### Paths that crossed the boundary
-
-| Was | Now |
+| | |
 |---|---|
-| `export_ward_geojson.py` → `ROOT.parent / "ufms-frontend" / "public"` | `ROOT / "frontend" / "public"` |
-| `paper-figures.mjs` → `../ufms-backend/docs/figures` | `../docs/figures` |
+| Backend tests, fresh clone | **135 passed, 13 skipped** |
+| Frontend tests | **31 passed** |
+| `check_parity.py` | **27/27 invariants, PASSED** |
+| Browser walk of all four screens | **24/24 checks** |
 
-The geojson exporter is checked rather than assumed: re-running it from the new
-path **reproduced the committed 661 KB file byte-for-byte** (198 wards, 36,369
-points; `git status` reported no change afterwards).
+The browser walk is a real Chromium session driving the five-minute path in the
+runbook's order. It confirms, in the rendered page: the watchlist is the landing
+screen and carries 14.08% **with** 4.79% and 37.72%; the ward index draws the
+1.00 reference and **198** ward polygons with **zero** basemap tiles; hovering a
+polygon gives `Kempegowda Ward / Ward 1 · Yelahanka / Index 2.19, 2025Q1 — far
+above norm` (name, ward, index **and quarter**, which is the §9.5 condition);
+emerging says *chronically above norm*, shows the no-ground-truth banner, and
+contains "accelerat…" only inside the caveat that rules it out; allocation shows
+ρ = 0.474 against ρ = 0.082 and renders the retraction; and there are no console
+errors on any screen.
 
-The dev proxy needed no change — it already targets `127.0.0.1:8000` and is
-origin-relative.
+I also tested the runbook's claim that F5 is safe mid-demo. It is: reloading on
+`/allocation` keeps both the session and the screen, and a fresh browser context
+is **not** signed in — so both halves of the `sessionStorage` rule hold, not just
+the convenient half.
 
-Also fixed, all of which assumed the old layout or were simply wrong:
+### The six defects
 
-- `frontend/README.md` — paths, plus a `cd frontend` that was missing from the
-  run sequence.
-- `docs/figures/README.md` — the regenerate block had two `cd`s that only worked
-  if you guessed they were separate terminals. Rewritten as three terminals with
-  paths from the repository root.
-- `README.md` — the schema-load command was wrong twice: it pointed at
-  `../ufms_schema.sql`, and it omitted `--default-character-set=utf8mb4`, which
-  CLAUDE.md calls non-optional because without it two column comments store
-  double-encoded. Its endpoint table was also missing all five dashboard
-  endpoints.
-- `CLAUDE.md` — three layout references, plus a note recording that the sibling
-  layout is gone and must not be reintroduced as `backend/` + `frontend/`.
+**1. The most serious one was invisible, and it is the same shape as the
+`_env_file=None` trap you called out in §6.5.**
 
----
+`tests/test_migrations.py` — the test that proves `alembic upgrade head` and
+`ufms_schema.sql` produce an identical `information_schema`, the one that caught
+178 differences, the one CLAUDE.md says to run after touching either file — **was
+silently skipping on every machine except this one.**
 
-## 2. Deploy: the design note is right, and I proved it locally
-
-### Where it stopped, and why
-
-**No deploy CLI exists on this machine** — no `gh`, `vercel`, `render`,
-`flyctl`, `railway` or `aiven`, and no `mysql` client either. Provisioning any
-of the three services means creating accounts through a browser and accepting
-terms, which is not something I can or should do on Tanmay's behalf.
-
-So I took the attempt as far as it goes without an account, and made the
-remaining part a short, ordered click path rather than a discovery exercise.
-
-### Providers, checked this week rather than trusted
-
-| Service | Free? | Card? | The catch |
-|---|---|---|---|
-| **Aiven MySQL** | yes, always-free, 1 GB storage / 1 GB RAM, single node | **no** | **powers off after a period of inactivity** |
-| **Render web service** | yes, 750 instance-hours/month | **no** | **spins down after 15 min idle, ~1 min to wake** |
-| Vercel static | yes | no | none that matters |
-
-So the deploy is possible on free tiers with no card — and **both moving parts
-sleep**. Your condition one was not a precaution, it is the expected case: a
-cold demo would be a one-minute Render wake on top of an Aiven instance that may
-be powered off entirely. The runbook therefore says localhost, and `04-deploy.md`
-opens by saying the URL is a slide, not the demonstration.
-
-I did **not** port anything to Postgres.
-
-### The design note, verified
-
-Your note was that the deployed database does not need the full dataset. It is
-correct, and by more than the argument implied. Measured:
-
-| | rows | size |
-|---|---:|---:|
-| `weather_observations` | 1,309,896 | 146.3 MB |
-| `complaints` | 237,157 | 64.1 MB |
-| `weather_daily` | 54,881 | 5.0 MB |
-| **everything the five endpoints read** | **4,820** | **612 KB dumped** |
-
-The closure is exactly nine tables — `cities`, `failure_types`,
-`weather_cells`, `locations`, `watchlist_snapshots`, `ward_quarter_index`,
-`watchlist_entries`, `emerging_watch`, `ward_allocation` — and it **closes**: I
-pulled every FK on those tables out of `information_schema` and nothing points
-outside the set except `users.city_id`. `scripts/export_demo_dump.py` re-runs
-that check on every invocation, so adding a repository that reads a new table
-fails the dump with the missing table's name instead of producing a file that
-breaks on somebody else's machine.
-
-### Then I actually ran the whole thing
-
-Not a plan — executed, against a second MySQL 8.0 container on port 3308
-standing in for the hosted database:
-
-1. Empty MySQL. `alembic upgrade head` → 32 tables and 3 views from nothing.
-2. Restore the 612 KB dump → 4,820 rows, all counts matching, `users` = 0 as
-   designed. Ran it twice; the second run is a clean no-op (every statement is
-   `INSERT … ON DUPLICATE KEY UPDATE`).
-3. `scripts/create_user.py` → one account, generated password.
-4. Fresh venv, `pip install -r requirements-api.txt` only → 335 MB.
-5. Boot with `ENVIRONMENT=production DEBUG=false` and a real secret.
-6. `scripts/check_parity.py --base <local> --other <restored>`.
-
-Result:
+It builds throwaway `ufms_t_*` databases. The `ufms` user that docker-compose
+creates owns only the `ufms` database, so `CREATE DATABASE` is denied. On a fresh
+clone it skipped with a message; on this machine it ran, because the grant was
+there:
 
 ```
-Frozen invariants, 27 of them
-  http://127.0.0.1:8000: 27/27 checks passed
-  http://127.0.0.1:8002: 27/27 checks passed
-
-Field-by-field diff, relative tolerance 1e-09
-  /api/v1/watchlist            identical
-  /api/v1/index                identical
-  /api/v1/index/Jakkur         identical
-  /api/v1/emerging             identical
-  /api/v1/allocation           identical
-
-PASSED - both instances agree, and on the published numbers
+working copy:   GRANT ALL PRIVILEGES ON `ufms\_t\_%`.* TO `ufms`@`%`
+                GRANT ALL PRIVILEGES ON `ufms_base`.*  TO `ufms`@`%`
+                GRANT ALL PRIVILEGES ON `ufms_raw`.*   ... and six more
+fresh clone:    (none of them)
 ```
 
-**A database holding only the derived tables serves byte-identical JSON to the
-full 215 MB one.** The risky unknown in your task 2 is now a measured fact.
+Those were added by hand in earlier sessions and **recorded nowhere**. So the
+guarantee was real on one disk and absent everywhere else — and because it
+degraded to a *skip* rather than a *failure*, the suite was green while guarding
+nothing. `scripts/mysql-init/01-test-grants.sql` now grants it from version
+control, scoped to the `ufms_t_` prefix, and runs on first init of the volume. A
+fresh clone goes from 129 passed / 19 skipped to **135 / 13**.
 
-The 27 invariants are the published figures, not tuned thresholds:
-precision@20 = 0.14080882 with `random_at_k` 0.04786839 and `oracle_at_k`
-0.37720588; 136 test rain days and 1,289 events; `weather_model = ecmwf_ifs`;
-ρ = +0.4740946 for spend-vs-area against +0.0824532 (p = 0.3918) for
-spend-vs-need; −0.0500933 controlling for area; 103 eligible and 10 flagged
-wards with `flagged_above_norm = 10`, p = 0.000144 and p = 0.116; Jakkur's mean
-1.0947569 over 20 quarters; 198 wards in the city index; the frozen top-20 head
-`Bellandur, Horamavu, Thanisandra, Begur, Ramamurthy Nagar` in rank order; and
-non-empty `retraction` and `caveats`.
+**2. `docker compose up -d` fails from a second checkout — and exits 0.**
 
-It runs against one URL too, which makes it the pre-demo smoke check —
-five seconds, and it catches the failure that actually happens: a stack that
-boots and renders against derived tables that are empty or stale.
+`container_name: ufms-mysql` was hard-coded while the *port* had an override,
+which is an odd asymmetry given the port override exists precisely because
+collisions were anticipated. From the clone:
 
-### CORS
+```
+Container ufms-mysql Creating
+service:db:1 Error response from daemon: Conflict. The container name
+"/ufms-mysql" is already in use ...
+---exit=0---
+```
 
-Tested, not assumed. With `CORS_ORIGINS=["https://ufms-demo.vercel.app"]`, a
-preflight from that origin returns `access-control-allow-origin` for it, and a
-preflight from another origin returns 400 with no allow-origin header.
+Exit 0. `docker compose ps` then printed a header and no rows. It is now
+`${MYSQL_CONTAINER_NAME:-ufms-mysql}`, the failure table has a row, and the
+runbook says to read `docker compose ps` rather than trust the exit code.
 
-`frontend/vercel.json` uses a **rewrite** rather than a cross-origin call, so the
-browser only ever talks to the Vercel origin and there is no CORS to get wrong —
-the same arrangement the Vite dev proxy gives locally. The env-var route
-(`VITE_API_BASE_URL`) is implemented and documented as the alternative, with the
-warning that it makes `CORS_ORIGINS` load-bearing.
+**3. The runbook activated the venv once and then opened three terminals.**
+Terminal 2 would have met `uvicorn: command not found`. Step 4 now activates it.
 
-### The API base URL
+**4. A failure row told you to run something that cannot work.** "Map renders
+with no ward shading → `python scripts/export_ward_geojson.py`". On a clone that
+raises `FileNotFoundError`: it reads `data/raw/bbmp_ward_map_2015.kml`, which is
+gitignored. The geojson is committed, so the fix is `git checkout --` on it. The
+row said the opposite of the truth.
 
-It was `const BASE = "/api/v1"` — origin-relative, so **not** hardcoded
-localhost, and it already worked through the dev proxy or a single-host rewrite.
-I made it `VITE_API_BASE_URL` anyway, defaulting to empty, so a
-separately-hosted frontend is a build-time variable rather than a code change.
-`frontend/.env.example` documents that Vite inlines it at build time.
+**5. No failure row for 8000 or 5173 being in use** — including the part people
+get wrong, that moving the API off 8000 breaks the Vite proxy target.
 
-### Two security problems I found while doing this
+**6. Numbers I quoted last session were `information_schema` estimates, not
+counts.** `weather_observations` is **1,309,896**, not 1,175,475.
+`complaints` is **237,157**, not 234,918 — and that one contradicted CLAUDE.md's
+own long-standing figure. `TABLE_ROWS` is an estimate for InnoDB and I used it as
+if it were a count. Corrected in the deploy doc, the dump script's docstring and
+this report.
 
-Both matter only if something is publicly reachable, which is exactly the case
-task 2 creates.
+### One deviation I had to make, and it is worth knowing
 
-**The API would have booted in production with `SECRET_KEY=change-me`.** That
-value is committed in `.env.example`, so a deploy that forgot to set the secret
-would have signed tokens with a publicly known key — anyone could mint an admin
-token. `settings.is_production` and `settings.debug` existed and were referenced
-nowhere. `app/core/config.py` now refuses to construct settings when
-`ENVIRONMENT=production` and the secret is the placeholder, is under 32
-characters, or `DEBUG=true`. It raises at import, so the process dies on boot
-with a readable message rather than serving. Development is untouched. Five
-tests pin it — and they pass `_env_file=None`, without which pydantic-settings
-reads the developer's real `.env`, finds a valid secret, and every one of them
-passes for the wrong reason.
+I could not run `docker compose up -d` literally, because defect 2 is triggered
+by the working copy's own container, and freeing the name would have meant
+stopping the live database. So I applied the fix mid-rehearsal and continued with
+`MYSQL_CONTAINER_NAME` and `MYSQL_HOST_PORT` set — which is now the documented
+path, so the document was still what I followed.
 
-**The demo accounts.** You offered two options; I took the second, because it is
-fail-safe rather than a rule someone has to remember. `export_demo_dump.py`
-**excludes the `users` table entirely**, so the shared `ufms-demo-2026` password
-cannot reach a hosted instance through the dump even by accident.
-`scripts/create_user.py` creates accounts with a 20-character generated password
-from an alphabet with no `O/0/l/1/I`, prints it once, and stores only the bcrypt
-hash. The local accounts are unchanged and the runbook says explicitly that the
-shared password is acceptable locally and only locally.
+I then verified the compose change against the **existing populated** database,
+because that is the demo path: `docker compose up -d` recreated the container and
+every row count matched the pre-change baseline exactly (1,309,896 / 237,157 /
+3,960 / 596 / 2). The named volume survives container recreation, which is the
+property that makes this safe.
 
-### `requirements-api.txt`
+### What the rehearsal did not cover
 
-The API imports `pandas`, `numpy` and `scipy` at boot. That is not accidental
-and I did not "fix" it: `dashboard_service.py` recomputes the allocation
-correlations and the emerging level-persistence evidence from the stored rows on
-each request rather than storing them pre-computed. That is *why* a restored
-database reproduces them exactly, and refactoring it four days from a freeze
-would be reckless.
-
-But `scikit-learn`, `pyarrow` and `pytest` are never imported by any request
-path, and on a 512 MB free instance they are a few hundred megabytes built and
-held for nothing. `requirements-api.txt` drops them: **335 MB installed against
-473 MB**, and I verified by installing it alone into an empty venv and serving
-all five endpoints from it.
+The clone ran on this machine, with this Docker, this Python 3.12.10 and this
+node. A genuinely different machine could still surprise us — but the class of
+defect that finds is "missing prerequisite", and section 0 of the runbook is now
+the only place that can hide one.
 
 ---
 
-## 3. The runbook
+## 2. Queue item 5 — the IFS re-ranked baseline is 14.23%
 
-`docs/03-demo-runbook.md`, written to be executed:
+`scripts/measure_reranked_baseline.py`.
 
-- **Cold start in six steps across three named terminals** — container (wait for
-  `(healthy)`; 3307 not 3306), `alembic upgrade head`, restore the dump, create
-  accounts, uvicorn on 8000, `npm run dev` on 5173, then the parity check.
-- **A failure table**: port already allocated, container not healthy / Docker not
-  running, `/health` returning 503, screens rendering with empty panels, login
-  422, token expiry, missing geojson, Playwright's missing browser.
-- **The five-minute path, with the sentence to say on each screen.** Watchlist is
-  **first**, not third — it is already the landing route, so this needed no code
-  change. Both caption warnings are repeated in place: never the 14.08% without
-  the 4.79% floor and the 37.72% ceiling, and never a trend line on the
-  allocation scatter.
-- **What is not built**, as a list to volunteer rather than be caught by: no
-  alerting loop, no `actual_outcome` written, `interventions` intentionally
-  empty, `ground_truth_available: false` and why, no fitted model and why the
-  gate killed it, two read-only roles, Delhi unevaluated.
+Re-ranked means the top-20 is rebuilt **before every test night**, from every
+strict event day strictly earlier than that night — so it is handed all the
+static list's history plus everything that happened during the test period up to
+the previous day. `< night` strictly, because the same day's events are the
+label; nothing reads a date on or after the night being scored.
 
-The token expiry row is now a smaller problem than it was: with the token in
-`sessionStorage`, **F5 mid-demo is safe**.
+Everything is scored by `score_watchlist` from `app/derived/watchlist.py` — the
+same function that produces the 14.08% the API serves — so the comparison is
+like-for-like by construction rather than by assertion.
 
-One runbook decision worth surfacing: **on demo day, restore the dump; do not
-re-derive.** `data/raw/` is gitignored as large and re-fetchable, so a fresh
-clone cannot run `python -m app.ingestion.cli derive` at all. That is also why I
-**un-ignored `data/processed/demo_data.sql`** and committed it — 612 KB that
-turns a clone into a working demo. Tell me if you would rather it stayed out.
+```
+basis         days  events    static  re-ranked    delta   oracle   random
+era5           138    1289    13.55%     13.70%   +0.14%   37.36%    4.72%
+ecmwf_ifs      136    1289    14.08%     14.23%   +0.15%   37.72%    4.79%
+```
 
----
+**The ERA5 row reproduces the published pair exactly.** That is the point of
+measuring a basis nobody asked for: 13.55% and 13.70% are already in the docs, so
+reproducing both to the quoted precision is what makes the IFS figure comparable
+rather than merely new. Had it disagreed, I would have reported the discrepancy
+and not published the IFS number.
 
-## 4. The §9 items
+**Answer: 14.08% → 14.23%, +0.15 points.** Recorded in
+`docs/01-evaluation-rules.md`'s IFS table, with the ERA5 pair still beneath it
+and labelled. `docs/02-data-profile.md` §14 and CLAUDE.md's Proof One block now
+carry a forward reference so neither reads as the current basis.
 
-**§9.1 — `sessionStorage`, done.** Token in a module variable backed by
-`sessionStorage`; every read and write wrapped in try/catch so a browser blocking
-site data degrades to the old in-memory behaviour rather than a broken sign-in.
-A stored token is only a claim, so `AuthProvider` exchanges it via `/auth/me`
-before any screen renders and discards it if the server refuses — which is what
-an expired token looks like after an hour. `App.tsx` gates on a `restoring` flag
-so a refresh does not flash the login form. I did **not** add a 401 interceptor;
-you said keep the expiry handling as it is. Six new tests, including that
-`localStorage.length` stays 0. `DECISIONS.md` has the plain-language entry with
-the "why not `localStorage`" answer.
+Two things fell out that are better than the number:
 
-**§9.3 — `visual-check` kept**, with `npx playwright install chromium` in the
-frontend README under a heading that says a missing browser is a missing browser,
-not a broken check. Not wired into CI.
+**The re-ranked top-20 changes by a mean of 0.08 wards between consecutive
+nights** — about one substitution every twelve nights. That is *why* three
+further years of history buy nothing: re-ranking produces very nearly the same
+list. It is a more concrete statement of "count-based memory is saturated" than
+the 0.15-point delta.
 
-**§9.5 — the basemap stays off, and your one condition was not quite met.** The
-tooltip carried ward name, ward number, zone and index — but **not the quarter**.
-The quarter was only in the legend below the map, which is fine on screen and
-lost the moment a tooltip is cropped into a figure. One line: the tooltip now
-reads `Index 1.42, 2025Q1 — …`, and `period` joined the memo's dependency array.
+**The 1,289 event count is identical on both bases, and it is a coincidence.**
+The two bases share only **126** of their rain days; the 12 ERA5-only days and
+the 10 IFS-only days happen to carry **101 events each**. A reader could easily
+take the matching totals as evidence that the event set is basis-independent. It
+is not — the day sets genuinely differ — and the docs now say so.
+
+**The check you asked for:** no document quotes 13.70% next to 14.08%. Every
+mention is inside an ERA5-basis table or explicitly labelled ERA5. CLAUDE.md's
+Proof One block quotes 13.7% among 13.6/37.4/4.7, which is internally consistent
+ERA5 and now says so.
 
 ---
 
-## 5. Corrections to the docs
+## 3. Queue item 3 — keep `first_listed_year`, leave it NULL
 
-Found while checking claims rather than by looking for them:
+The years do not exist in anything downloadable. I read the schemas of all three
+register layers directly rather than inferring:
 
-- **CLAUDE.md and README said 31 models.** `Base.metadata.tables` has **32**,
-  and both databases report 32 base tables besides `alembic_version`. Fixed.
-- **CLAUDE.md contradicted itself on `ufms_schema.sql`.** One section said it
-  opens with `DROP DATABASE IF EXISTS ufms` and re-running it wipes all data;
-  the "Deferred decisions" section said the `DROP` moved to
-  `scripts/reset_db.sql` and re-running now fails loudly. The second is true.
-  Fixed, with a line saying the old text described the old behaviour.
-- The backend README's schema-load command, as above.
+| Layer | Fields |
+|---|---|
+| `bbmp_low_lying_areas.kml` | `OBJECTID` |
+| `flood_prone_locations.kml` | `OBJECTID` |
+| `flood_vulnerable_map.kml` | `OBJECTID, WARD_NAME, WARDNO, LocationName, KGISFVLID, ZONE` |
 
-I checked queue item 5's concern in passing: `docs/01-evaluation-rules.md` quotes
-13.70% only inside the ERA5-basis table and once more explicitly labelled
-"ERA5 basis". No document puts it next to 14.08%. The IFS-basis equivalent still
-has not been measured; that remains queue item 5.
+**No date field in any of them.** The four-digit numbers a naive grep turns up
+are coordinate fragments and ids, not years.
 
----
+So the choice was drop or keep, and I kept it. Two reasons.
 
-## 6. What I want a second opinion on
+It is the socket for the one input that would let Proof Two be validated
+externally, and BBMP plainly holds those dates internally — this is an RTI, not a
+download. Dropping the column would record "we have decided never to validate
+emerging detection", which is a stronger claim than the evidence supports.
 
-1. **Should the deploy be provisioned at all?** It needs three signups, roughly
-   an hour of Tanmay's time, and both tiers sleep. Everything technical is done
-   and `04-deploy.md` is the click path. My read: the hour is better spent on the
-   supervisor conversation, and the deploy is worth doing only if the paper is
-   already signed. But it is one line on a slide and you rated it a mark or two.
+And the gap is already *visible* rather than hidden: `/api/v1/emerging` returns
+`ground_truth_available: false` and the screen renders it as a banner. A NULL
+column plus that banner is a documented gap; a dropped column plus the same
+banner is the same gap with the audit trail removed.
 
-2. **I did not promote queue item 1 (the memory engine, M0–M3).** The protocol
-   says promote the next queue item; the schedule in the same file freezes the
-   system on 13–14 September with "no new features". A multi-day modelling task
-   does not fit in a four-day freeze window, so I left the queue untouched and
-   set the current task to the rehearsal plus the optional deploy. **This is the
-   decision most likely to be wrong** — if the ladder is wanted before the 16th,
-   say so and I will start it, but something in the schedule has to give.
-
-3. **The backend backlog went out as one commit, not two.** Splitting the
-   Alembic work from the derived-tables work would have meant reconstructing
-   which model edits belonged to which, with a real chance of a non-building
-   intermediate commit. I chose the backup over the history. Reasonable?
-
-4. **Committing `data/processed/demo_data.sql` (612 KB).** It is a generated
-   artifact, which argues for ignoring it, but `data/raw/` is ignored too, so
-   without it a fresh clone cannot produce a working dashboard at all. I judged
-   a self-sufficient repo worth 612 KB. It holds no credentials.
-
-5. **The production config guard is new behaviour, added four days from a
-   freeze.** It only fires when `ENVIRONMENT=production`, so it cannot affect the
-   demo, and it is covered by five tests. I think it belongs in — a deployed
-   instance signing tokens with a committed placeholder is a genuine hole, not a
-   tidiness issue. But it is a change to boot behaviour during a freeze window,
-   so it should be a conscious call rather than mine alone.
-
-6. **One thing I deliberately did not touch.** `dashboard_service.py` doing
-   pandas/scipy work per request is the reason the API needs a 335 MB dependency
-   tree and some CPU on every call. On a 512 MB free instance that is the most
-   likely cause of a slow or failing deploy. Storing those figures alongside the
-   rows would fix it — and it is a change to how every number reaches every
-   screen, which is not a thing to do this week. Recording it as a real
-   post-freeze item, not proposing it now.
+I considered a migration to reword the column COMMENT so the emptiness is
+self-documenting in the schema, and rejected it: schema churn for prose, three
+days from the freeze. Flagging it as an optional post-freeze tidy.
 
 ---
 
-## 7. State
+## 4. Queue item 4 — leave `is_known_hotspot` FALSE on ward rows
 
-- `origin/main` at `33a7ba1`; working tree clean; nothing unpushed.
-- 161 tracked files. `.env` untracked and ignored. No `node_modules` or `dist`
-  in the index.
-- **148 backend tests, 31 frontend tests, `npm run build` clean.**
+You warned that reading the wrong one widens the pre-specified pool. It does —
+confirmed, 42 → 103 — but that turned out to be the fourth-best reason.
+
+**The decisive one: it is not derivable from `locations` at all. Only 200 of the
+398 register points carry a `ward_no`**, because only `flood_vulnerable_map.kml`
+has a `WARDNO` field. A ward flag computed from the database would be built from
+half the register.
+
+**And where the two instruments disagree, the crosswalk is deliberately right.**
+The points name 103 wards; `ward_crosswalk.csv` flags 102; the single difference
+is **ward 65** — the register calls it `Kadu Malleshwar`, the 2015 delimitation
+calls it `Subedarapalya`, and §15.2 left it unpaired rather than guessed.
+Populating the flag from the KML's `WARDNO` would silently overrule a recorded
+hand judgement. That the two disagree on exactly one ward, and that it is exactly
+the one already documented as a hand call, is a good sign about both instruments.
+
+Plus the semantic point: for a point the flag means "on the register", for a ward
+the analogous fact is "contains a register point". Overloading one boolean with
+two meanings is what caused the confusion originally.
+
+Both decisions are in `DECISIONS.md` in examiner-facing form, including the answer
+to "so how do you know the emerging detector works?".
+
+---
+
+## 5. What I want a second opinion on
+
+1. **`scripts/mysql-init/` changes `docker-compose.yml`, three days from the
+   freeze.** I judged it in-scope by the same reasoning you applied to the
+   production guard in §6.5: the freeze protects the demo path, and this cannot
+   reach it — the init script runs only on first initialisation of a volume, and
+   the grant is scoped to `ufms_t_%`. I verified `docker compose up -d` against
+   the existing populated database and every row count is unchanged. But it is a
+   change to the file step 1 of the runbook invokes, so it should be a conscious
+   call rather than mine alone.
+
+2. **The `container_name` override is a behaviour change with a default-preserving
+   shape.** Unset, everything is exactly as before. I think that makes it safe;
+   say so if you disagree and I will revert it to hard-coded and leave only the
+   failure-table row.
+
+3. **I did the rehearsal on this machine, not a different one.** That is what was
+   asked and it found six defects, but it cannot find a missing prerequisite that
+   happens to be installed here. If a second machine is available before the 16th,
+   running section 0 on it is the highest-value remaining check — and it is
+   ten minutes, not an hour.
+
+4. **`first_listed_year` kept rather than dropped** is the one decision here I
+   could argue either way. The case for dropping: a permanently-NULL column is
+   schema noise and an examiner may ask why it exists. The case for keeping, which
+   I went with: it names the missing input. If you prefer dropped, it is a
+   migration plus a model edit plus `ufms_schema.sql`, and it should happen before
+   the 13th or not until after the 16th.
+
+5. **Nothing else is queued for this week, and I think that is correct.** What
+   remains is Tanmay's: the supervisor on the 14th, names on the paper and slides
+   1 and 14, and the reference volume and page numbers. The system is done and
+   rehearsed.
+
+---
+
+## 6. State
+
+- `origin/main` at `1773b45`; working tree clean; nothing unpushed.
+- 164 tracked files. `.env` untracked and ignored.
+- **148 backend tests** (working copy), **135 passed / 13 skipped** (fresh clone),
+  **31 frontend tests**, `npm run build` clean.
 - `python scripts/check_parity.py --base http://127.0.0.1:8000` → 27/27, PASSED.
-- Test scaffolding removed: the parity container is deleted, the throwaway venv
-  and the two extra API instances are gone. The local database is unchanged, and
-  the probe account I created while testing `create_user.py` was deleted — the
-  `users` table holds the same two demo accounts it did before.
+- `scripts/measure_reranked_baseline.py` reproduces 13.55 / 13.70 / 14.08 / 14.23
+  on demand.
+- Rehearsal artifacts removed: the clone's container and volume are gone
+  (`docker compose down -v`), and the clone's contents are deleted. Its now-empty
+  directory in `%TEMP%` would not unlink — some Windows process still holds the
+  handle — so it is 4 KB of empty directory in the OS temp area rather than truly
+  zero. Saying so rather than claiming a clean sweep.
+- The working copy is untouched: the same container, the same named volume, row
+  counts byte-for-byte identical to the pre-rehearsal baseline (1,309,896 /
+  237,157 / 3,960 / 596 / 2), and the same two demo accounts.
