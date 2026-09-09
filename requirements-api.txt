@@ -1,0 +1,33 @@
+# Runtime dependencies for the API only — what `uvicorn app.main:app` imports,
+# and nothing else. Use this on a host; use requirements.txt for development,
+# ingestion, modelling and the test suite.
+#
+# The difference is not cosmetic. requirements.txt carries scikit-learn, pyarrow
+# and pytest, which together are a few hundred megabytes that a free tier has to
+# build and hold in RAM on every deploy, and which no request path touches.
+#
+# pandas and scipy ARE needed and cannot be dropped: the allocation correlations
+# and the emerging level-persistence evidence are recomputed from the stored
+# rows on each request by app/services/dashboard_service.py, rather than being
+# stored pre-computed. That is why a restored database reproduces them exactly.
+#
+# Verified by installing this file alone into an empty environment and serving
+# all five endpoints — see docs/04-deploy.md.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+SQLAlchemy==2.0.36
+alembic==1.14.0
+PyMySQL==1.1.1
+cryptography==44.0.0          # PyMySQL needs it for TLS to a hosted MySQL
+pydantic==2.10.4
+email-validator==2.2.0        # pydantic EmailStr in app/schemas/auth.py
+pydantic-settings==2.7.0
+python-multipart==0.0.20
+PyJWT==2.10.1
+bcrypt==4.2.1
+pandas==2.2.3
+numpy==2.2.1
+scipy==1.18.1                 # Theil-Sen, Mann-Kendall and Spearman
+PyYAML==6.0.2                 # data/reference/hazard_categories.yaml
+python-dateutil==2.9.0.post0

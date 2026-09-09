@@ -1,0 +1,59 @@
+# Render Blueprint for the UFMS API.
+#
+# Render reads this when you point it at the repository ("New +" -> "Blueprint"),
+# so the service is configured from version control rather than from a form
+# somebody filled in once and cannot remember.
+#
+# Two values are deliberately NOT here and must be set in the dashboard, because
+# committing either would publish a credential:
+#
+#   DATABASE_URL   the Aiven MySQL connection string, including its TLS settings
+#   CORS_ORIGINS   a JSON array holding the deployed frontend's exact origin
+#
+# Both are marked `sync: false`, which is Render's way of saying "prompt for
+# this, never read it from the repo".
+#
+# Read docs/04-deploy.md before using this. In particular: the free tier sleeps
+# after 15 minutes and takes about a minute to wake, so this is a bonus URL and
+# never the demonstration. The demo runs from localhost.
+
+services:
+  - type: web
+    name: ufms-api
+    runtime: python
+    plan: free
+    region: singapore              # nearest to Bengaluru of the free regions
+    branch: main
+
+    # requirements-api.txt, not requirements.txt: the API needs pandas and scipy
+    # but not scikit-learn, pyarrow or pytest, which are a few hundred megabytes
+    # that would be built and held in RAM on a 512 MB instance for nothing.
+    buildCommand: pip install -r requirements-api.txt
+
+    # Migrations run on every boot. `alembic upgrade head` is idempotent, so on
+    # a restart it is a no-op, and it means a redeploy can never serve against
+    # a schema older than the code.
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    # /api/v1/health returns 503 when the database is unreachable, not 200, so
+    # Render's check actually reflects whether the service can serve anything.
+    healthCheckPath: /api/v1/health
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      # Render generates this and keeps it. app/core/config.py refuses to start
+      # in production with the placeholder or with anything under 32 characters,
+      # so a forgotten secret is a failed boot rather than a forgeable token.
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

@@ -22,6 +22,13 @@ data/interim/*
 !data/interim/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+# ...with one exception. data/raw/ is ignored because it is large and
+# re-fetchable, but that means a fresh clone cannot run the `derive` step and so
+# cannot produce a working dashboard. demo_data.sql is the 612 KB of derived
+# rows the five endpoints actually read, so clone + alembic + restore gives a
+# demo with no 200 MB of downloads. Regenerate with
+# scripts/export_demo_dump.py; it holds no credentials (users is excluded).
+!data/processed/demo_data.sql
 
 # Trained model artifacts
 models/*.joblib

@@ -163,7 +163,7 @@ Done:
   rules there are results, not taste. In particular precision@20 is drawn as a
   mark on a scale ending at the oracle ceiling, never as a stat tile: the
   context is structural, so it cannot be dropped without breaking the drawing.
-  25 frontend tests pin those rules in the rendered DOM.
+  31 frontend tests pin those rules in the rendered DOM.
   Two things a reader should know: **the ward polygons are generated** by
   `scripts/export_ward_geojson.py` from `bbmp_ward_map_2015.kml` (the 2022 KML
   is a different delimitation and will not join), and **the map has no
@@ -198,6 +198,46 @@ Done:
   `ward_period_totals` holds the index denominator in the database, so the
   relative flooding index no longer needs a CSV beside it. 4,356 ward-quarter
   rows, matching `ward_period_totals.csv` exactly and idempotently.
+
+- **The demo is runbookable and the deploy is prepared** (10 Sep 2026).
+  `docs/03-demo-runbook.md` is the cold-start sequence to execute literally on
+  the day, with the failure modes, the five-minute screen order and the two
+  caption warnings. `docs/04-deploy.md` is the hosting click path.
+  **The deploy design note is verified, not assumed**: the API's table closure
+  is nine tables and 4,820 rows, so `scripts/export_demo_dump.py` produces a
+  **612 KB** data-only dump against a 215 MB database, and a fresh MySQL built
+  by `alembic upgrade head` + that dump serves **byte-identical JSON on all five
+  endpoints** to the full local instance. `scripts/check_parity.py` is what
+  proves it: 27 frozen invariants (precision@20 0.14080882 with its 4.79% floor
+  and 37.72% ceiling, the frozen top-20 in rank order, ρ = +0.474 vs +0.082,
+  Jakkur's mean 1.0947569, `ground_truth_available: false`) plus a field-by-field
+  diff of two instances at 1e-9. **Run it before any demo** —
+  `python scripts/check_parity.py --base http://127.0.0.1:8000`.
+  `requirements-api.txt` is the runtime subset (335 MB installed vs 473 MB;
+  drops scikit-learn, pyarrow and pytest). **pandas and scipy cannot be
+  dropped** — `dashboard_service.py` recomputes the allocation correlations and
+  the emerging evidence from the stored rows on each request, which is exactly
+  why a restored database reproduces them.
+  `users` is deliberately excluded from the dump so the shared local demo
+  password cannot be published; `scripts/create_user.py` seeds accounts with
+  generated passwords instead. Note `email-validator` rejects reserved TLDs, so
+  a `…@x.test` account fails login with a 422.
+- **The API refuses to start in production if it is misconfigured.**
+  `app/core/config.py` raises at import time on a placeholder `SECRET_KEY`, a
+  secret under 32 characters, or `DEBUG=true` when `ENVIRONMENT=production` —
+  because the placeholder is committed in `.env.example`, so a deployed instance
+  using it would let anyone mint an admin token. Development is untouched.
+  Five tests in `tests/test_security.py` pin it; they pass `_env_file=None`,
+  without which pydantic-settings reads the developer's real `.env` and every
+  one of them passes for the wrong reason.
+- **The token lives in `sessionStorage`, not in memory and never in
+  `localStorage`.** The rule is that a bearer credential must not survive a tab
+  close on a shared municipal machine; the browser clears `sessionStorage` when
+  the tab closes, which satisfies that rule while surviving a refresh and a deep
+  link. Memory-only was tighter than the rule rather than more correct. A stored
+  token is exchanged for the user via `/auth/me` before any screen renders, and
+  discarded if the server rejects it. `DECISIONS.md` carries the examiner-facing
+  version.
 
 Not started:
 - **`is_known_hotspot` is set but `first_listed_year` is NULL for all 398
@@ -245,8 +285,11 @@ Two things that bit on the first run, both fixed — do not reintroduce them:
   pydantic `EmailStr`, which imports it lazily — so everything installs fine
   and then the app dies on import. It is pinned in `requirements.txt`.
 
-`ufms_schema.sql` opens with `DROP DATABASE IF EXISTS ufms`, so re-running it
-wipes all data. The `ufms` user's grants do survive the drop; no re-grant.
+`ufms_schema.sql` is **not** destructive any more — the `DROP DATABASE` moved to
+`scripts/reset_db.sql`, so re-running the schema file on a populated database
+fails loudly instead of wiping Phase 1 data. (An earlier version of this file
+said the opposite. It was describing the old behaviour.) The `ufms` user's grants
+survive a reset; no re-grant.
 
 **The models did NOT mirror `ufms_schema.sql`, and nothing had noticed.**
 Baselining exposed **178 differences**: all 45 foreign keys and 27 indexes
@@ -403,7 +446,7 @@ MySQL — the database is the system of record, the panel is a derived artifact.
 app/
   core/          config, security (JWT + bcrypt), exceptions, logging
   db/            engine, session, declarative base
-  models/        31 SQLAlchemy models mirroring ufms_schema.sql
+  models/        32 SQLAlchemy models mirroring ufms_schema.sql
   derived/       the four dashboard computations; reconciled, not ingested
   schemas/       Pydantic request/response models
   repositories/  data access; keeps SQLAlchemy out of services
@@ -421,8 +464,11 @@ which meant it was in no version control at all; it is now tracked here, and
 `scripts/export_ward_geojson.py` writes to `frontend/public/`, a path inside the
 repository, and `frontend/scripts/paper-figures.mjs` writes to `docs/figures/`.
 Do not restructure this into `backend/` + `frontend/` under a new root — every
-path in every doc is written against this layout. It talks to this API only — it holds no analysis of its own, and every caveat it renders
-arrives as a required response field so a redesign cannot silently drop one.
+path in every doc is written against this layout.
+
+It talks to this API only — it holds no analysis of its own, and every caveat it
+renders arrives as a required response field so a redesign cannot silently drop
+one.
 
 `ufms_schema.sql` at the repo root is the canonical DDL. The SQLAlchemy
 models mirror it — change both together, or generate a migration.

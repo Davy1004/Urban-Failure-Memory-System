@@ -35,3 +35,57 @@ def test_tampered_token_rejected():
     token = create_access_token(subject="42", role="officer")
     with pytest.raises(jwt.PyJWTError):
         decode_access_token(token + "tamper")
+
+
+# ---------------------------------------------------------------------------
+# The production configuration guard.
+#
+# A deployed instance signing tokens with the placeholder SECRET_KEY would let
+# anyone mint an admin token, and the placeholder is committed to a public
+# repository in .env.example. The guard raises at import time so the process
+# dies on boot; these tests are what stop someone "simplifying" it away.
+# ---------------------------------------------------------------------------
+import pydantic  # noqa: E402
+
+from app.core.config import DEFAULT_SECRET, Settings  # noqa: E402
+
+GOOD_SECRET = "s" * 48
+
+
+def _settings(**kw):
+    """Build Settings from explicit values only.
+
+    `_env_file=None` matters: without it pydantic-settings reads the developer's
+    real .env, which has a valid SECRET_KEY, and every one of these tests passes
+    for the wrong reason.
+    """
+    base = {"environment": "production", "debug": False, "secret_key": GOOD_SECRET}
+    return Settings(_env_file=None, **{**base, **kw})
+
+
+def test_production_boots_with_a_real_secret():
+    s = _settings()
+    assert s.is_production
+
+
+def test_production_refuses_the_placeholder_secret():
+    with pytest.raises(pydantic.ValidationError, match="placeholder"):
+        _settings(secret_key=DEFAULT_SECRET)
+
+
+def test_production_refuses_a_short_secret():
+    with pytest.raises(pydantic.ValidationError, match="at least 32"):
+        _settings(secret_key="short")
+
+
+def test_production_refuses_debug():
+    with pytest.raises(pydantic.ValidationError, match="DEBUG"):
+        _settings(debug=True)
+
+
+def test_development_is_left_alone():
+    """`docker compose up` and `uvicorn` must work with no configuration."""
+    s = Settings(_env_file=None, environment="development", debug=True,
+                 secret_key=DEFAULT_SECRET)
+    assert not s.is_production
+    assert s.secret_key == DEFAULT_SECRET

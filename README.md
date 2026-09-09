@@ -81,7 +81,7 @@ alembic upgrade head
 |---|---|
 | `app/core/` | config, JWT + bcrypt, exception handlers, logging |
 | `app/db/` | engine, session factory, declarative base |
-| `app/models/` | 31 ORM models mirroring the SQL schema |
+| `app/models/` | 32 ORM models mirroring the SQL schema |
 | `app/derived/` | the four dashboard computations; reconciled, not ingested |
 | `app/schemas/` | Pydantic validation and response models |
 | `app/repositories/` | data access layer |
