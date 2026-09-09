@@ -102,7 +102,12 @@ Done:
   case study.
 - **INTERVENTION EFFECTIVENESS: OUTCOME CLAIM RETRACTED** (profile §27.2).
   **There is no dose-response.** The published -0.0240 (p = 0.0138) vanishes
-  when refitted on treated wards only: **-0.0064, p = 0.833**. `log1p(spend)`
+  when refitted on treated wards only: **-0.0064, p = 0.833**.
+  **The specification is `delta ~ log_spend + log_area + pre`** on
+  `ward_dose_response_panel.csv` — recovered 10 Sep 2026, because it had never
+  been recorded and the bivariate version is a different result (-0.0159,
+  p = 0.230). See `docs/01-evaluation-rules.md`; pinned by
+  `scripts/verify_documented_figures.py`. `log1p(spend)`
   put 7 untreated wards at 0 against treated wards at 16-20, so it was a
   treated-vs-control contrast - and those 7 are not a valid control. **Rule:
   refit any dose-response on treated units only before reporting it**, and use
@@ -180,8 +185,8 @@ Done:
   `python -m app.ingestion.cli derive`. Endpoints `/api/v1/index/{ward}`,
   `/watchlist`, `/emerging`, `/allocation`, all GET, both roles.
   **Every one reconciles exactly against the reference CSVs** —
-  `tests/test_derived.py`, 32 assertions at 1e-9, plus 31 response-contract
-  tests in `tests/test_dashboard_api.py`. Two things worth knowing:
+  `tests/test_derived.py`, 32 reconciliation tests at 1e-9, plus 39
+  response-contract tests in `tests/test_dashboard_api.py`. Two things worth knowing:
   **the random baseline on the IFS basis is 4.79%, not 4.72%** (4.72% belongs
   to the ERA5/138-day basis, where the static list is 13.55% and the ceiling
   37.36%. `docs/01-evaluation-rules.md` now leads with the IFS triple
@@ -265,6 +270,20 @@ Done:
   `ufms_t_` prefix, and runs on first init of the volume. A database created
   before this exists still skips; `docker compose down -v && docker compose up -d`
   fixes it.
+- **THE DEMO IS RECORDED** (10 Sep 2026). `docs/demo/ufms-demo.mp4`, 1:12 at
+  1280x720, the runbook's five-minute path against the live stack, made by
+  `npm run record-demo` in `frontend/`. It starts already signed in — the token
+  is injected into `sessionStorage` before first paint — so the login screen and
+  the shared demo password are never on camera. It is the fallback for every
+  failure that is not the software: battery, adapter, projector, podium machine,
+  Docker not starting. **Playwright's bundled ffmpeg cannot make the mp4** (VP8
+  only); the script checks each candidate for `libx264` and says so rather than
+  writing a file nothing plays.
+- **Every documented figure is checked by a script.**
+  `scripts/verify_documented_figures.py` recomputes 65 of them from the database,
+  the reference CSVs and the hazard YAML — never from another document, because
+  that is how a wrong number propagates. Run it after touching any number in any
+  doc. `--slow` adds the four re-ranked baselines.
 - **Expected test counts, so a silent degradation is visible:** **148 passed** on
   a machine with `data/raw/`; **135 passed, 13 skipped** on a fresh clone; **31**
   frontend. A skip count above 13 means something is wrong, not merely absent.
@@ -362,7 +381,10 @@ said the opposite. It was describing the old behaviour.) The `ufms` user's grant
 survive a reset; no re-grant.
 
 **The models did NOT mirror `ufms_schema.sql`, and nothing had noticed.**
-Baselining exposed **178 differences**: all 45 foreign keys and 27 indexes
+Baselining exposed **178 differences** (every count in this paragraph is the
+shape at the 26-table baseline in Sep 2026, not the current 32-table schema,
+which now carries 54 foreign keys and 67 column comments): all 45 foreign keys
+and 27 indexes
 carried MySQL's auto-generated names (`weather_cells_ibfk_1`) rather than the
 schema's (`fk_cell_city`), 23 columns had a Python-side `default=` and so no
 server-side DEFAULT at all, seven `TIMESTAMP` columns had become `DATETIME`,

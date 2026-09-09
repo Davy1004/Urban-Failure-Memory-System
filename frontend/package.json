@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "visual-check": "node scripts/visual-check.mjs",
-    "figures": "node scripts/paper-figures.mjs"
+    "figures": "node scripts/paper-figures.mjs",
+    "record-demo": "node scripts/record-demo.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

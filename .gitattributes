@@ -8,3 +8,5 @@
 *.parquet binary
 *.xlsx binary
 *.gz binary
+*.mp4 binary
+*.webm binary

@@ -172,12 +172,18 @@ that matches the decision: of twenty dispatches, how many were right."
 
 ### Every score comes with three numbers, never one
 
-A random guess scores about 5%. The city's own "worst twenty" list scores 13.6%.
-A perfect oracle scores 37.4%, because on a typical rainy day fewer than twenty
-places actually flood, so twenty slots cannot all be right.
+A random guess scores **4.8%**. The city's own "worst twenty" list scores
+**14.1%**. A perfect oracle scores **37.7%**, because on a typical rainy day
+fewer than twenty places actually flood, so twenty slots cannot all be right.
 
-A score of 22% sounds like failure alone. Against a 37.4% ceiling it is nearly
+A score of 22% sounds like failure alone. Against a 37.7% ceiling it is nearly
 60% of what is achievable.
+
+These three come from the same rainfall series — the ECMWF-IFS one the database
+holds and the API serves. There is an older set from the coarser ERA5 series
+(4.7% / 13.6% / 37.4%) which says the same thing; the two must never be mixed,
+because a ceiling from one and a floor from the other puts a number on a scale it
+was not measured against. If you are asked for figures, these are the figures.
 
 **If challenged:** "We report the achieved score, the baseline it must beat, and
 the theoretical ceiling. A number without those two is uninterpretable."
@@ -201,8 +207,10 @@ disagree — the same place appears as Halsoor and Ulsoor, Bagalakunte and
 Bagalagunte.
 
 Automatic matching produced confident wrong answers, pairing genuinely different
-wards. So all 198 were resolved by hand, each with a written reason, and the one
-uncertain case is flagged in the file.
+wards. So every one of the 198 was checked by a person and carries a written
+reason: **106 matched exactly, 44 after normalising spelling, and 48 needed a
+hand decision.** Nothing was left unresolved, and the one genuinely uncertain
+case is flagged in the file rather than guessed.
 
 **If challenged:** "Fuzzy string matching paired distinct wards. We built the
 crosswalk manually with evidence per row, because a wrong ward silently corrupts

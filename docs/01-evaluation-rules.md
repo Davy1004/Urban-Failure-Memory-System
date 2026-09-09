@@ -293,6 +293,39 @@ the grid resolution moved no figure that changes a claim (χ², p = 0.877).
 37.36% and 4.72% is the other. A ceiling from one and a floor from the other
 puts a number on a scale it was not measured against.
 
+## Rule: a retraction has to stay reproducible — the dose-response specification
+
+**Recovered and recorded 10 Sep 2026. It had never been written down.**
+
+The retracted dose-response is the project's most important negative result: a
+coefficient of **-0.0240 (p = 0.0138)** over all 110 wards that collapses to
+**-0.0064 (p = 0.833)** when refitted on treated wards only, because `log1p(spend)`
+had put seven untreated wards at zero against treated wards at 16-20 and the
+"dose-response" was a treated-vs-control contrast.
+
+Those are **multivariate** coefficients, and which controls they used existed
+only in a session transcript. The bivariate regression gives **-0.0159
+(p = 0.230)** — a different and weaker result — so "we regressed the change in
+index on log spend" would have been the wrong answer to give under questioning.
+
+The specification is:
+
+```
+delta ~ log_spend + log_area + pre
+```
+
+fitted on `data/reference/ward_dose_response_panel.csv` (110 wards; `delta` is
+post-period minus pre-period relative index, `pre` is the pre-period level).
+Both published figures reproduce to four decimals, and
+`scripts/verify_documented_figures.py` now pins them so they cannot drift again.
+
+The companion figure, the raw Spearman of spend against delta on treated wards
+only, is **-0.1634 (p = 0.0992)** and reproduces bivariately.
+
+**The rule this establishes:** a reported coefficient must carry its
+specification wherever it is reported. A coefficient without the model that
+produced it is not a result, it is a number.
+
 ## Rule: never report precision@k bare
 
 A median rain day carries only 6 strict events citywide and just 14 of 138 test

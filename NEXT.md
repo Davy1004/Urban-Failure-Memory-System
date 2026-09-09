@@ -25,14 +25,14 @@ before starting anything here.
 
 ---
 
-## HARD DEADLINE: 16 SEPTEMBER 2026 — seven days
+## HARD DEADLINE: 16 SEPTEMBER 2026 — six days
 
 **This is a PROGRESS evaluation, not the final.** That changes the balance
 completely.
 
 | Component | Marks | What it actually needs |
 |---|---:|---|
-| Project completion + working model | 20 | Progress demonstrated. What already exists — 31-table schema with migrations, 1.3M weather rows, 237,157 complaints, five working endpoints, four working screens, 143 backend + 25 frontend tests — is already a substantial showing. |
+| Project completion + working model | 20 | Progress demonstrated. What exists — 32-table schema under migrations, 1,309,896 weather rows, 237,157 complaints, five endpoints, four screens, 148 backend + 31 frontend tests, a deployment verified end to end, and a demo rehearsed from a clean clone — is a substantial showing. |
 | **Research paper** | **30** | A completed written paper, a named target conference, supervisor approval. **Zero if absent.** |
 
 **The paper is the priority. The frontend is not do-or-die.**
@@ -44,129 +44,157 @@ means anything.
 
 ---
 
-## Current task — the residual, and it is small
+## Current task — the last sweep, then stop
 
-**All three items of the previous task are done, except the part that needs an
-account. Read `REPORT.md` before deciding anything here.**
+**The system is finished and rehearsed. Read `REPORT.md` first; all five of your
+§5 questions are answered below and every one of your calls stands.**
 
-The previous task's three items landed as follows:
+That rehearsal was the right thing to have done early. The migrations test
+skipping everywhere but one disk is the third instance this week of the same
+failure — a check that reported success while checking nothing, alongside the
+`_env_file=None` trap and the original names-only schema comparison that missed
+178 differences. Three of one kind is not coincidence; it is the characteristic
+defect of this project, and it is worth saying so in the viva if the question
+comes.
 
-1. **Frontend into version control — done, and it was worse than described.**
-   The frontend was untracked, and the *backend* was 13 commits and a 48-file
-   working tree ahead of a remote that only had Phase 0. Both are now pushed.
-2. **Deploy — prepared and proved locally, not provisioned.** Everything up to
-   account signup is done and verified end to end. The signup is not something
-   Claude can do.
-3. **Runbook — done.** `docs/03-demo-runbook.md`, plus `docs/04-deploy.md`.
+### The task: one numbers sweep across every document, then the freeze
 
-All six of your §6 questions are answered below. You got every one of them
-right, including the two you flagged as most likely to be wrong. **The
-schedule has changed** — Tanmay is away from college until 13 September and
-sees his supervisor on the 14th, not the 11th or 12th — and that changes the
-current task.
+Docs only. No code, no schema, no screens. The goal is that **no document
+contains a number that cannot be reproduced on demand**, because six days from
+now those numbers get read aloud to an examiner.
 
-### The current task: rehearse now, not on the 15th
+We have now caught four separate stale-number classes: 31 tables against an
+actual 32; `TABLE_ROWS` estimates used as counts; 13.70% quoted on the wrong
+basis; test counts of 143/25 when they are 148/31. Each was found incidentally
+while doing something else. This is the pass that goes looking.
 
-**Do the 15 September rehearsal today, from a fresh clone.** That was always
-the highest-value system task remaining; the only reason it sat on the 15th was
-that the runbook did not exist yet. It exists now, and doing it five days early
-converts "we find out on the 15th" into "we have five days of slack".
+1. **Enumerate.** Every figure in `CLAUDE.md`, `DECISIONS.md`, `README.md`,
+   `docs/00`–`docs/04`, `frontend/README.md`, `docs/figures/README.md`, and the
+   root docstrings of anything under `scripts/`.
+2. **Verify each one** against the database, a reference CSV, a test, or a script
+   that recomputes it. Not against another document — that is how a wrong number
+   propagates.
+3. **Fix what is wrong. For anything you cannot verify**, do not guess and do not
+   quietly drop it: list it in the report with where it appears and what it would
+   take to check.
+4. **Every score keeps its basis label**, and no comparison may mix IFS with
+   ERA5. That rule has now been broken twice.
+5. **Report the count**: figures checked, figures corrected, figures unverifiable.
 
-Do it as an adversary of your own documentation, not as its author:
+Two specific things to resolve while you are in there:
 
-1. `git clone` the repository into a directory that is **not** the working copy.
-2. Follow `docs/03-demo-runbook.md` **literally**. Type only what it says, in the
-   order it says. Do not use knowledge you have that the document does not carry.
-3. Every time the document is wrong, incomplete, ambiguous, or assumes something
-   it did not state — **stop, write down what a person would have done there,
-   and fix the document.** That list is the actual output of this task.
-4. Run `python scripts/check_parity.py --base http://127.0.0.1:8000` at the end.
-   It must print `27/27 checks passed`.
-5. Walk the five-minute path through all four screens in a browser, in the
-   runbook's order, and confirm each screen shows what the runbook says it will.
-6. Tear the clone down afterwards. Leave the working copy untouched.
+- `DECISIONS.md` is the file Tanmay reads before the viva, and parts of it still
+  quote the ERA5 triple (13.6 / 37.4 / 4.7) in prose that reads as current. Give
+  every number in that file the IFS basis, or label it. **This one matters most**
+  — it is the file that turns into spoken sentences in a room.
+- `weather_observations` is 1,309,896 and `complaints` is 237,157. Wherever a
+  count appears, confirm it came from `COUNT(*)` and not `information_schema`.
 
-This is the specific thing worth knowing: **you wrote that runbook with the whole
-project in your head.** A fresh clone does not have that, and neither will
-Tanmay at 9 a.m. on the 16th. Anywhere the document only works because you
-already knew something is a defect, and this is the one exercise that finds them.
+### And one more thing, because the machine question is now answered
 
-If the clone reaches a working dashboard with no manual intervention, say so
-plainly — that is a real result and it means the demo risk is closed.
+**The demo runs on this laptop.** So the rehearsal covered it and §5.3 is closed.
 
-### After that, and only if the rehearsal passes cleanly
+But Tanmay asked the right follow-up: *what if I end up having to run it on
+somebody else's laptop?* The honest answer is that he does not — Docker, Python
+3.12, Node, a clone and a restore is thirty to forty-five minutes with a network
+dependency, and that is not something to attempt in a demo slot in front of an
+examiner. The answer is to have something that plays anywhere.
 
-Queue items **5**, **3** and **4**, in that order. All three are small,
-documentation- or decision-shaped, and none of them touches a code path the demo
-uses. Item 5 in particular closes the last loose number in the paper. Stop before
-anything that changes a screen, an endpoint or a derived table.
+**So record the demo.** Playwright and chromium are already installed for
+`visual-check`, and you already drove the exact five-minute path for the browser
+walk, so this is that walk again with `recordVideo` on:
 
-### Freeze
+- The runbook's five-minute path, in the runbook's order, against the live local
+  stack: watchlist → index and map → emerging → allocation.
+- **1280×720**, so it projects without scaling artefacts.
+- Deliberate pacing. Pause on the precision scale long enough to read the floor
+  and the ceiling; hover a ward polygon so the tooltip shows; let the allocation
+  retraction sit on screen. A demo video that moves at a machine's speed is
+  useless to a room.
+- No login screen and no credentials on camera. Start from a signed-in state.
+- Write it to `docs/demo/ufms-demo.webm`, and produce an `.mp4` alongside if
+  `ffmpeg` is present, because a college projector laptop may not play webm.
+  If ffmpeg is absent, say so rather than shipping only webm.
+- Commit both. Together they should be a few megabytes; if the webm exceeds
+  roughly 25 MB, drop the frame rate rather than the resolution and say what you
+  chose.
 
-From **13 September**: no commits that change behaviour. Documentation fixes
-only. The system as it stands is what gets demonstrated.
+Add a short `docs/demo/README.md`: what the video shows, that it is a recording
+of the real system rather than a mockup, the date it was recorded, and the
+commit it was recorded at.
 
+This is the fallback for every failure mode that is not "the software is broken":
+a dead battery, no HDMI adapter, a projector that will not sync, being asked to
+present from the podium machine, Docker refusing to start on the morning. Twenty
+minutes of work against a whole class of risk.
 
-## Answers to your §6 questions
+### Then stop
 
-**§6.1 — do not provision the deploy. Your read is right.** Two free tiers that
-both sleep, an hour of Tanmay's time, and a URL that may be cold when it is
-clicked. He is away from college until the 13th and sees his supervisor on the
-14th; that hour has somewhere better to be. What you actually produced is worth
-more than a URL anyway, so **say it on the slide instead of deploying**:
-*deployment verified end to end against a standby instance — a 612 KB derived
-dump serves byte-identical JSON to the full 215 MB database, 27 of 27 published
-invariants reproduced.* That is a stronger line at a progress review than a link,
-and it cannot go down mid-demo. `docs/04-deploy.md` stays as the click path for
-after the paper is signed.
+From **13 September**: no commits at all except a documentation fix that this
+sweep turns up. The system as it stands is what gets demonstrated. If you find
+yourself wanting to improve something, write it in the queue instead.
 
-**§6.2 — correct, and it was the right call, not the wrong one.** Do not promote
-the model ladder. The protocol says promote the next queue item; the protocol is
-subordinate to the freeze, and you noticed the conflict instead of following the
-rule off a cliff. The ladder demonstrates a bound that is already measured,
-already in the paper and already on a slide — it adds presentation, not evidence,
-and it cannot be built in four days without touching the demo path. It stays
-queued for after the 16th.
+---
 
-**§6.3 — one commit was right.** You chose the backup over the history with 48
-uncommitted files on a single disk. A tidy history is worth nothing if the disk
-dies; a non-building intermediate commit is worth less than nothing. Settled, and
-not worth revisiting.
+## Answers to your §5 questions
 
-**§6.4 — keep `demo_data.sql` committed.** A repository that cannot produce a
-working dashboard from a clone is not a self-sufficient repository, and 612 KB is
-nothing against `data/raw/` being gitignored. It carries no credentials because
-you excluded `users`. Note in the file header that it is generated by
-`export_demo_dump.py` and should be regenerated rather than hand-edited.
+**§5.1 — `scripts/mysql-init/` stays, and you applied the right test.** You asked
+whether the freeze forbids it, and reasoned from what the freeze is *for* rather
+than from its wording. Correct. But the stronger argument is the one you did not
+make: this is not a change to the demo path, it is the **repair of a guarantee
+that was fictional everywhere except one disk**. `test_migrations.py` is the
+check `CLAUDE.md` names as mandatory after touching the schema, and it has been
+skipping on every other machine since it was written. Committing the grant does
+not add a feature; it makes an existing claim true. That belongs in before a
+freeze, not after.
 
-**§6.5 — the production guard stays in.** The freeze protects the demo path, and
-this cannot reach the demo path: it fires only under `ENVIRONMENT=production`.
-Weigh it the other way round — an API that would boot in production signing
-tokens with a committed `change-me` is a hole that lets anyone mint an admin
-token, and it was found four days before we might have opened it. Leaving it
-unfixed to honour a freeze would be following the rule instead of the reason.
+**§5.2 — keep the `container_name` override.** Unset, behaviour is byte-identical
+to before, and you verified that against the populated database rather than
+asserting it. A default-preserving override is the correct shape for exactly this
+situation. Leave it.
 
-One detail there deserves saying out loud, because it is the kind of thing that
-usually goes unnoticed: passing `_env_file=None` in those five tests. Without it
-pydantic-settings reads the developer's real `.env`, finds a valid secret, and
-**all five tests pass for the wrong reason** — a guard with a full green suite
-that guards nothing. That is the same failure mode as the 178 schema
-differences: a check that confirms what it was supposed to challenge.
+**§5.3 — answered: the demo runs on this laptop.** So your rehearsal was on the
+machine that matters and the second-machine check is not needed. The residual
+risk is no longer "a machine we have not tested" but "this machine, on the day"
+— a battery, an adapter, a projector, Docker not starting. That is what the
+recording above is for. See the current task.
 
-**§6.6 — agreed, do not touch `dashboard_service.py`.** Recomputing from stored
-rows per request is why a restored database reproduces the numbers exactly; that
-property is load-bearing for the parity check and therefore for the claim. It is
-a genuine post-freeze item. Record it in `CLAUDE.md` under deferred decisions so
-the reasoning survives, and leave it.
+**§5.4 — keep `first_listed_year`, and stop treating it as a liability.** Your
+reasoning is right and the conclusion is stronger than you put it. A
+permanently-NULL column here is not schema noise, it is a **named missing
+input**, and an examiner asking "why is this empty?" is handing over the best
+question in the viva: *because BBMP does not publish the dates on which it added
+locations to its flood register — that is an RTI request, not a download — and it
+is the one input that would let the emerging detector be validated externally.*
+That answer demonstrates you know precisely what your evidence lacks. Dropping
+the column deletes the question along with the answer.
+
+**§5.5 — agreed. Nothing further is queued for this week**, and the sweep above
+is the last task. What remains after it is Tanmay's, not ours.
 
 ---
 
 ## The paper and the deck exist. Do not write either one here.
 
-Both are drafted in the planning session — `UFMS_paper.docx` (9 pages, IEEE
-structure) and a 15-slide progress deck with speaker notes. Two versions would
-diverge. The nine figures you produced are going into the paper from the
-planning session side.
+Both are drafted in the planning session — `UFMS_paper.docx` and a 15-slide
+progress deck with speaker notes. Two versions would diverge.
+
+Three changes are owed to them from the planning session side, and are being
+made there on 13 September when the author names go in — recorded here so they
+are not lost:
+
+- **Table II gains a row.** Your 14.23% closes the gap the basis mix opened: the
+  re-ranked baseline was removed from the paper because 13.70% was ERA5. It comes
+  back as `Same list, re-ranked on all prior history — 14.23%`, and the prose
+  moves from an ERA5 aside to the IFS figure with its ERA5 pair in a footnote.
+- **The mean-0.08-wards-per-night result goes in with it.** One substitution
+  every twelve nights is a far more concrete statement of "count-based memory is
+  saturated" than a 0.15-point delta, and it is the better sentence.
+- **The 1,289 coincidence gets a line in the limitations.** Both bases carrying
+  1,289 events while sharing only 126 of their rain days is exactly the kind of
+  thing a reviewer notices and mistakes for evidence of basis-independence.
+  Naming it as a coincidence before they can is worth more than the space it
+  costs. Good catch.
 
 ---
 

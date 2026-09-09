@@ -153,6 +153,7 @@ a fresh volume runs that init script, so recreate it with
 | `docker compose up` → `port is already allocated` | something owns 3307 | `set MYSQL_HOST_PORT=3310` (and the same port in `DATABASE_URL` in `.env`), then `docker compose up -d` |
 | `docker compose up` → `the container name "/ufms-mysql" is already in use` — **and it still exits 0** | another checkout of this project, or a stale container from an older one, already owns that name | If it is stale: `docker rm -f ufms-mysql`. If it belongs to a copy you want to keep: `set MYSQL_CONTAINER_NAME=ufms-mysql-demo` **and** `set MYSQL_HOST_PORT=3310`, put that port in `DATABASE_URL`, then use the new name in every `docker exec` command below. |
 | `uvicorn` or `npm run dev` → `address already in use` / `only one usage of each socket address` | something already holds 8000 or 5173 — often a uvicorn or vite from an earlier attempt that did not shut down cleanly | `uvicorn app.main:app --reload --port 8001`, and for the frontend `npm run dev -- --port 5174`. **If you move the API off 8000, the Vite proxy no longer finds it** — change the target in `frontend/vite.config.ts` too. On Windows a dead socket can linger for a minute with no owning process; waiting clears it. |
+| Worse version of the above: **8000 answers, but every panel is empty and `/health` says `unreachable`** | An orphaned `uvicorn --reload` **worker** from an earlier run still holds the port and is serving a database that no longer exists. `netstat` blames a PID that no longer exists, so `taskkill` on it reports "process not found" while the port keeps answering. | The live process is the reload worker, not the parent. Find it by command line, not by port: in PowerShell, `Get-CimInstance Win32_Process -Filter "Name='python.exe'"` and look for one with `spawn_main(parent_pid=...)`, then `Stop-Process -Id <that pid> -Force`. Start the API again and run step 6. |
 | API: `Can't connect to MySQL server` | container not healthy yet, or Docker Desktop is not running | `docker compose ps`; if there is no container at all, start Docker Desktop and wait for the whale icon to settle |
 | `/api/v1/health` returns **503** | API is up, database is not | This is deliberate — the status code, not the body, is the truth. Go back to step 1. |
 | Screens render but every panel is empty | signed in, but the derived tables have no rows | run step 6; if it fails, re-run step 3 |
@@ -162,9 +163,17 @@ a fresh volume runs that init script, so recreate it with
 | Map renders with no ward shading | `frontend/public/bbmp-wards.geojson` is missing or truncated | It is **committed** (661 KB, 198 wards), so restore it: `git checkout -- frontend/public/bbmp-wards.geojson`. Do **not** run `scripts/export_ward_geojson.py` here — it reads `data/raw/bbmp_ward_map_2015.kml`, which is gitignored, so on a clone it fails with a `FileNotFoundError`. Regenerating is only possible where the raw data is. |
 | `npm run visual-check` / `npm run figures` fails instantly | Playwright's browser is not installed | `npx playwright install chromium` — a missing browser, not a broken check |
 
-**Insurance.** Before the demo, take screenshots of all four screens
-(`docs/figures/screen-*.png` are exactly this, already rendered from the live
-system). If the machine fails completely, the figures carry the argument.
+**Insurance, in order of preference.**
+
+1. **`docs/demo/ufms-demo.mp4`** — 1:12 at 1280×720, a recording of this exact
+   system walking this exact path. It covers every failure that is not the
+   software: a flat battery, no HDMI adapter, a projector that will not sync,
+   being asked to present from the podium machine, Docker refusing to start.
+   **Copy it onto the same USB stick as the slides.** Run the live demo whenever
+   it is possible; reach for this when it is not.
+2. `docs/figures/screen-*.png` — the four screens as stills, already rendered
+   from the live system. If even video will not play, the figures carry the
+   argument.
 
 ---
 

@@ -1,5 +1,24 @@
 # UFMS — Build Plan (rev 2, decision-support framing)
 
+> **HISTORICAL. Do not read the schedule or the volumes below as current.**
+> Kept because it records what was planned and why, which is worth having beside
+> what happened. Checked against the live system on 10 September 2026:
+>
+> | Planned here | Actually happened |
+> |---|---|
+> | P0 Sep 8–21, then P1 through P8 to Apr 2027 | **Phases 0–4 all landed in September 2026.** A progress evaluation on 16 Sep 2026 pulled everything forward. |
+> | P3 Nov 10 – Dec 7: memory engine + Proof One | Proof One was **measured** in September and became a *ceiling* rather than a model. The memory engine and the M0–M3 ladder are still queued. |
+> | P7 Feb 23 – Mar 1: deploy | Prepared and verified locally in September; not provisioned. `docs/04-deploy.md`. |
+> | complaints ~600k after filtering | **237,157** |
+> | weather_observations ~350k | **1,309,896** (two reanalyses, 23 cells) |
+> | failure_memory ~30k, risk_predictions ~590k, daily_rankings ~590k | **all three are empty** — the memory engine is not built |
+> | "about 2M rows, 400–600 MB" | **1,610,832 rows, ≈218 MB** |
+> | Rainfall: ERA5 | **ECMWF-IFS** (~9 km) since profile §17; ERA5 cells 1–9 are kept for reference |
+> | Hotspot register: ~210 areas, 58 highly prone | **398 points** loaded across three KML layers, unmerged |
+>
+> The current state is in `CLAUDE.md`; the work queue is in `NEXT.md`; every
+> figure quoted anywhere is checked by `scripts/verify_documented_figures.py`.
+
 Target: April 2027 submission, mid-review ~7 Dec 2026. Team 2–3. Zero budget.
 
 ## Phases
@@ -44,6 +63,11 @@ fees — ask whether a free Zenodo/arXiv DOI satisfies the requirement before
 paying a pay-to-publish journal.
 
 ## Data volume (why MySQL is fine)
+
+*These were the estimates. The measured figures are in the table at the top of
+this file — the direction of the error is interesting: complaints came in at 40%
+of the estimate and weather at nearly 4x, because the grid was tripled in
+resolution after ERA5 turned out to resolve BBMP into three cells.*
 
 complaints ~600k (after filtering) · weather_observations ~350k ·
 failure_memory ~30k · risk_predictions ~590k · daily_rankings ~590k.
