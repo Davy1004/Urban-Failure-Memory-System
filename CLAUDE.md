@@ -239,6 +239,36 @@ Done:
   discarded if the server rejects it. `DECISIONS.md` carries the examiner-facing
   version.
 
+- **THE DEMO WAS REHEARSED FROM A FRESH CLONE AND IT WORKS** (10 Sep 2026, five
+  days early). `git clone` from GitHub, `docs/03-demo-runbook.md` followed
+  literally, on a database created from nothing: **135 tests pass, 13 skip**
+  (all naming the gitignored raw data they need), **27/27 parity invariants**,
+  and **24/24 browser checks** across the four screens — including 198 ward
+  polygons, zero basemap tiles, the tooltip carrying name/ward/index/quarter,
+  `chronically above norm` present, `accelerating` only in its caveat, ρ = 0.474
+  against ρ = 0.082, the retraction rendered, and no console errors. F5 keeps the
+  session and the screen; a new browser context does not. **Six defects were
+  found and fixed** — see the runbook's failure table and the Done log.
+- **`docker-compose.yml`: the container name is overridable, and the test grants
+  are in version control.** Two things the rehearsal exposed.
+  (1) `container_name` was hard-coded, so `docker compose up -d` from a second
+  checkout dies with *"the container name /ufms-mysql is already in use"* — **and
+  exits 0 while doing it**. Use `MYSQL_CONTAINER_NAME` to override, and then use
+  that name in the `docker exec` commands.
+  (2) **`tests/test_migrations.py` was silently skipping on every machine but
+  this one.** It builds throwaway `ufms_t_*` databases, and the `ufms` user
+  docker-compose creates cannot `CREATE DATABASE`. The grant existed here only
+  because someone added it by hand in an earlier session and recorded it
+  nowhere — so the check that caught 178 model-vs-schema differences was not
+  running anywhere else, and it **skipped rather than failed**, leaving a green
+  suite. `scripts/mysql-init/01-test-grants.sql` now grants it, scoped to the
+  `ufms_t_` prefix, and runs on first init of the volume. A database created
+  before this exists still skips; `docker compose down -v && docker compose up -d`
+  fixes it.
+- **Expected test counts, so a silent degradation is visible:** **148 passed** on
+  a machine with `data/raw/`; **135 passed, 13 skipped** on a fresh clone; **31**
+  frontend. A skip count above 13 means something is wrong, not merely absent.
+
 Not started:
 - **`is_known_hotspot` is set but `first_listed_year` is NULL for all 398
   register points.** The KML layers carry no year, so the "which locations did
@@ -512,3 +542,20 @@ quote-aware, so prose comments are safe.
 
 - **`/health` returns 503 when the database is unreachable**, not 200.
   Platform health checks read the status code, not the body. Keep it that way.
+
+- **POST-FREEZE, do not do it now: `dashboard_service.py` recomputes on every
+  request.** The allocation correlations and the emerging level-persistence
+  evidence are computed from the stored rows on each call rather than stored
+  pre-computed, which is why the API needs pandas and scipy at all (a 335 MB
+  runtime tree) and why it burns CPU per request - the most likely cause of a
+  slow or failing deploy on a 512 MB free instance.
+
+  **It is also load-bearing and must not be "optimised" casually.** Recomputing
+  from the rows is exactly why a database restored from `demo_data.sql`
+  reproduces every figure to 1e-9: there is no second copy of the numbers that
+  could drift from the rows. Storing them would create one, and
+  `scripts/check_parity.py` would then be comparing stored values rather than
+  verifying a computation.
+
+  So: a real efficiency item, deferred deliberately, and any change to it has to
+  keep the parity check meaningful. Raised 10 Sep 2026; not for this week.

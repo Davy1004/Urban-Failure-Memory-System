@@ -42,6 +42,11 @@ docker compose up -d
 docker compose ps                          # STATUS must say (healthy)
 ```
 
+**Read the `docker compose ps` output; do not trust the exit code.**
+`docker compose up -d` **exits 0 even when it failed to start the container**, so
+an error scrolling past is easy to miss. If `docker compose ps` prints only a
+header row and no container, it did not start — go to the failure table below.
+
 **MySQL is on host port 3307, not 3306.** A native Windows MySQL service
 usually already owns 3306.
 
@@ -93,7 +98,11 @@ passwords instead — `04-deploy.md`.
 
 ### Step 4 — API (terminal 2)
 
+**Activate the venv again.** This is a new terminal and it does not inherit the
+activation from step 0 — without it, `uvicorn` is "command not found":
+
 ```bash
+.venv\Scripts\activate                     # Windows;  source .venv/bin/activate
 uvicorn app.main:app --reload              # :8000
 ```
 
@@ -120,6 +129,21 @@ catches the failure that matters: a stack that boots, renders, and is serving a
 database whose derived tables are empty or stale. **Run this before the
 examiner is in the room, on the morning of the 16th.**
 
+Optionally, `pytest -q` and, in `frontend/`, `npm test`. Expect:
+
+| Where | Expect |
+|---|---|
+| A machine with `data/raw/` (the full dev setup) | **148 passed** |
+| A fresh clone (no `data/raw/`) | **135 passed, 13 skipped** |
+| Frontend, anywhere | **31 passed** |
+
+The 13 skips name themselves — they need the gitignored raw CSVs and KML. A skip
+count above 13 means something else is wrong; in particular, if
+`tests/test_migrations.py` skips with *"cannot create the throwaway test
+databases"*, the database was created before `scripts/mysql-init/` existed. Only
+a fresh volume runs that init script, so recreate it with
+`docker compose down -v && docker compose up -d` and redo steps 2-3.
+
 ---
 
 ## 2. When it goes wrong
@@ -127,13 +151,15 @@ examiner is in the room, on the morning of the 16th.**
 | Symptom | Cause | Fix |
 |---|---|---|
 | `docker compose up` → `port is already allocated` | something owns 3307 | `set MYSQL_HOST_PORT=3310` (and the same port in `DATABASE_URL` in `.env`), then `docker compose up -d` |
+| `docker compose up` → `the container name "/ufms-mysql" is already in use` — **and it still exits 0** | another checkout of this project, or a stale container from an older one, already owns that name | If it is stale: `docker rm -f ufms-mysql`. If it belongs to a copy you want to keep: `set MYSQL_CONTAINER_NAME=ufms-mysql-demo` **and** `set MYSQL_HOST_PORT=3310`, put that port in `DATABASE_URL`, then use the new name in every `docker exec` command below. |
+| `uvicorn` or `npm run dev` → `address already in use` / `only one usage of each socket address` | something already holds 8000 or 5173 — often a uvicorn or vite from an earlier attempt that did not shut down cleanly | `uvicorn app.main:app --reload --port 8001`, and for the frontend `npm run dev -- --port 5174`. **If you move the API off 8000, the Vite proxy no longer finds it** — change the target in `frontend/vite.config.ts` too. On Windows a dead socket can linger for a minute with no owning process; waiting clears it. |
 | API: `Can't connect to MySQL server` | container not healthy yet, or Docker Desktop is not running | `docker compose ps`; if there is no container at all, start Docker Desktop and wait for the whale icon to settle |
 | `/api/v1/health` returns **503** | API is up, database is not | This is deliberate — the status code, not the body, is the truth. Go back to step 1. |
 | Screens render but every panel is empty | signed in, but the derived tables have no rows | run step 6; if it fails, re-run step 3 |
 | Login fails with **422** | the email's domain is a reserved TLD (`.test`, `.local`) | use a real-looking domain — `email-validator` rejects the others |
 | **Token expires mid-demo** (60 minutes) | expected behaviour | Sign in again. It takes five seconds, and a refresh no longer loses the session — the token is in `sessionStorage`, so **F5 is safe**. Closing the tab does sign you out, which is intentional. |
 | A screen shows a blank where a number should be | an unscored snapshot | correct behaviour — nothing substitutes a plausible number for an absent one. Say so; it is a design decision, not a bug. |
-| Map renders with no ward shading | `frontend/public/bbmp-wards.geojson` missing | `python scripts/export_ward_geojson.py` (198 wards, 661 KB) |
+| Map renders with no ward shading | `frontend/public/bbmp-wards.geojson` is missing or truncated | It is **committed** (661 KB, 198 wards), so restore it: `git checkout -- frontend/public/bbmp-wards.geojson`. Do **not** run `scripts/export_ward_geojson.py` here — it reads `data/raw/bbmp_ward_map_2015.kml`, which is gitignored, so on a clone it fails with a `FileNotFoundError`. Regenerating is only possible where the raw data is. |
 | `npm run visual-check` / `npm run figures` fails instantly | Playwright's browser is not installed | `npx playwright install chromium` — a missing browser, not a broken check |
 
 **Insurance.** Before the demo, take screenshots of all four screens

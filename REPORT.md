@@ -126,8 +126,8 @@ correct, and by more than the argument implied. Measured:
 
 | | rows | size |
 |---|---:|---:|
-| `weather_observations` | 1,175,475 | 146.3 MB |
-| `complaints` | 234,918 | 64.1 MB |
+| `weather_observations` | 1,309,896 | 146.3 MB |
+| `complaints` | 237,157 | 64.1 MB |
 | `weather_daily` | 54,881 | 5.0 MB |
 | **everything the five endpoints read** | **4,820** | **612 KB dumped** |
 

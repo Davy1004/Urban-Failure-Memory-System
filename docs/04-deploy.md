@@ -38,8 +38,8 @@ requirements against PyMySQL, and Render's build. Those are flagged below.
 ## Why the database is 612 KB and not 215 MB
 
 The five endpoints read the derived tables and their lookups — nine tables,
-4,820 rows. None of them touches `weather_observations` (1,175,475 rows,
-146 MB) or `complaints` (234,918 rows, 64 MB): those are inputs to
+4,820 rows. None of them touches `weather_observations` (1,309,896 rows,
+146 MB) or `complaints` (237,157 rows, 64 MB): those are inputs to
 `app/derived/`, which has already run. `scripts/export_demo_dump.py` dumps
 exactly the closure the repositories reach, and re-checks the foreign keys on
 every run so it cannot silently go stale.

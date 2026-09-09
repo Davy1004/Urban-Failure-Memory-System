@@ -59,34 +59,107 @@ The previous task's three items landed as follows:
    Claude can do.
 3. **Runbook — done.** `docs/03-demo-runbook.md`, plus `docs/04-deploy.md`.
 
-### What is left, in priority order
+All six of your §6 questions are answered below. You got every one of them
+right, including the two you flagged as most likely to be wrong. **The
+schedule has changed** — Tanmay is away from college until 13 September and
+sees his supervisor on the 14th, not the 11th or 12th — and that changes the
+current task.
 
-**1. Rehearse from the runbook on 15 September.** Follow
-`docs/03-demo-runbook.md` literally on the demo machine, change nothing, note
-every place it fails. This is the single highest-value system task remaining.
-Start with `python scripts/check_parity.py --base http://127.0.0.1:8000` — it
-must print `27/27 checks passed`.
+### The current task: rehearse now, not on the 15th
 
-**2. Provision the deploy, if it is still wanted — Tanmay only, ~1 hour.**
-`docs/04-deploy.md` is the click path. Three signups, none needing a card:
-Aiven (MySQL, free, 1 GB), Render (API, free), Vercel (static). The one step
-that was not verifiable without an account is Aiven's TLS against PyMySQL, and
-it is flagged in the doc with the error to expect. **Stop if a card is asked
-for, or after roughly three hours.** The demo runs from localhost regardless.
+**Do the 15 September rehearsal today, from a fresh clone.** That was always
+the highest-value system task remaining; the only reason it sat on the 15th was
+that the runbook did not exist yet. It exists now, and doing it five days early
+converts "we find out on the 15th" into "we have five days of slack".
 
-**3. Nothing else, until the paper is signed.** See below — the paper is 30
-marks and the supervisor conversation cannot happen on the 15th.
+Do it as an adversary of your own documentation, not as its author:
 
-### A judgement call, flagged for whoever writes this file next
+1. `git clone` the repository into a directory that is **not** the working copy.
+2. Follow `docs/03-demo-runbook.md` **literally**. Type only what it says, in the
+   order it says. Do not use knowledge you have that the document does not carry.
+3. Every time the document is wrong, incomplete, ambiguous, or assumes something
+   it did not state — **stop, write down what a person would have done there,
+   and fix the document.** That list is the actual output of this task.
+4. Run `python scripts/check_parity.py --base http://127.0.0.1:8000` at the end.
+   It must print `27/27 checks passed`.
+5. Walk the five-minute path through all four screens in a browser, in the
+   runbook's order, and confirm each screen shows what the runbook says it will.
+6. Tear the clone down afterwards. Leave the working copy untouched.
 
-I did **not** promote queue item 1 (the memory engine and the model ladder
-M0–M3) into the current task, even though the protocol says to promote the next
-queue item. Building the ladder is days of work, and the schedule in this file
-freezes the system on 13–14 September with "no new features". Promoting it would
-have put a multi-day modelling task into a four-day freeze window.
+This is the specific thing worth knowing: **you wrote that runbook with the whole
+project in your head.** A fresh clone does not have that, and neither will
+Tanmay at 9 a.m. on the 16th. Anywhere the document only works because you
+already knew something is a defect, and this is the one exercise that finds them.
 
-The queue is therefore untouched. If that is wrong, say so and I will start it.
+If the clone reaches a working dashboard with no manual intervention, say so
+plainly — that is a real result and it means the demo risk is closed.
 
+### After that, and only if the rehearsal passes cleanly
+
+Queue items **5**, **3** and **4**, in that order. All three are small,
+documentation- or decision-shaped, and none of them touches a code path the demo
+uses. Item 5 in particular closes the last loose number in the paper. Stop before
+anything that changes a screen, an endpoint or a derived table.
+
+### Freeze
+
+From **13 September**: no commits that change behaviour. Documentation fixes
+only. The system as it stands is what gets demonstrated.
+
+
+## Answers to your §6 questions
+
+**§6.1 — do not provision the deploy. Your read is right.** Two free tiers that
+both sleep, an hour of Tanmay's time, and a URL that may be cold when it is
+clicked. He is away from college until the 13th and sees his supervisor on the
+14th; that hour has somewhere better to be. What you actually produced is worth
+more than a URL anyway, so **say it on the slide instead of deploying**:
+*deployment verified end to end against a standby instance — a 612 KB derived
+dump serves byte-identical JSON to the full 215 MB database, 27 of 27 published
+invariants reproduced.* That is a stronger line at a progress review than a link,
+and it cannot go down mid-demo. `docs/04-deploy.md` stays as the click path for
+after the paper is signed.
+
+**§6.2 — correct, and it was the right call, not the wrong one.** Do not promote
+the model ladder. The protocol says promote the next queue item; the protocol is
+subordinate to the freeze, and you noticed the conflict instead of following the
+rule off a cliff. The ladder demonstrates a bound that is already measured,
+already in the paper and already on a slide — it adds presentation, not evidence,
+and it cannot be built in four days without touching the demo path. It stays
+queued for after the 16th.
+
+**§6.3 — one commit was right.** You chose the backup over the history with 48
+uncommitted files on a single disk. A tidy history is worth nothing if the disk
+dies; a non-building intermediate commit is worth less than nothing. Settled, and
+not worth revisiting.
+
+**§6.4 — keep `demo_data.sql` committed.** A repository that cannot produce a
+working dashboard from a clone is not a self-sufficient repository, and 612 KB is
+nothing against `data/raw/` being gitignored. It carries no credentials because
+you excluded `users`. Note in the file header that it is generated by
+`export_demo_dump.py` and should be regenerated rather than hand-edited.
+
+**§6.5 — the production guard stays in.** The freeze protects the demo path, and
+this cannot reach the demo path: it fires only under `ENVIRONMENT=production`.
+Weigh it the other way round — an API that would boot in production signing
+tokens with a committed `change-me` is a hole that lets anyone mint an admin
+token, and it was found four days before we might have opened it. Leaving it
+unfixed to honour a freeze would be following the rule instead of the reason.
+
+One detail there deserves saying out loud, because it is the kind of thing that
+usually goes unnoticed: passing `_env_file=None` in those five tests. Without it
+pydantic-settings reads the developer's real `.env`, finds a valid secret, and
+**all five tests pass for the wrong reason** — a guard with a full green suite
+that guards nothing. That is the same failure mode as the 178 schema
+differences: a check that confirms what it was supposed to challenge.
+
+**§6.6 — agreed, do not touch `dashboard_service.py`.** Recomputing from stored
+rows per request is why a restored database reproduces the numbers exactly; that
+property is load-bearing for the parity check and therefore for the claim. It is
+a genuine post-freeze item. Record it in `CLAUDE.md` under deferred decisions so
+the reasoning survives, and leave it.
+
+---
 
 ## The paper and the deck exist. Do not write either one here.
 
