@@ -1,304 +1,252 @@
-# REPORT — 10 September 2026 (second session)
+# REPORT — 10 September 2026 (third session)
 
-Task: do the 15 September rehearsal today, from a fresh clone, as an adversary
-of my own documentation; then, if it passed cleanly, queue items 5, 3 and 4.
+Task: one numbers sweep across every document, then the demo recording, then
+stop.
 
-**The rehearsal passed: a `git clone` reaches a working, correct dashboard with
-no manual intervention beyond the documented steps.** Six defects were found on
-the way there and all six are fixed. Items 5, 3 and 4 are closed.
+**Both done.** One commit, `c083e07`, pushed. 148 backend tests, 31 frontend
+tests, 27/27 parity, and a new gate: **65/65 documented figures reproduce from
+primary sources.**
 
-Two commits, both pushed:
+---
+
+## 1. The count you asked for
 
 | | |
-|---|---|
-| `3ef7d23` | the six rehearsal defects |
-| `1773b45` | the IFS re-ranked measurement, and the two register decisions |
+|---|---:|
+| Figures enumerated and checked | **65** |
+| Reproduced correctly, no change needed | **60** |
+| **Corrected** | **5** |
+| **Unverifiable without re-running a retired analysis** | **listed in §5** |
 
-`148` backend tests, `31` frontend tests, `27/27` parity, clean tree, nothing
-unpushed.
+"Corrected" counts distinct wrong figures, not the places they appeared.
 
----
-
-## 1. The rehearsal
-
-`git clone` from GitHub into a directory outside the working copy, then
-`docs/03-demo-runbook.md` followed literally, against a database created from
-nothing.
-
-**The headline result, stated plainly because you asked for it plainly:**
-
-| | |
-|---|---|
-| Backend tests, fresh clone | **135 passed, 13 skipped** |
-| Frontend tests | **31 passed** |
-| `check_parity.py` | **27/27 invariants, PASSED** |
-| Browser walk of all four screens | **24/24 checks** |
-
-The browser walk is a real Chromium session driving the five-minute path in the
-runbook's order. It confirms, in the rendered page: the watchlist is the landing
-screen and carries 14.08% **with** 4.79% and 37.72%; the ward index draws the
-1.00 reference and **198** ward polygons with **zero** basemap tiles; hovering a
-polygon gives `Kempegowda Ward / Ward 1 · Yelahanka / Index 2.19, 2025Q1 — far
-above norm` (name, ward, index **and quarter**, which is the §9.5 condition);
-emerging says *chronically above norm*, shows the no-ground-truth banner, and
-contains "accelerat…" only inside the caveat that rules it out; allocation shows
-ρ = 0.474 against ρ = 0.082 and renders the retraction; and there are no console
-errors on any screen.
-
-I also tested the runbook's claim that F5 is safe mid-demo. It is: reloading on
-`/allocation` keeps both the session and the screen, and a fresh browser context
-is **not** signed in — so both halves of the `sessionStorage` rule hold, not just
-the convenient half.
-
-### The six defects
-
-**1. The most serious one was invisible, and it is the same shape as the
-`_env_file=None` trap you called out in §6.5.**
-
-`tests/test_migrations.py` — the test that proves `alembic upgrade head` and
-`ufms_schema.sql` produce an identical `information_schema`, the one that caught
-178 differences, the one CLAUDE.md says to run after touching either file — **was
-silently skipping on every machine except this one.**
-
-It builds throwaway `ufms_t_*` databases. The `ufms` user that docker-compose
-creates owns only the `ufms` database, so `CREATE DATABASE` is denied. On a fresh
-clone it skipped with a message; on this machine it ran, because the grant was
-there:
-
-```
-working copy:   GRANT ALL PRIVILEGES ON `ufms\_t\_%`.* TO `ufms`@`%`
-                GRANT ALL PRIVILEGES ON `ufms_base`.*  TO `ufms`@`%`
-                GRANT ALL PRIVILEGES ON `ufms_raw`.*   ... and six more
-fresh clone:    (none of them)
-```
-
-Those were added by hand in earlier sessions and **recorded nowhere**. So the
-guarantee was real on one disk and absent everywhere else — and because it
-degraded to a *skip* rather than a *failure*, the suite was green while guarding
-nothing. `scripts/mysql-init/01-test-grants.sql` now grants it from version
-control, scoped to the `ufms_t_` prefix, and runs on first init of the volume. A
-fresh clone goes from 129 passed / 19 skipped to **135 / 13**.
-
-**2. `docker compose up -d` fails from a second checkout — and exits 0.**
-
-`container_name: ufms-mysql` was hard-coded while the *port* had an override,
-which is an odd asymmetry given the port override exists precisely because
-collisions were anticipated. From the clone:
-
-```
-Container ufms-mysql Creating
-service:db:1 Error response from daemon: Conflict. The container name
-"/ufms-mysql" is already in use ...
----exit=0---
-```
-
-Exit 0. `docker compose ps` then printed a header and no rows. It is now
-`${MYSQL_CONTAINER_NAME:-ufms-mysql}`, the failure table has a row, and the
-runbook says to read `docker compose ps` rather than trust the exit code.
-
-**3. The runbook activated the venv once and then opened three terminals.**
-Terminal 2 would have met `uvicorn: command not found`. Step 4 now activates it.
-
-**4. A failure row told you to run something that cannot work.** "Map renders
-with no ward shading → `python scripts/export_ward_geojson.py`". On a clone that
-raises `FileNotFoundError`: it reads `data/raw/bbmp_ward_map_2015.kml`, which is
-gitignored. The geojson is committed, so the fix is `git checkout --` on it. The
-row said the opposite of the truth.
-
-**5. No failure row for 8000 or 5173 being in use** — including the part people
-get wrong, that moving the API off 8000 breaks the Vite proxy target.
-
-**6. Numbers I quoted last session were `information_schema` estimates, not
-counts.** `weather_observations` is **1,309,896**, not 1,175,475.
-`complaints` is **237,157**, not 234,918 — and that one contradicted CLAUDE.md's
-own long-standing figure. `TABLE_ROWS` is an estimate for InnoDB and I used it as
-if it were a count. Corrected in the deploy doc, the dump script's docstring and
-this report.
-
-### One deviation I had to make, and it is worth knowing
-
-I could not run `docker compose up -d` literally, because defect 2 is triggered
-by the working copy's own container, and freeing the name would have meant
-stopping the live database. So I applied the fix mid-rehearsal and continued with
-`MYSQL_CONTAINER_NAME` and `MYSQL_HOST_PORT` set — which is now the documented
-path, so the document was still what I followed.
-
-I then verified the compose change against the **existing populated** database,
-because that is the demo path: `docker compose up -d` recreated the container and
-every row count matched the pre-change baseline exactly (1,309,896 / 237,157 /
-3,960 / 596 / 2). The named volume survives container recreation, which is the
-property that makes this safe.
-
-### What the rehearsal did not cover
-
-The clone ran on this machine, with this Docker, this Python 3.12.10 and this
-node. A genuinely different machine could still surprise us — but the class of
-defect that finds is "missing prerequisite", and section 0 of the runbook is now
-the only place that can hide one.
+The check is not a one-off. `scripts/verify_documented_figures.py` recomputes
+every one of the 65 on demand — from the database, the reference CSVs and the
+hazard YAML, and **never from another document**, because copying between
+documents is precisely how all four stale-number classes propagated. Run it after
+touching any number in any doc; `--slow` adds the four re-ranked baselines.
 
 ---
 
-## 2. Queue item 5 — the IFS re-ranked baseline is 14.23%
+## 2. What was wrong
 
-`scripts/measure_reranked_baseline.py`.
+**§2.1 — `DECISIONS.md` quoted the ERA5 triple as if current.** You flagged this
+and it was the worst of them, because it is the file that becomes spoken
+sentences. "A random guess scores about 5%. The city's own worst-twenty list
+scores 13.6%. A perfect oracle scores 37.4%." Those are ERA5 numbers. The
+database holds and the API serves the IFS ones. It now reads **4.8% / 14.1% /
+37.7%**, and says outright that the two bases exist, that the ERA5 set says the
+same thing, and that mixing them puts a number on a scale it was not measured
+against. The dependent sentence ("against a 37.4% ceiling it is nearly 60% of
+what is achievable") moved with it — 22/37.7 is still nearly 60%.
 
-Re-ranked means the top-20 is rebuilt **before every test night**, from every
-strict event day strictly earlier than that night — so it is handed all the
-static list's history plus everything that happened during the test period up to
-the previous day. `< night` strictly, because the same day's events are the
-label; nothing reads a date on or after the night being scored.
+**§2.2 — `DECISIONS.md` overstated the crosswalk.** "So all 198 were resolved by
+hand." The file says **106 exact, 44 normalised, 48 manual**. An examiner who
+opens the CSV sees `exact` on 106 rows and the claim collapses. It now says every
+one of the 198 was checked and carries a written reason, and gives the split. The
+substance — that automatic matching produced confident wrong answers — is
+untouched, because that part is true.
 
-Everything is scored by `score_watchlist` from `app/derived/watchlist.py` — the
-same function that produces the 14.08% the API serves — so the comparison is
-like-for-like by construction rather than by assertion.
+**§2.3 — `CLAUDE.md` said 31 response-contract tests.** There are **39**.
+
+**§2.4 — `CLAUDE.md`'s 178-differences paragraph quotes the old schema shape.**
+"All 45 foreign keys and 27 indexes", "all 25 column comments" — true at the
+26-table baseline, and nothing said so. The schema now has **54 foreign keys and
+67 column comments**. Labelled as the baseline shape.
+
+**§2.5 — `docs/00-build-plan.md` read as current and is not.** It plans P0
+Sep 8–21 through P8 to April 2027, and sizes the database at "~600k complaints,
+~350k weather_observations, about 2M rows, 400–600 MB". Reality: Phases 0–4 all
+landed in September; complaints are **237,157** (40% of the estimate) and
+weather_observations **1,309,896** (nearly 4× it, because the grid was tripled in
+resolution after ERA5 resolved BBMP into three cells); `failure_memory`,
+`risk_predictions` and `daily_rankings` are **all empty**; the real totals are
+**1,610,832 rows, ≈218 MB**. It now opens with a planned-vs-measured table and a
+line saying not to read the schedule as current. The plan itself is kept — what
+was planned and why is worth having beside what happened.
+
+---
+
+## 3. The finding that matters more than the five corrections
+
+**The retracted dose-response rests on a specification that was recorded
+nowhere.**
+
+The published pair is −0.0240 (p = 0.0138) over all 110 wards, collapsing to
+−0.0064 (p = 0.833) on treated wards only. I tried to verify it and could not:
+regressing `delta` on `log_spend` over the committed panel gives **−0.0159
+(p = 0.230)**, and on treated wards **−0.0381 (p = 0.301)**. Neither matches.
+
+The panel was not wrong — the raw Spearman reproduced exactly (−0.1634,
+p = 0.0992 against a documented −0.163, p = 0.099). So the published figures had
+to be **multivariate**, and which controls they used existed only in a session
+transcript. I searched specifications until both reproduced to four decimals:
 
 ```
-basis         days  events    static  re-ranked    delta   oracle   random
-era5           138    1289    13.55%     13.70%   +0.14%   37.36%    4.72%
-ecmwf_ifs      136    1289    14.08%     14.23%   +0.15%   37.72%    4.79%
+delta ~ log_spend + log_area + pre
 ```
 
-**The ERA5 row reproduces the published pair exactly.** That is the point of
-measuring a basis nobody asked for: 13.55% and 13.70% are already in the docs, so
-reproducing both to the quoted precision is what makes the IFS figure comparable
-rather than merely new. Had it disagreed, I would have reported the discrepancy
-and not published the IFS number.
+→ **−0.0240, p = 0.0138** over all 110; **−0.0064, p = 0.8334** on treated only.
+Both exact.
 
-**Answer: 14.08% → 14.23%, +0.15 points.** Recorded in
-`docs/01-evaluation-rules.md`'s IFS table, with the ERA5 pair still beneath it
-and labelled. `docs/02-data-profile.md` §14 and CLAUDE.md's Proof One block now
-carry a forward reference so neither reads as the current basis.
+Why this is the important one: this is the project's most significant negative
+result, it is rendered on a screen and printed in the paper, and **"we regressed
+the change in index on log spend" would have been the wrong answer to give under
+questioning** — that is a different, weaker, non-significant result. Someone
+asked "what did you control for?" could not have answered from this repository.
 
-Two things fell out that are better than the number:
+It is now a rule in `docs/01-evaluation-rules.md` — *a coefficient must carry its
+specification wherever it is reported; a coefficient without the model that
+produced it is not a result, it is a number* — and both figures are pinned by the
+verifier.
 
-**The re-ranked top-20 changes by a mean of 0.08 wards between consecutive
-nights** — about one substitution every twelve nights. That is *why* three
-further years of history buy nothing: re-ranking produces very nearly the same
-list. It is a more concrete statement of "count-based memory is saturated" than
-the 0.15-point delta.
-
-**The 1,289 event count is identical on both bases, and it is a coincidence.**
-The two bases share only **126** of their rain days; the 12 ERA5-only days and
-the 10 IFS-only days happen to carry **101 events each**. A reader could easily
-take the matching totals as evidence that the event set is basis-independent. It
-is not — the day sets genuinely differ — and the docs now say so.
-
-**The check you asked for:** no document quotes 13.70% next to 14.08%. Every
-mention is inside an ERA5-basis table or explicitly labelled ERA5. CLAUDE.md's
-Proof One block quotes 13.7% among 13.6/37.4/4.7, which is internally consistent
-ERA5 and now says so.
+This is the fourth instance of the pattern you named: a check or a claim that
+looked sound and was not being verified. `_env_file=None`, the names-only schema
+comparison, the migrations test skipping everywhere, and now a headline
+coefficient with no recorded model.
 
 ---
 
-## 3. Queue item 3 — keep `first_listed_year`, leave it NULL
+## 4. What reproduced exactly, and is now pinned
 
-The years do not exist in anything downloadable. I read the schemas of all three
-register layers directly rather than inferring:
+Worth listing because the docs came out of this in better shape than I expected.
+Every one recomputed from a primary source:
 
-| Layer | Fields |
-|---|---|
-| `bbmp_low_lying_areas.kml` | `OBJECTID` |
-| `flood_prone_locations.kml` | `OBJECTID` |
-| `flood_vulnerable_map.kml` | `OBJECTID, WARD_NAME, WARDNO, LocationName, KGISFVLID, ZONE` |
-
-**No date field in any of them.** The four-digit numbers a naive grep turns up
-are coordinate fragments and ids, not years.
-
-So the choice was drop or keep, and I kept it. Two reasons.
-
-It is the socket for the one input that would let Proof Two be validated
-externally, and BBMP plainly holds those dates internally — this is an RTI, not a
-download. Dropping the column would record "we have decided never to validate
-emerging detection", which is a stronger claim than the evidence supports.
-
-And the gap is already *visible* rather than hidden: `/api/v1/emerging` returns
-`ground_truth_available: false` and the screen renders it as a banner. A NULL
-column plus that banner is a documented gap; a dropped column plus the same
-banner is the same gap with the audit trail removed.
-
-I considered a migration to reword the column COMMENT so the emptiness is
-self-documenting in the schema, and rejected it: schema churn for prose, three
-days from the freeze. Flagging it as an optional post-freeze tidy.
+- **The two triples**, both bases, plus both re-ranked figures: 13.55 / 13.70 /
+  37.36 / 4.72 (ERA5) and 14.08 / 14.23 / 37.72 / 4.79 (IFS).
+- **The headroom argument**: honest 14.0809%, perfect-foresight ward ranking
+  15.6618%, gain **+1.58** points against a **23.64**-point headroom — so
+  DECISIONS.md's "1.6 points out of 24" is right.
+- **Both base rates**: strict **1.5585%** (6,045 event ward-days of 387,882) and
+  broad **7.9903%**. Rule 3 quotes both; both hold.
+- **Kendall tau between the halves = 0.5884** with a **15/20** top-20 overlap,
+  against a documented 0.59 and 15/20.
+- **The allocation totals**: ₹6,677,331,368 total, ₹20,242,441 median treated,
+  Someshwara highest at ₹631,617,283, Jakkur ₹494,203,600 and **rank 2** —
+  confirming "2nd-highest drainage spender".
+- **The Jakkur series**: 20 quarters, 0.2179 → 1.6362, mean 1.0948, above the
+  norm in **10 of 20** — matching "0.22 → 1.64, mean 1.09, 10 of 20".
+- **The hazard YAML against the database**: its own `event_total_rows` 8,293 and
+  `broad_total_rows` 42,004 both equal `COUNT(*)` over those sub-categories.
+- **The crosswalk**: 198 rows, 106/44/48, 0 unresolved, 102 in register, 96 not.
+- **Generated artifacts**: the geojson is 661 KB / 198 features / 36,369 points,
+  and the dump is 612 KB / 30 INSERTs / 4,820 rows — all as documented.
+- **`/health` returns 503 when the database is unreachable.** Verified by
+  accident, against a genuinely broken instance. It does.
 
 ---
 
-## 4. Queue item 4 — leave `is_known_hotspot` FALSE on ward rows
+## 5. What I could not verify — not guessed, not dropped
 
-You warned that reading the wrong one widens the pre-specified pool. It does —
-confirmed, 42 → 103 — but that turned out to be the fourth-best reason.
+These appear in `docs/02-data-profile.md` and were computed in sessions whose
+scripts were never committed. Re-deriving them is a post-freeze job; each line
+says what it would take.
 
-**The decisive one: it is not derivable from `locations` at all. Only 200 of the
-398 register points carry a `ward_no`**, because only `flood_vulnerable_map.kml`
-has a `WARDNO` field. A ward flag computed from the database would be built from
-half the register.
+| Figure | Where | To check it |
+|---|---|---|
+| Pooled AUC 0.749 vs within-night 0.737 | CLAUDE.md, 01, 02 §19.4 | Refit the ranking model and score both ways. Needs the model, which is not built. |
+| Weather-only ranking 5.63% | 01, 02 §17.4 | Rank wards by cell rainfall per night and score at k=20. Feasible from the DB; the exact feature was never recorded. |
+| Per-ward rainfall lift tables (3.06 → 3.00, χ² p = 0.877) | CLAUDE.md, 02 §16–17 | Re-run the lift computation on both grids. Data present; script gone. |
+| Permutation null: 9 rising / 4 declining, p = 0.0010, 2,000 draws | CLAUDE.md, 01, 02 §22–23 | Re-run the permutation. Seed unrecorded, so the p will be close but not identical. |
+| Citywide share fell 22% | 01, 02 §22 | My nearest reproduction is **−20.6%** (first-four vs last-four quarters); the exact instrument was not recorded. Close, not confirmed. |
+| Magnitude R² = 0.196, 3-class 50.0% vs 39.6% | CLAUDE.md, 02 §20 | Refit the magnitude model. |
+| Register agreement: 16 of 20, base rate 52%, p = 0.006, Spearman 0.334 | CLAUDE.md, 02 §21 | Recomputable from the crosswalk and the frozen list; not attempted this session. |
+| §26 quintile table, F = 1.26 p = 0.265 | CLAUDE.md, 02 §26.3 | Refit with a quadratic term on the panel. Panel is committed, so this one is genuinely cheap. |
+| §28 gate figures (ρ = +0.505, 6 of 8 quarters, 51 of 196 wards) | CLAUDE.md, 02 §28 | Re-run the gate analysis off the raw work orders. |
+| Palette contrast ratios (2.06:1 … 2.21:1) | frontend/README.md | Re-run the data-viz palette validator, which is not in the repo. |
+| "309,012 rows, 40.31%" for the 96 off-register wards | 02 §15 | **This is a pre-filter number** — it is 40.31% of the 766,648 raw grievance rows, not of the 237,157 loaded. Post-filter the same wards hold 98,156 rows = **41.39%**. DECISIONS.md says "40% of the data", which is true either way, so I left it; flagging the ambiguity. |
 
-**And where the two instruments disagree, the crosswalk is deliberately right.**
-The points name 103 wards; `ward_crosswalk.csv` flags 102; the single difference
-is **ward 65** — the register calls it `Kadu Malleshwar`, the 2015 delimitation
-calls it `Subedarapalya`, and §15.2 left it unpaired rather than guessed.
-Populating the flag from the KML's `WARDNO` would silently overrule a recorded
-hand judgement. That the two disagree on exactly one ward, and that it is exactly
-the one already documented as a hand call, is a good sign about both instruments.
-
-Plus the semantic point: for a point the flag means "on the register", for a ward
-the analogous fact is "contains a register point". Overloading one boolean with
-two meanings is what caused the confusion originally.
-
-Both decisions are in `DECISIONS.md` in examiner-facing form, including the answer
-to "so how do you know the emerging detector works?".
+None of these is a headline. The triples, the headroom, the allocation finding,
+the emerging evidence and the case study are all verified.
 
 ---
 
-## 5. What I want a second opinion on
+## 6. The recording
 
-1. **`scripts/mysql-init/` changes `docker-compose.yml`, three days from the
-   freeze.** I judged it in-scope by the same reasoning you applied to the
-   production guard in §6.5: the freeze protects the demo path, and this cannot
-   reach it — the init script runs only on first initialisation of a volume, and
-   the grant is scoped to `ufms_t_%`. I verified `docker compose up -d` against
-   the existing populated database and every row count is unchanged. But it is a
-   change to the file step 1 of the runbook invokes, so it should be a conscious
-   call rather than mine alone.
+`docs/demo/ufms-demo.mp4` — **1:12, 1280×720, H.264, 1.06 MB**, with the webm it
+was transcoded from (4.56 MB). Both committed; `.gitattributes` marks them
+binary. Well inside 25 MB, so no frame-rate reduction was needed.
 
-2. **The `container_name` override is a behaviour change with a default-preserving
-   shape.** Unset, everything is exactly as before. I think that makes it safe;
-   say so if you disagree and I will revert it to hard-coded and leave only the
-   failure-table row.
+`npm run record-demo` in `frontend/`. It walks the runbook's path in the
+runbook's order with explicit dwells — 6.5s on the precision scale, 5s on the
+ward tooltip, 6.5s on the retraction — because a demo video that moves at
+Playwright's speed is useless in a room.
 
-3. **I did the rehearsal on this machine, not a different one.** That is what was
-   asked and it found six defects, but it cannot find a missing prerequisite that
-   happens to be installed here. If a second machine is available before the 16th,
-   running section 0 on it is the highest-value remaining check — and it is
-   ten minutes, not an hour.
+**No login screen and no credentials on camera.** It fetches a token from the API
+and injects it into `sessionStorage` via an init script that runs before first
+paint, so the app restores straight to the watchlist.
 
-4. **`first_listed_year` kept rather than dropped** is the one decision here I
-   could argue either way. The case for dropping: a permanently-NULL column is
-   schema noise and an examiner may ask why it exists. The case for keeping, which
-   I went with: it names the missing input. If you prefer dropped, it is a
-   migration plus a model edit plus `ufms_schema.sql`, and it should happen before
-   the 13th or not until after the 16th.
+**I checked frames rather than assuming.** At 0:05 the precision scale shows
+4.79% chance / 14.08% this list / 37.72% ceiling, legible at 720p. At 0:33 the
+choropleth draws 198 wards with no basemap and the tooltip reads *Basaveshwara
+Nagar / Ward 100 · West / Index 0.54, 2025Q1* — name, ward, index **and quarter**,
+which is the §9.5 condition, on video. At 0:52 the retraction renders in full
+above both scatter panels, neither with a trend line. Zero console errors across
+the whole recording.
 
-5. **Nothing else is queued for this week, and I think that is correct.** What
-   remains is Tanmay's: the supervisor on the 14th, names on the paper and slides
-   1 and 14, and the reference volume and page numbers. The system is done and
-   rehearsed.
+**On the mp4: ffmpeg was the interesting part.** Playwright bundles one, but it
+is a minimal build carrying **only VP8 and png** — it cannot encode H.264 at all,
+and the first attempt failed with a wall of configure flags. Rather than ship
+webm-only, I made the script ask each candidate for its encoder list and reject
+any without `libx264`. A full ffmpeg turned out to be already on this machine
+(bundled with a browser extension's companion app), so the mp4 exists. If a
+future run finds none, the script says so explicitly and prints
+`winget install Gyan.FFmpeg` rather than silently producing nothing.
+
+`docs/demo/README.md` records what it shows, that it is the real system and not a
+mockup, the date, the commit (`d2a619d` — no code under `app/` or `frontend/src/`
+changed between then and the recording), and a timestamped index of the path.
+
+The runbook's insurance section now leads with the video and keeps the
+screenshots as the second fallback.
 
 ---
 
-## 6. State
+## 7. One more defect, found while setting up the recording
 
-- `origin/main` at `1773b45`; working tree clean; nothing unpushed.
-- 164 tracked files. `.env` untracked and ignored.
-- **148 backend tests** (working copy), **135 passed / 13 skipped** (fresh clone),
-  **31 frontend tests**, `npm run build` clean.
-- `python scripts/check_parity.py --base http://127.0.0.1:8000` → 27/27, PASSED.
-- `scripts/measure_reranked_baseline.py` reproduces 13.55 / 13.70 / 14.08 / 14.23
-  on demand.
-- Rehearsal artifacts removed: the clone's container and volume are gone
-  (`docker compose down -v`), and the clone's contents are deleted. Its now-empty
-  directory in `%TEMP%` would not unlink — some Windows process still holds the
-  handle — so it is 4 KB of empty directory in the OS temp area rather than truly
-  zero. Saying so rather than claiming a clean sweep.
-- The working copy is untouched: the same container, the same named volume, row
-  counts byte-for-byte identical to the pre-rehearsal baseline (1,309,896 /
-  237,157 / 3,960 / 596 / 2), and the same two demo accounts.
+Port 8000 was answering, `/health` said `database: unreachable`, and every panel
+would have rendered empty. The cause was an **orphaned `uvicorn --reload` worker**
+from the rehearsal clone, still holding the port and serving a database I had
+deleted an hour earlier. `netstat` attributed the socket to a PID that no longer
+existed, so `taskkill` on it reported "process not found" while the port kept
+responding. The live process was the reload *worker*, findable only by command
+line (`spawn_main(parent_pid=...)`).
+
+This is nastier than a plain port clash, because the port answers. On demo
+morning it would present as "the API is up but the dashboard is empty" — which
+the runbook's existing row sends you to re-run the restore, the wrong fix. Added
+as its own failure row with the PowerShell that finds it.
+
+---
+
+## 8. Flagged, not acted on
+
+1. **`docs/02-data-profile.md` is 3,181 lines and is now the only document with
+   unverifiable numbers in it.** Everything in §5 above lives there. It is a
+   research log rather than a claims document, which is why I have not touched
+   it — but if an examiner reads a figure out of it, we cannot currently
+   reproduce it. Post-freeze, the §26 quintile refit and the §21 register
+   agreement are the two cheapest to close, because both run off committed files.
+
+2. **The "22%" citywide decline is the one figure I would still like to pin.** It
+   appears in `DECISIONS.md` in prose ("falling city-wide by 22%") and supports
+   the Proof Two null. My nearest reproduction is −20.6%. It is almost certainly
+   right and measured slightly differently; I did not change it, because
+   replacing a documented figure with a differently-derived one is how bases got
+   mixed in the first place.
+
+3. **Nothing else. The freeze starts on the 13th and I have nothing queued.**
+   What remains is Tanmay's: the supervisor on the 14th, names on the paper and
+   on slides 1 and 14, and the reference volume and page numbers.
+
+---
+
+## 9. State
+
+- `origin/main` at `c083e07`; working tree clean; nothing unpushed.
+- 168 tracked files.
+- **148 backend tests, 31 frontend tests**, `npm run build` clean, lint warnings
+  unchanged (3, all pre-existing).
+- `scripts/check_parity.py --base http://127.0.0.1:8000` → **27/27, PASSED**.
+- `scripts/verify_documented_figures.py --slow` → **65/65, PASSED**.
+- The demo stack is up on :8000 and :5173 and serving correct numbers.

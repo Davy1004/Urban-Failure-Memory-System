@@ -255,6 +255,66 @@ second copy of the numbers that could drift. Any change has to keep
 
 ## Done log
 
+- **2026-09-10 (third session) — Every documented number now reproduces on
+  demand; the demo is recorded; the system is frozen.**
+  **65 figures enumerated and checked, 60 correct, 5 corrected**, and the check
+  is permanent: `scripts/verify_documented_figures.py` recomputes all 65 from the
+  database, the reference CSVs and the hazard YAML — **never from another
+  document**, because copying between documents is how all four stale-number
+  classes propagated.
+  **The finding that matters is not one of the five.** The retracted
+  dose-response — the project's most important negative result, rendered on a
+  screen and printed in the paper — rests on a **multivariate** coefficient whose
+  specification was recorded nowhere. The bivariate regression gives −0.0159
+  (p = 0.230), a different and weaker result, so *"we regressed the change in
+  index on log spend"* would have been the wrong answer under questioning.
+  Recovered by search until both published figures reproduced to four decimals:
+  **`delta ~ log_spend + log_area + pre`** gives −0.0240 (p = 0.0138) over all
+  110 wards and −0.0064 (p = 0.8334) on treated only. Now a rule in
+  `docs/01-evaluation-rules.md` — *a coefficient must carry its specification
+  wherever it is reported* — and pinned. **Fourth instance of the project's
+  characteristic defect**, after `_env_file=None`, the names-only schema
+  comparison and the migrations test skipping everywhere.
+  **The five corrections:** `DECISIONS.md` quoted the ERA5 triple as current (now
+  the IFS 4.8 / 14.1 / 37.7, with the two bases named); `DECISIONS.md` claimed
+  "all 198 resolved by hand" when it is 106 exact / 44 normalised / 48 manual;
+  `CLAUDE.md` said 31 response-contract tests against 39; its 178-differences
+  paragraph quoted the 26-table baseline shape (45 FKs, 25 comments) with nothing
+  saying so, against 54 and 67 now; and `docs/00-build-plan.md` read as current
+  while planning to April 2027 and sizing the database at ~2M rows / 600k
+  complaints — actual **1,610,832 rows, 237,157 complaints, 1,309,896 weather
+  observations, ≈218 MB** — now marked historical with a planned-vs-measured
+  table.
+  **Verified exactly**: both triples and both re-ranked figures; headroom
+  14.0809 → 15.6618, **+1.58 of 23.64**; base rates **1.5585%** strict and
+  **7.9903%** broad; Kendall tau **0.5884** with 15/20 overlap; the allocation
+  totals to the rupee and Jakkur at **rank 2**; the Jakkur series 0.2179 → 1.6362,
+  mean 1.0948, 10 of 20; the hazard YAML against `COUNT(*)`; the geojson at
+  661 KB / 198 / 36,369 and the dump at 612 KB / 4,820. **`/health` really does
+  return 503** when the database is unreachable — confirmed against a genuinely
+  broken instance.
+  **Eleven figures could not be verified** and are listed in `REPORT.md` §5 with
+  what each would take, rather than guessed or dropped. All live in
+  `docs/02-data-profile.md` and come from sessions whose scripts were never
+  committed. None is a headline.
+  **The demo is recorded**: `docs/demo/ufms-demo.mp4`, **1:12 at 1280×720 H.264,
+  1.06 MB**, plus the 4.56 MB webm. `npm run record-demo`. It starts already
+  signed in — token injected into `sessionStorage` before first paint — so the
+  login screen and the shared password are never on camera. Frames were checked,
+  not assumed: the scale reads 4.79 / 14.08 / 37.72, the choropleth draws 198
+  wards with no basemap, the tooltip reads *Basaveshwara Nagar / Ward 100 · West
+  / Index 0.54, 2025Q1*, the retraction renders in full, zero console errors.
+  **Playwright's bundled ffmpeg carries VP8 only and cannot make an mp4** — the
+  script now asks each candidate for its encoder list and refuses any without
+  `libx264` rather than writing a file nothing plays.
+  **One more defect, found while setting up the recording**: an orphaned
+  `uvicorn --reload` **worker** can hold port 8000 and keep answering while
+  serving a database that no longer exists; `netstat` blames a dead PID so
+  `taskkill` says "process not found" while every panel renders empty. On demo
+  morning it looks like "the API is up but the dashboard is empty", which the
+  existing row sends you to fix the wrong way. Added as its own failure row.
+  **148 backend tests, 31 frontend tests, 27/27 parity, 65/65 figures.**
+
 - **2026-09-10 (second session) — Rehearsed the demo from a fresh clone five
   days early; six defects found and fixed; queue items 5, 3 and 4 closed.**
   **The rehearsal passed: a `git clone` reaches a working, correct dashboard.**
