@@ -130,40 +130,102 @@ Done:
   at mean relative index 1.77 vs 1.16 for all wards, **10/10 above the city
   norm, p = 0.0001**. The detector finds *chronically above norm*, not
   *accelerating*.
+- **THE WITHIN-WARD DESIGN IS DEAD AT THE GATE** (profile §28). Staggered
+  treatment timing does not exist: **zero** wards have their first-ever
+  drainage work inside 2021Q1-2022Q4 (all 196 were first treated 2011-2014),
+  the median ward had works completing in **6 of the 8 quarters before** the
+  window, only **4 of 8** quarters carry >= 5 first-treated wards, ward work
+  profiles correlate with the citywide calendar at rho = +0.505, and the
+  work-order file stops at 2023Q1 while the outcome panel runs to 2025Q1 - so
+  40% of the "post" period is censoring. **No model was fitted; the gate is
+  the result.** Also: 5 of the 7 "untreated" wards had ₹37-121 M of drainage
+  work before the window, so the treated indicator (-0.4497) is not a
+  treated-vs-control contrast either and must not be reported as a fallback.
+  **ANALYSIS IS CLOSED PERMANENTLY.** Do not propose another identification
+  strategy on this data.
+- **The effectiveness output is the ALLOCATION finding, in full.** Spend tracks
+  ward area (rho = +0.474), not relative flooding need (r = -0.083, p = 0.39).
+  Its companion, and use this wording rather than any claim about what BBMP
+  knows: drainage works are distributed continuously and near-uniformly across
+  all 198 wards and have been since 2013, so **no observational evaluation of
+  their effect is identifiable from these records** - the treatment does not
+  vary enough for any design to exploit.
 - **Proof One is a measured ceiling; Proof Two is real but barely nameable;
   intervention effectiveness is positive.** **The analysis should now stop
   expanding and the queue should turn to building** - the system has not moved
   since Phase 0 and the mid-review is ~7 December.
 
+- **PHASE 4 IS DONE: the frontend exists** (9 Sep 2026). `../ufms-frontend`,
+  React 19 + Vite + Tailwind v4 + Recharts + Leaflet, four screens on the four
+  endpoints. `npm run dev` proxies `/api` to :8000. **Read
+  `ufms-frontend/README.md` before changing a screen** — several presentation
+  rules there are results, not taste. In particular precision@20 is drawn as a
+  mark on a scale ending at the oracle ceiling, never as a stat tile: the
+  context is structural, so it cannot be dropped without breaking the drawing.
+  25 frontend tests pin those rules in the rendered DOM.
+  Two things a reader should know: **the ward polygons are generated** by
+  `scripts/export_ward_geojson.py` from `bbmp_ward_map_2015.kml` (the 2022 KML
+  is a different delimitation and will not join), and **the map has no
+  basemap** — the 198 wards tile the city, and the CARTO tiles started
+  demanding an API key.
+- **A fifth endpoint exists: `GET /api/v1/index`** (no ward), returning every
+  ward's index for one quarter. The choropleth needs all 198 at once; built
+  from 198 per-ward calls it renders half-shaded when one fails, and an
+  uncoloured ward reads as "nothing happened here" rather than "no data".
+- **The four derived tables and their endpoints are built** (9 Sep 2026).
+  `ward_quarter_index` (3,960 ward-quarters), `watchlist_snapshots` +
+  `watchlist_entries`, `emerging_watch` (103 eligible wards) and
+  `ward_allocation` (110 wards, 103 treated), rebuilt by
+  `python -m app.ingestion.cli derive`. Endpoints `/api/v1/index/{ward}`,
+  `/watchlist`, `/emerging`, `/allocation`, all GET, both roles.
+  **Every one reconciles exactly against the reference CSVs** —
+  `tests/test_derived.py`, 32 assertions at 1e-9, plus 31 response-contract
+  tests in `tests/test_dashboard_api.py`. Two things worth knowing:
+  **the random baseline on the IFS basis is 4.79%, not 4.72%** (4.72% belongs
+  to the ERA5/138-day basis, where the static list is 13.55% and the ceiling
+  37.36%. `docs/01-evaluation-rules.md` now leads with the IFS triple
+  **4.79 / 14.08 / 37.72** and keeps the ERA5 one beneath it, labelled), and
+  **`locations.is_known_hotspot` is FALSE for all 198 ward rows** because the
+  flag is set on the 398 register points — the ward-level register fact lives
+  in `ward_crosswalk.csv`'s `in_flood_register`, and reading it from
+  `locations` would silently widen the pre-specified emerging pool from 42
+  wards to all 103.
+- **Migrations are live.** `alembic upgrade head` builds the whole schema from
+  scratch, views included; `weather_cells.model` records which reanalysis each
+  cell is (era5 = cells 1-9, ecmwf_ifs = 10-23, backfilled, and `model` is part
+  of `uq_cell_coords` because two models may snap to one coordinate); and
+  `ward_period_totals` holds the index denominator in the database, so the
+  relative flooding index no longer needs a CSV beside it. 4,356 ward-quarter
+  rows, matching `ward_period_totals.csv` exactly and idempotently.
+
 Not started:
-- `app/ingestion/bbmp_complaints.py` — the headers are now known and profiled,
-  so map explicitly from `docs/02-data-profile.md` §2. Two traps that profile
-  documents: filter waterlogging on **`Sub Category`, not `Category`** (84% of
-  it sits under `Road Maintenance(Engg)`), and parse the date to **`DATE`,
-  not `DATETIME`** (the timestamps lost their AM/PM marker). Keep the
-  `--inspect` mode as a header-signature assertion so a republished file with
-  a changed vocabulary fails loudly.
-- **Decide the waterlogging label before training anything.** `Road side
-  drains` is 66% of waterlogging ward-days but is maintenance backlog, not
-  flooding — rain lift 1.3x versus 3.1x for `water stagnation`. Profile §12.5
-  recommends modelling failure events and maintenance demand as two separate
-  targets. This choice partly determines whether Proof One succeeds.
-- `app/ingestion/bbmp_hotspots.py` — load the BBMP flood-prone register into
-  `locations` with `is_known_hotspot=true` and `first_listed_year` set. The
-  register is **KML, not CSV** — three near-disjoint layers, ~390 locations
-  rather than the ~210 assumed. `flood_vulnerable_map.kml` is the primary one.
-- **`data/reference/ward_crosswalk.csv`** — hand-checked, keyed on `WARDNO`
-  1-198. Complaints carry ward *name* only, the register carries ward
-  *number*; only 55 of 103 names match exactly. Do not fuzzy-match at load
-  time, it mis-pairs real wards. Blocks `geo.py`.
-- `app/ingestion/geo.py` — assign each location its nearest `weather_cells`
-  row (`Location.cell_id`); haversine is fine at this scale.
+- **`is_known_hotspot` is set but `first_listed_year` is NULL for all 398
+  register points.** The KML layers carry no year, so the "which locations did
+  the city add this year" framing has no ground truth on the register side.
+  Decide whether to drop the field or source the years elsewhere.
+- **Hotspot register dedup.** The three KML layers are loaded unmerged, so the
+  398 points contain an unknown number of duplicates across layers. Queue item.
+- Memory engine and the model ladder M0-M3 — to demonstrate the bound, not to
+  beat it. Report within-night AUC or precision@k, never a pooled AUC.
+
+Done since this list was last accurate — do not re-plan these:
+`app/ingestion/bbmp_complaints.py` (YAML-driven, 237,157 complaints, matched on
+`Sub Category` and truncated to `DATE` as the profile requires); the
+waterlogging label decision (`data/reference/hazard_categories.yaml`, event vs
+maintenance split); the flood register (loaded by `app/ingestion/bbmp_wards.py`,
+398 points, not a separate `bbmp_hotspots.py`); `ward_crosswalk.csv` (198 rows,
+0 unresolved); and cell assignment (also in `bbmp_wards.py`, all 596 locations
+carry a `cell_id` — there is no `geo.py` and none is needed).
 
 ### Bringing the stack up
 
 ```bash
 docker compose up -d
-docker exec -i ufms-mysql mysql -uroot -proot < ufms_schema.sql
+alembic upgrade head                       # builds the schema from migrations
+# or load the canonical DDL directly. The charset flag is not optional:
+# without it, two column comments are stored double-encoded.
+# docker exec -i ufms-mysql mysql --default-character-set=utf8mb4 \
+#   -uroot -proot < ufms_schema.sql
 python -m venv .venv && .venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 copy .env.example .env                                # then set a real SECRET_KEY
@@ -185,10 +247,21 @@ Two things that bit on the first run, both fixed — do not reintroduce them:
 `ufms_schema.sql` opens with `DROP DATABASE IF EXISTS ufms`, so re-running it
 wipes all data. The `ufms` user's grants do survive the drop; no re-grant.
 
-Alembic connects but has **no baseline revision** — the schema is loaded from
-`ufms_schema.sql`, not migrations, so `alembic revision --autogenerate` would
-try to create all 26 tables. Stamp a baseline before writing the first
-migration.
+**The models did NOT mirror `ufms_schema.sql`, and nothing had noticed.**
+Baselining exposed **178 differences**: all 45 foreign keys and 27 indexes
+carried MySQL's auto-generated names (`weather_cells_ibfk_1`) rather than the
+schema's (`fk_cell_city`), 23 columns had a Python-side `default=` and so no
+server-side DEFAULT at all, seven `TIMESTAMP` columns had become `DATETIME`,
+`cities.country` was `VARCHAR(2)` not `CHAR(2)`, `users.updated_at` had lost
+`ON UPDATE CURRENT_TIMESTAMP`, and all 25 column comments were missing. The
+Phase 0 note that "table sets match exactly, no column drift" was true and
+insufficient — it compared names, not types, defaults or constraint names. The
+models are now faithful and the test above keeps them that way.
+
+**Load the schema with an explicit charset.** `docker exec -i ufms-mysql mysql
+-uroot -proot < ufms_schema.sql` negotiates a latin1 client charset and
+double-encodes the two column comments containing an em-dash. Always pass
+`--default-character-set=utf8mb4`.
 
 ## Where the work queue lives
 
@@ -329,7 +402,8 @@ MySQL — the database is the system of record, the panel is a derived artifact.
 app/
   core/          config, security (JWT + bcrypt), exceptions, logging
   db/            engine, session, declarative base
-  models/        26 SQLAlchemy models mirroring ufms_schema.sql
+  models/        31 SQLAlchemy models mirroring ufms_schema.sql
+  derived/       the four dashboard computations; reconciled, not ingested
   schemas/       Pydantic request/response models
   repositories/  data access; keeps SQLAlchemy out of services
   services/      business logic; owns transactions (commit here, not in routes)
@@ -339,8 +413,17 @@ app/
 
 See `docs/` for the build plan and the evaluation rules — read `docs/01-evaluation-rules.md` before writing any modelling code.
 
+The frontend lives in `../ufms-frontend`, a separate npm project. It talks to
+this API only — it holds no analysis of its own, and every caveat it renders
+arrives as a required response field so a redesign cannot silently drop one.
+
 `ufms_schema.sql` at the repo root is the canonical DDL. The SQLAlchemy
 models mirror it — change both together, or generate a migration.
+Section 7 holds the five derived tables; `app/derived/` computes them and
+`tests/test_derived.py` reconciles every one against a committed reference CSV.
+**A column COMMENT is a SQL string literal, and one containing a semicolon cut
+`test_migrations.py`'s statement splitter in half.** The splitter is now
+quote-aware, so prose comments are safe.
 
 ## Conventions
 
@@ -352,15 +435,22 @@ models mirror it — change both together, or generate a migration.
 
 ## Deferred decisions (do not silently "fix" these)
 
-- **Alembic baseline — deferred to Phase 2.** `versions/` is intentionally
-  empty; the schema comes from `ufms_schema.sql`. Do NOT run
-  `alembic revision --autogenerate` before baselining, or it will emit a
-  migration that recreates all 26 tables. When it is done properly: generate
-  the baseline against an EMPTY database so migrations can build the schema
-  from scratch (Render needs this in Phase 7), hand-add the 3 views with
-  `op.execute`, verify a fresh `alembic upgrade head` produces an
-  `information_schema` identical to loading the raw SQL, then
-  `alembic stamp head` on the existing dev database.
+- **Alembic baseline — DONE (8 Sep 2026), no longer deferred.** Three
+  revisions: `d592327e5d7c` baseline (26 tables + the 3 views by `op.execute`),
+  `bcaacf1141de` `weather_cells.model`, `5fabc9db9f7d` `ward_period_totals`.
+  The dev database is stamped and `alembic check` is clean against it.
+  `alembic upgrade head` on an empty database now produces an
+  `information_schema` identical to loading `ufms_schema.sql` — enforced by
+  `tests/test_migrations.py`, which builds one database each way and diffs
+  columns, types, defaults, ordinal positions, comments, indexes, foreign keys
+  and view definitions. **Run that test after touching either file.**
+
+- **`interventions` is intentionally empty and must stay that way.** The work
+  orders are aggregated into `ward_allocation` by `app/derived/allocation.py`
+  and the 49,915-row extract stays on disk, exactly as `ward_period_totals`
+  does with the complaint totals. No screen needs row-level work orders, so
+  loading them would be 49,915 rows with no consumer. Do not helpfully
+  populate it.
 
 - **`ufms_schema.sql` is no longer destructive.** The `DROP DATABASE` moved
   to `scripts/reset_db.sql`. Re-running the schema file on a populated

@@ -57,11 +57,17 @@ CREATE TABLE cities (
 CREATE TABLE weather_cells (
     cell_id         INT UNSIGNED        NOT NULL AUTO_INCREMENT,
     city_id         SMALLINT UNSIGNED   NOT NULL,
+    -- Two reanalyses are in play (profile 17): ERA5 at ~25 km resolves BBMP
+    -- into 3 cells, ECMWF-IFS at ~9 km into 14. Cells from different models
+    -- are DIFFERENT cells even at the same coordinate, which is why the
+    -- model is part of uq_cell_coords and not just a label.
+    model           ENUM('era5','ecmwf_ifs','era5_land')
+                    NOT NULL DEFAULT 'era5' COMMENT 'which reanalysis this cell belongs to',
     latitude        DECIMAL(9,6)        NOT NULL,
     longitude       DECIMAL(9,6)        NOT NULL,
     elevation_m     DECIMAL(7,2)        NULL,
     PRIMARY KEY (cell_id),
-    UNIQUE KEY uq_cell_coords (latitude, longitude),
+    UNIQUE KEY uq_cell_coords (model, latitude, longitude),
     KEY idx_cell_city (city_id),
     CONSTRAINT fk_cell_city FOREIGN KEY (city_id)
         REFERENCES cities (city_id) ON DELETE CASCADE
@@ -307,6 +313,33 @@ CREATE TABLE complaint_failure_link (
         REFERENCES complaints (complaint_id) ON DELETE CASCADE,
     CONSTRAINT fk_cfl_failure FOREIGN KEY (failure_id)
         REFERENCES failures (failure_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- The denominator of the relative flooding index.
+--
+--     rel(w,q) = events(w,q) / [ total_complaints(w,q) * city_share(q) ]
+--
+-- `complaints` holds only the waterlogging and solid-waste subset that rule 7
+-- allows to be loaded, so the ward's complaint volume across EVERY category
+-- cannot be recovered from it. Without this table the index is computable only
+-- from a CSV sitting outside the database, which is how a dashboard ends up
+-- showing a number nothing else can reproduce (profile SS27.1).
+--
+-- It is an aggregate of the source extract, not of `complaints`: re-running the
+-- loader with a different category filter must not change these figures.
+CREATE TABLE ward_period_totals (
+    location_id     INT UNSIGNED        NOT NULL,
+    period_type     ENUM('month','quarter','year') NOT NULL DEFAULT 'quarter',
+    period_start    DATE                NOT NULL COMMENT 'first day of the period',
+    total_complaints INT UNSIGNED       NOT NULL COMMENT 'all categories, not just hazards',
+    run_id          BIGINT UNSIGNED     NULL,
+    PRIMARY KEY (location_id, period_type, period_start),
+    KEY idx_wpt_period (period_type, period_start),
+    CONSTRAINT fk_wpt_location FOREIGN KEY (location_id)
+        REFERENCES locations (location_id) ON DELETE CASCADE,
+    CONSTRAINT fk_wpt_run FOREIGN KEY (run_id)
+        REFERENCES ingestion_runs (run_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 
@@ -622,7 +655,185 @@ CREATE TABLE preventive_actions (
 
 
 -- =====================================================================
--- 7. SEED DATA
+-- 7. DERIVED TABLES  (what the four dashboard screens read)
+-- =====================================================================
+-- These are computed, not ingested. Every one is reconciled against the
+-- committed reference CSVs by tests/test_derived.py, because four
+-- computations the paper already published are being reimplemented here
+-- against a database instead of a dataframe, and a silent divergence between
+-- the dashboard and the paper is the failure mode that matters.
+--
+-- Rebuild with `python -m app.ingestion.cli derive`. All four are idempotent.
+
+
+-- Screen 1. The relative flooding index per ward-quarter - the quantity the
+-- whole project turns on (profile SS23.1):
+--
+--     rel(w,q) = [events(w,q) + s] / [complaints(w,q) * city_share(q) + s]
+--
+-- rel = 1 means the ward sat exactly at the city norm that quarter. The city
+-- share is stored beside every row so rel is recomputable from this table
+-- alone, without a second pass over `complaints`.
+--
+-- city_share and rel_index are stored at full precision on purpose: rounding
+-- the share to eight places moves rel by ~5e-7, which is enough to break the
+-- exact reconciliation against the published panel.
+CREATE TABLE ward_quarter_index (
+    location_id     INT UNSIGNED        NOT NULL,
+    period_type     ENUM('month','quarter','year') NOT NULL DEFAULT 'quarter',
+    period_start    DATE                NOT NULL COMMENT 'first day of the period',
+    event_days      INT UNSIGNED        NOT NULL COMMENT 'distinct ward-days carrying a strict waterlogging event',
+    total_complaints INT UNSIGNED       NOT NULL COMMENT 'the denominator, from ward_period_totals: all categories',
+    city_share      DECIMAL(20,18)      NOT NULL COMMENT 'citywide event-days over citywide complaints, this period',
+    smoothing       DECIMAL(4,2)        NOT NULL DEFAULT 0.50 COMMENT 'added to numerator and denominator; 0.5 in the published panel',
+    rel_index       DECIMAL(20,16)      NOT NULL COMMENT '1.00 is the city norm for that quarter',
+    computed_at     DATETIME            NOT NULL,
+    PRIMARY KEY (location_id, period_type, period_start),
+    KEY idx_wqi_period (period_type, period_start),
+    CONSTRAINT fk_wqi_location FOREIGN KEY (location_id)
+        REFERENCES locations (location_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- Screen 2. The standing watchlist: the static "k historically worst" list,
+-- frozen at as_of_date and never re-ranked. It is the baseline an officer
+-- already has, and the project's measured result is that almost nothing beats
+-- it (profile SS19).
+--
+-- The three metrics are columns rather than documentation because the screen
+-- must show all three together. A bare precision@20 of 14% reads as failure;
+-- against a 4.79% random floor and a 37.72% oracle ceiling it is 37% of what
+-- is achievable. Showing the list without its context invites exactly the
+-- misreading this project spent six sessions disproving.
+--
+-- They are NULL-able: a snapshot frozen at today's date has no held-out
+-- window to measure against, and a made-up number is worse than a blank.
+CREATE TABLE watchlist_snapshots (
+    snapshot_id     INT UNSIGNED        NOT NULL AUTO_INCREMENT,
+    city_id         SMALLINT UNSIGNED   NOT NULL,
+    failure_type_id TINYINT UNSIGNED    NOT NULL,
+    as_of_date      DATE                NOT NULL COMMENT 'freeze date: entries rank on events up to and including this day',
+    k               SMALLINT UNSIGNED   NOT NULL DEFAULT 20 COMMENT 'crew capacity, and the k in precision@k',
+    train_start     DATE                NOT NULL,
+    test_start      DATE                NULL COMMENT 'NULL when the snapshot has not been scored',
+    test_end        DATE                NULL,
+    test_rain_days  SMALLINT UNSIGNED   NULL COMMENT 'held-out days at or above rain_threshold_mm',
+    test_events     INT UNSIGNED        NULL COMMENT 'citywide event-days on those rain days',
+    rain_threshold_mm DECIMAL(5,2)      NULL COMMENT 'city-mean daily rainfall that defines a rain day',
+    weather_model   ENUM('era5','ecmwf_ifs','era5_land') NULL COMMENT 'which reanalysis defined a rain day',
+    precision_at_k  DECIMAL(9,8)        NULL COMMENT 'what the frozen list achieved',
+    oracle_at_k     DECIMAL(9,8)        NULL COMMENT 'the ceiling: most nights carry fewer than k events citywide',
+    random_at_k     DECIMAL(9,8)        NULL COMMENT 'expected precision of k wards drawn at random',
+    computed_at     DATETIME            NOT NULL,
+    PRIMARY KEY (snapshot_id),
+    UNIQUE KEY uq_watchlist_snapshot (city_id, failure_type_id, as_of_date, k),
+    KEY idx_wls_as_of (city_id, as_of_date),
+    CONSTRAINT fk_wls_city FOREIGN KEY (city_id)
+        REFERENCES cities (city_id) ON DELETE CASCADE,
+    CONSTRAINT fk_wls_type FOREIGN KEY (failure_type_id)
+        REFERENCES failure_types (failure_type_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+CREATE TABLE watchlist_entries (
+    snapshot_id     INT UNSIGNED        NOT NULL,
+    rank_position   SMALLINT UNSIGNED   NOT NULL COMMENT '1 is worst; ties broken by area name so the order is stable',
+    location_id     INT UNSIGNED        NOT NULL,
+    prior_events    INT UNSIGNED        NOT NULL COMMENT 'event-days up to as_of_date. The entire ranking key.',
+    test_events     INT UNSIGNED        NULL COMMENT 'event-days on the held-out rain days, for the per-ward column',
+    PRIMARY KEY (snapshot_id, rank_position),
+    UNIQUE KEY uq_watchlist_entry (snapshot_id, location_id),
+    KEY idx_wle_location (location_id),
+    CONSTRAINT fk_wle_snapshot FOREIGN KEY (snapshot_id)
+        REFERENCES watchlist_snapshots (snapshot_id) ON DELETE CASCADE,
+    CONSTRAINT fk_wle_location FOREIGN KEY (location_id)
+        REFERENCES locations (location_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- Screen 3. The emerging watch: wards ranked by their first-half Theil-Sen
+-- slope on rel_index, benchmarked to the city trend rather than to zero
+-- (profile SS23.1 - testing against zero scored a ward as declining while it
+-- was diverging upward, and manufactured a false negative).
+--
+-- The label is 'chronically_above_norm', not 'accelerating', and that is not a
+-- wording preference. Flagged wards end the second half at mean rel 1.77
+-- against 1.16 for all eligible wards (p = 0.0001), but they do NOT
+-- significantly exceed their own first-half level (p = 0.23). The detector
+-- finds wards that stay above the city norm. Profile SS25.1.
+--
+-- There is no external ground truth to confirm a flag against:
+-- locations.first_listed_year is NULL for all 398 register points, so "which
+-- locations did the city add this year" cannot be answered. The screen must
+-- not imply otherwise.
+CREATE TABLE emerging_watch (
+    location_id     INT UNSIGNED        NOT NULL,
+    as_of_date      DATE                NOT NULL COMMENT 'last day of the detection window',
+    window_start    DATE                NOT NULL,
+    rank_position   SMALLINT UNSIGNED   NOT NULL COMMENT 'by first-half slope, which is the flag rule',
+    event_days      INT UNSIGNED        NOT NULL COMMENT 'over the whole window; eligibility is >= 15',
+    half1_slope     DECIMAL(20,16)      NOT NULL COMMENT 'Theil-Sen on rel_index per quarter, first half',
+    half1_p         DECIMAL(19,18)      NOT NULL COMMENT 'Mann-Kendall on the same series',
+    half1_level     DECIMAL(20,16)      NOT NULL COMMENT 'mean rel_index over the first half',
+    half2_level     DECIMAL(20,16)      NOT NULL,
+    half2_slope     DECIMAL(20,16)      NOT NULL,
+    level_delta     DECIMAL(21,16)      NOT NULL COMMENT 'half2_level minus half1_level',
+    full_slope      DECIMAL(20,16)      NOT NULL COMMENT 'Theil-Sen over the whole window',
+    full_p          DECIMAL(19,18)      NOT NULL,
+    is_flagged      BOOLEAN             NOT NULL DEFAULT FALSE COMMENT 'inside the top-N cut this run used',
+    on_register     BOOLEAN             NOT NULL DEFAULT FALSE COMMENT 'already on the BBMP flood register',
+    label           VARCHAR(40)         NOT NULL DEFAULT 'chronically_above_norm' COMMENT 'what the detector was measured to find, not what it was hoped to find',
+    computed_at     DATETIME            NOT NULL,
+    PRIMARY KEY (location_id, as_of_date),
+    KEY idx_ew_rank (as_of_date, rank_position),
+    CONSTRAINT fk_ew_location FOREIGN KEY (location_id)
+        REFERENCES locations (location_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- Screen 4. Allocation, NOT outcome.
+--
+-- The dose-response of the change in relative index on drainage spend is
+-- RETRACTED (profile SS27.2): -0.0240 (p = 0.0138) over all 110 wards becomes
+-- -0.0064 (p = 0.833) refitted on treated wards only, because log1p(spend)
+-- placed 7 untreated wards at 0 against treated wards at 16-20 and the slope
+-- was fitted through two clusters. Analysis is closed (SS28): drainage works
+-- are distributed continuously and near-uniformly across all 198 wards and
+-- have been since 2013, so no observational evaluation of their effect is
+-- identifiable from these records.
+--
+-- delta_index is stored because the screen plots it and the allocation finding
+-- needs a "need" axis. It is NOT an effect estimate and no endpoint returns it
+-- as one.
+--
+-- What survives, and what this table is for: spend tracks ward AREA
+-- (Spearman +0.474), not relative flooding need (+0.082, p = 0.39), and the
+-- correlation with absolute complaint counts (+0.274) collapses to -0.050
+-- (p = 0.60) once area is controlled.
+CREATE TABLE ward_allocation (
+    location_id     INT UNSIGNED        NOT NULL,
+    window_start    DATE                NOT NULL COMMENT 'first work completion date counted',
+    window_end      DATE                NOT NULL,
+    drainage_works  SMALLINT UNSIGNED   NOT NULL COMMENT 'work orders classified as drainage completing in the window',
+    drainage_spend  DECIMAL(16,2)       NOT NULL COMMENT 'INR, nett of deductions',
+    ward_area_sqkm  DECIMAL(8,2)        NULL COMMENT 'what spend actually tracks',
+    event_days_pre  INT UNSIGNED        NOT NULL,
+    event_days_post INT UNSIGNED        NOT NULL,
+    event_days_total INT UNSIGNED       NOT NULL COMMENT 'over the whole index window: the absolute-volume axis of the targeting check',
+    pre_index       DECIMAL(20,16)      NOT NULL COMMENT 'mean rel_index over the pre quarters',
+    post_index      DECIMAL(20,16)      NOT NULL,
+    delta_index     DECIMAL(21,16)      NOT NULL COMMENT 'post minus pre. Descriptive. NOT an effect of spend.',
+    is_treated      BOOLEAN             NOT NULL COMMENT 'any drainage work in the window. 103 of 110; not a usable control split.',
+    computed_at     DATETIME            NOT NULL,
+    PRIMARY KEY (location_id, window_start, window_end),
+    KEY idx_wa_spend (drainage_spend),
+    CONSTRAINT fk_wa_location FOREIGN KEY (location_id)
+        REFERENCES locations (location_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- =====================================================================
+-- 8. SEED DATA
 -- =====================================================================
 
 INSERT INTO cities
@@ -671,7 +882,7 @@ INSERT INTO data_sources (name, url, licence, description) VALUES
 
 
 -- =====================================================================
--- 8. CONVENIENCE VIEWS
+-- 9. CONVENIENCE VIEWS
 -- =====================================================================
 
 -- Alert accuracy over time — the answer to "does your system work?"
@@ -722,5 +933,5 @@ HAVING COUNT(f.failure_id) = 0;
 
 -- =====================================================================
 -- END OF SCHEMA
--- 26 tables, 3 views. Runs clean on MySQL 8.0.16+.
+-- 31 tables, 3 views. Runs clean on MySQL 8.0.16+.
 -- =====================================================================

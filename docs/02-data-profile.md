@@ -1500,6 +1500,14 @@ evaluated on the same 136 held-out rain days:
 | **Memory only — static top-20** | **14.08%** | 37.3% |
 | Oracle ceiling | 37.72% | 100% |
 
+**On the 4.80%** (added 9 Sep 2026): that is a *simulated* estimate — random
+draws of 20 wards, scored per night. The quantity has a closed form, because k
+wards drawn without replacement from n catch `k × events/n` in expectation, so
+the per-night precision is `events/n` exactly and does not depend on k. Computed
+analytically on the same 136 nights it is **4.7868%**. The two agree to
+simulation noise. **Publish 4.79%**, which is what `watchlist_snapshots`
+stores and what `/api/v1/watchlist` serves.
+
 **A weather-only ranking scores at chance.** 5.63% against a 4.80% random
 baseline, and the *finer* model scores slightly lower than the coarse one —
 because IFS spreads wards across 14 cells and breaks whatever accidental
@@ -2540,6 +2548,22 @@ continuing to accelerate — flagged wards do not significantly exceed their own
 first-half level (p = 0.23). It finds *chronically and increasingly above norm*,
 not *accelerating*.
 
+**Which tests these are** (added 9 Sep 2026 — an unnamed p-value is not
+reproducible, so name the test wherever one appears):
+
+| Comparison | Test | p |
+|---|---|---:|
+| Flagged wards' 2nd-half level vs other wards' | Mann-Whitney U, one-sided | **0.00014** |
+| Flagged wards' 2nd-half level vs **their own** 1st half | **Wilcoxon signed-rank**, one-sided | **0.116** |
+
+The second comparison is paired — the same ten wards, two windows — so signed-
+rank is the correct test and **0.116 is the figure to quote**. The 0.23 above
+was recorded without naming its test and could not be reconstructed; both are
+comfortably non-significant and the conclusion is identical either way. The
+0.116 is recomputed from `emerging_watch` by
+`app.derived.emerging.level_persistence` and pinned by `tests/test_derived.py`,
+so it is the one the dashboard shows.
+
 ### 25.2 The design
 
 Change in relative flooding index, post minus pre, regressed on log drainage
@@ -2999,3 +3023,155 @@ the register contradiction (§25.7) and the Q5 reversal (§26.3). All three are
 recorded with the test that killed them. The pattern is consistent enough to be
 worth stating in the paper: **on this data, every result that was not
 deliberately attacked turned out to be an artefact.**
+
+---
+
+## 28. The within-ward design: the gate fails, and analysis closes
+
+**Measured 8 Sep 2026.** §27 retracted the dose-response and left the project
+with an allocation finding and no outcome finding. The remaining identification
+strategy was **(b)**: forget a control group, use each ward as its own control,
+and compare its relative flooding index before and after **its own** drainage
+works with ward and quarter fixed effects.
+
+That design needs one thing above all: **staggered treatment timing**. If every
+ward is treated at effectively the same moment, a ward fixed effect plus a
+post-period dummy is the citywide trend wearing a disguise. So the timing was
+checked *before* anything was fitted. It fails, and it fails harder than the
+pre-set criterion tests.
+
+**No model was fitted. The gate is the result.**
+
+### 28.1 The three pre-set diagnostics
+
+Drainage works completing in the 2021Q1–2022Q4 window: **1,478 works across 181
+of 198 wards**, ₹878.4 crore, of which 125 come from the recovered legacy
+wards 184–198 (§25.9).
+
+**(i) Distribution of each ward's first and modal completion quarter.**
+
+| Quarter | wards whose **first** work | wards whose **modal** work quarter | wards whose **spend-modal** quarter |
+|---|---:|---:|---:|
+| 2021Q1 | **118** | 44 | 52 |
+| 2021Q2 | 35 | 41 | 33 |
+| 2021Q3 | 10 | 25 | 30 |
+| 2021Q4 | 13 | 27 | 32 |
+| 2022Q1 | 4 | 26 | 21 |
+| 2022Q2 | 1 | 12 | 10 |
+| 2022Q3 | 0 | 5 | 2 |
+| 2022Q4 | 0 | 1 | 1 |
+
+**(ii) Distinct treatment quarters carrying at least five wards:** **4 of 8** by
+first work quarter, 7 of 8 by modal quarter, 6 of 8 by spend-weighted modal
+quarter.
+
+Note what the ceiling is. The window is **eight quarters long**, so "about
+eight distinct treatment quarters" is not a comfortable bar — it asks that
+essentially every quarter carry a cohort. On the anchor that a before/after
+design actually needs — the quarter a ward *switches* from untreated to
+treated — only four qualify, and 118 of 181 wards pile into the first quarter
+of the window.
+
+**(iii) Wards with at least three usable quarters each side of their own work
+date:** 181 of 181 on either anchor. This is the one diagnostic that passes,
+and it passes trivially: the complaint panel is 20 quarters (2020Q2–2025Q1) and
+the treatment window sits in the middle of it.
+
+### 28.2 Why the first-quarter pile-up is not a cohort
+
+118 wards "starting" in 2021Q1 is a window edge, not an event. Widening the
+view to every dated drainage work in the file — **17,418** of them, 2011–2023 —
+makes it obvious:
+
+- **Zero wards** have their first-ever drainage work inside 2021Q1–2022Q4. Of
+  the 196 wards with any dated drainage work, **138 first appear in 2013** and
+  all 196 by 2014.
+- In the eight quarters immediately *before* the window, the **median ward had
+  drainage works completing in 6 of 8 quarters**. Only 2 wards had none.
+- Within the window, the median ward is active in 3 of 8 quarters, and no ward
+  is active in fewer than… well, 29 wards (16%) are active in exactly one, but
+  the median ward's works are spread across three quarters and its modal
+  quarter holds only **50% of its works and 61% of its spend**.
+
+**Drainage work in BBMP is not an event that happens to a ward. It is a
+continuous flow that every ward has been receiving since 2013.** There is no
+"before" to compare against, which is a stronger objection than insufficient
+staggering — it is the absence of the treatment concept the design requires.
+
+### 28.3 Two further problems, either of which would be fatal alone
+
+**The city works to one calendar.** Window spend by quarter runs 28.7%, 24.6%,
+19.4%, 13.2%, 9.9%, 3.7%, 0.2%, 0.3% — a monotone taper, Herfindahl 0.209
+against 0.125 for uniform. A ward's own quarterly work profile correlates with
+the citywide profile at **ρ = +0.505** (median; +0.535 among wards active in
+two or more quarters). Ward-specific timing is mostly the city's timing.
+
+**The post-period is censoring, not absence of treatment.** The work-order file
+stops at **2023Q1**; the complaint panel runs to 2025Q1. So 8 of 20 panel
+quarters — 40% — contain no observed works for any ward, and the 2022 collapse
+in the table above (275 works and ₹123 crore, against 1,203 works and ₹755
+crore in 2021) is an export cut-off, not a policy change. A post-treatment
+dummy over that span means "we stopped observing", not "the works finished".
+
+### 28.4 An intensity anchor does not rescue it
+
+The obvious alternative — anchor on the quarter where a ward's drainage spend
+most exceeds its *own* 2013–2020 quarterly norm — was measured, and not fitted:
+6 of 8 quarters carry ≥ 5 wards, median spike **2.48× the ward's own norm**,
+but **51 of 196 wards (26%) have a window peak that is below their own
+historical norm** — for a quarter of the city the "treatment" is a slowdown.
+And it changes neither §28.3's censoring nor the fact that it is a dose, not a
+switch, which is exactly the shape §27 already retracted.
+
+### 28.5 What this does to the seven "untreated" wards
+
+§27 retracted the dose-response because `log1p(spend)` turned seven zero-dose
+wards into leverage. The always-treated finding sharpens that: those wards were
+never a control group in any sense.
+
+| Ward | drainage works before 2021 | spend to 2020 | last work |
+|---|---:|---:|---|
+| Dharmarayaswamy Temple Ward | 40 | ₹49.3 M | 2020Q4 |
+| Domlur | 56 | ₹93.3 M | 2020Q1 |
+| Gandhi Nagar | 57 | ₹120.9 M | 2020Q1 |
+| J.P.Park | 25 | ₹36.8 M | 2018Q2 |
+| K.R.Market | 60 | ₹112.0 M | 2020Q4 |
+| A.Narayanapura | 0 | ₹0 | never |
+| Hoodi | 0 | ₹0 | never |
+
+Five of the seven had received substantial drainage work before the window;
+"untreated" meant *no work order with an end date inside an arbitrary 24-month
+box*. **So the treated indicator (−0.4497, p = 0.0084) is not a
+treated-versus-control contrast either** — it contrasts wards whose works
+happened to land inside the window against wards whose works landed just
+outside it. It should not be reported as a fallback estimate.
+
+### 28.6 The verdict, and the close
+
+> **There is no usable within-ward variation in drainage-work timing, because
+> there is no within-ward variation in drainage-work *incidence*. Every ward
+> has been treated continuously since 2013, on a common citywide calendar, and
+> observation of the treatment stops two years before the outcome does.**
+
+The allocation finding is untouched and is now the effectiveness output in
+full: **BBMP allocates drainage spend by ward area (ρ = +0.474), not by
+relative flooding need (r = −0.083, p = 0.39)**. §27.5's reading holds — a
+descriptive claim with clean identification beats a causal claim without a
+control group.
+
+There is a second finding here worth keeping, because it is about the records
+rather than about drains. It was first written as a claim about what BBMP knows,
+which is not observable from a work-order export — they may hold engineering
+assessments, site inspections or drainage surveys that never appear in one. The
+defensible form asserts only what was measured:
+
+> **Drainage works are distributed continuously and near-uniformly across all
+> 198 wards, and have been since 2013. As a consequence no observational
+> evaluation of their effect is identifiable from these records: the treatment
+> does not vary enough for any design to exploit.**
+
+That is a mathematical fact about the data rather than an inference about an
+institution, and it pairs with the allocation finding without over-claiming.
+
+**Analysis is now closed permanently.** No further identification strategy is
+to be attempted on this data.

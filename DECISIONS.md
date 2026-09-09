@@ -39,51 +39,33 @@ ceiling is and why, which nobody working with civic complaint data had done. A
 higher number would have meant we were measuring the wrong thing."
 
 ---
-### The project does have a positive result: drainage spending works
+### We cannot say whether the spending works — but we can say where it goes
 
-Every other output measured a limit. This one measured an effect.
+We thought we had shown that wards with more drainage spending improved. We
+retracted it.
 
-Wards where BBMP spent more on drainage got relatively better. A tenfold
-increase in spend maps to roughly a 5% fall against the city norm — small, but
-statistically solid across 110 wards.
+The apparent effect came entirely from seven wards that received *no* drainage
+work at all. Because spending was measured on a log scale, those zeros sat far
+out on the axis and dragged the line. Among the 103 wards that actually received
+work, spending predicts nothing (p = 0.83). And we had already established that
+those seven untreated wards are not a valid comparison group — BBMP left them
+alone because it judged they needed nothing.
 
-What makes it trustworthy is something we expected to be a problem and turned out
-not to be. Normally you cannot tell whether spending helps, because cities spend
-where things are worst — so spending looks like it *causes* flooding. We checked:
-BBMP's drainage spending tracks **ward size**, not flooding severity. Because
-allocation ignores need, the comparison is clean.
+What survives is a cleaner and more uncomfortable finding. **BBMP allocates
+drainage money by ward size, not by flooding history.** Spending is essentially
+uncorrelated with how badly a ward actually floods. It correlates with complaint
+counts only because bigger wards generate more complaints of everything —
+account for area and that disappears too.
 
-One honest wrinkle, and it is about statistics rather than drainage. Grouped
-into five spend bands, the highest-spending band appears to get worse. That
-appearance does not survive testing — the bands hold only about twenty wards
-each, the confidence intervals overlap zero, and a formal test for a curve finds
-nothing. The straight-line estimate uses all 110 wards and is the reliable one.
+"Does the spending work?" needs a control group we do not have. "Does the
+spending go where the problem is?" needs no control group at all, and the answer
+is no.
 
-The effect is also measured *after* accounting for where each ward started.
-That is the standard approach and the right one, but it means a plain scatter of
-spend against outcome shows only a weak trend. We say so rather than let a
-reader discover it.
-
-**If challenged:** "Allocation is uncorrelated with our outcome measure, which
-removes the usual reverse-causality problem. We report the effect and the
-non-monotonicity at the top of the spend range rather than only the linear fit."
-
----
-
-### We retracted one of our own findings
-
-We noticed that three of four wards missing from the city's official flood
-register were among its top drainage spenders — an appealing story about the
-register being out of date while the budget knew better.
-
-We tested it across all 198 wards. It vanished (p = 0.79). Three wards out of
-four is a coincidence, not evidence.
-
-It's marked retracted in the write-up rather than deleted, with the test shown.
-
-**If challenged:** "We tested our own most quotable observation and it failed, so
-we retracted it visibly. That's the standard the rest of the document was held
-to."
+**If challenged:** "We retracted the causal claim when the correct diagnostic
+plot showed it rested on seven zero-dose wards. The allocation finding is
+descriptive, needs no control group, and is the stronger result — a city
+spending without reference to its own failure history is exactly the absence of
+institutional memory this project is about."
 
 ---
 

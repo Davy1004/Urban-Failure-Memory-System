@@ -13,6 +13,23 @@ class FailureScope(str, enum.Enum):
     SCHEMA_ONLY = "schema_only"
 
 
+class PeriodType(str, enum.Enum):
+    """Aggregation grain for ward_period_totals. Quarter is what the index
+    uses; month and year are there so a finer or coarser rebuild does not
+    need a migration."""
+    MONTH = "month"
+    QUARTER = "quarter"
+    YEAR = "year"
+
+
+class WeatherModel(str, enum.Enum):
+    """Which reanalysis a grid cell belongs to. Cells from different models
+    are different cells even at the same coordinate - see profile SS17."""
+    ERA5 = "era5"                # ~25 km, 3 distinct cells over BBMP
+    ECMWF_IFS = "ecmwf_ifs"      # ~9 km, 14 cells. The current default.
+    ERA5_LAND = "era5_land"      # ~11 km, but precipitation returns NULL here
+
+
 class GeomLevel(str, enum.Enum):
     WARD = "ward"
     POINT = "point"

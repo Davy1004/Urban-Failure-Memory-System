@@ -4,8 +4,8 @@ from decimal import Decimal
 from typing import Any, Optional
 
 from sqlalchemy import (
-    JSON, Boolean, Date, DateTime, Enum, ForeignKey, Index, Numeric, String,
-    UniqueConstraint, func,
+    Boolean, Date, DateTime, Enum, ForeignKey, Index, JSON, Numeric,
+    String, TIMESTAMP, UniqueConstraint, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,21 +30,21 @@ class FailureMemory(Base):
     )
 
     memory_id: Mapped[int] = mapped_column(UBigInt, primary_key=True, autoincrement=True)
-    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE"), nullable=False)
-    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE"), nullable=False)
+    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE", name="fk_memory_location"), nullable=False)
+    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE", name="fk_memory_type"), nullable=False)
     as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     recurrence_count: Mapped[Optional[int]] = mapped_column(USmallInt)
-    recurrence_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 4))
+    recurrence_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 4), comment="events per season")
     # Rank within the city. This is the form that transfers across cities.
-    recurrence_percentile: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5))
+    recurrence_percentile: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 5), comment="rank within city — this is what transfers")
     days_since_last: Mapped[Optional[int]] = mapped_column()
     severity_ema: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 4))
     # Rainfall at which THIS location has historically failed. The heart
     # of the system: two sites get the same rain, only history separates them.
-    rain_sensitivity_mm: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 2))
-    neighbour_memory: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 4))
-    baseline_complaint_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(9, 4))
+    rain_sensitivity_mm: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 2), comment="rainfall at which THIS location has historically failed")
+    neighbour_memory: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 4), comment="same stats within 1 km")
+    baseline_complaint_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(9, 4), comment="reporting-bias control")
 
     location: Mapped["Location"] = relationship()
 
@@ -59,17 +59,17 @@ class DetectedPattern(Base):
     )
 
     pattern_id: Mapped[int] = mapped_column(UInt, primary_key=True, autoincrement=True)
-    location_id: Mapped[Optional[int]] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE"))
-    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE"), nullable=False)
+    location_id: Mapped[Optional[int]] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE", name="fk_pattern_location"), comment="NULL = city-wide rule")
+    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE", name="fk_pattern_type"), nullable=False)
     feature: Mapped[str] = mapped_column(String(80), nullable=False)
     operator: Mapped[PatternOperator] = mapped_column(Enum(PatternOperator, values_callable=lambda e: [m.value for m in e]), nullable=False)
     threshold_value: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
-    threshold_upper: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    threshold_upper: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), comment="used when operator = between")
     season: Mapped[Optional[str]] = mapped_column(String(40))
     support_count: Mapped[int] = mapped_column(UInt, nullable=False)
     confidence: Mapped[Decimal] = mapped_column(Numeric(6, 5), nullable=False)
     lift: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.current_timestamp(), nullable=False)
 
     def as_sentence(self) -> str:
         """What an officer actually reads on the dashboard."""
@@ -98,9 +98,9 @@ class MLModel(Base):
     train_end: Mapped[Optional[date]] = mapped_column(Date)
     test_start: Mapped[Optional[date]] = mapped_column(Date)
     test_end: Mapped[Optional[date]] = mapped_column(Date)
-    metrics: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
+    metrics: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, comment="pr_auc, precision_at_20, brier, ece, base_rate")
     artifact_path: Mapped[Optional[str]] = mapped_column(String(400))
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
     trained_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
@@ -118,17 +118,17 @@ class RiskPrediction(Base):
     )
 
     prediction_id: Mapped[int] = mapped_column(UBigInt, primary_key=True, autoincrement=True)
-    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE"), nullable=False)
-    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE"), nullable=False)
-    model_id: Mapped[int] = mapped_column(UInt, ForeignKey("models.model_id", ondelete="RESTRICT"), nullable=False)
+    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE", name="fk_pred_location"), nullable=False)
+    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE", name="fk_pred_type"), nullable=False)
+    model_id: Mapped[int] = mapped_column(UInt, ForeignKey("models.model_id", ondelete="RESTRICT", name="fk_pred_model"), nullable=False)
     predicted_for_date: Mapped[date] = mapped_column(Date, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    risk_score: Mapped[Decimal] = mapped_column(Numeric(7, 6), nullable=False)
+    risk_score: Mapped[Decimal] = mapped_column(Numeric(7, 6), nullable=False, comment="calibrated probability 0..1")
     risk_level: Mapped[RiskLevel] = mapped_column(Enum(RiskLevel, values_callable=lambda e: [m.value for m in e]), nullable=False)
     # Populate only for live predictions and a sampled subset of backtests,
     # or this column will dominate the table size.
-    feature_snapshot: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
-    actual_outcome: Mapped[PredictionOutcome] = mapped_column(Enum(PredictionOutcome, values_callable=lambda e: [m.value for m in e]), nullable=False, default=PredictionOutcome.PENDING)
+    feature_snapshot: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, comment="exact inputs, for reproducibility")
+    actual_outcome: Mapped[PredictionOutcome] = mapped_column(Enum(PredictionOutcome, values_callable=lambda e: [m.value for m in e]), nullable=False, default=PredictionOutcome.PENDING, server_default="pending")
     outcome_recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     location: Mapped["Location"] = relationship()
@@ -148,14 +148,14 @@ class DailyRanking(Base):
     )
 
     ranking_id: Mapped[int] = mapped_column(UBigInt, primary_key=True, autoincrement=True)
-    city_id: Mapped[int] = mapped_column(USmallInt, ForeignKey("cities.city_id", ondelete="CASCADE"), nullable=False)
-    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE"), nullable=False)
+    city_id: Mapped[int] = mapped_column(USmallInt, ForeignKey("cities.city_id", ondelete="CASCADE", name="fk_rank_city"), nullable=False)
+    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE", name="fk_rank_type"), nullable=False)
     ranking_date: Mapped[date] = mapped_column(Date, nullable=False)
-    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE"), nullable=False)
+    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE", name="fk_rank_location"), nullable=False)
     rank_position: Mapped[int] = mapped_column(USmallInt, nullable=False)
     score: Mapped[Decimal] = mapped_column(Numeric(7, 6), nullable=False)
-    model_id: Mapped[int] = mapped_column(UInt, ForeignKey("models.model_id", ondelete="RESTRICT"), nullable=False)
-    in_top_k: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    model_id: Mapped[int] = mapped_column(UInt, ForeignKey("models.model_id", ondelete="RESTRICT", name="fk_rank_model"), nullable=False)
+    in_top_k: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"), comment="was it dispatched to?")
     generated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     location: Mapped["Location"] = relationship()
@@ -170,15 +170,15 @@ class EmergingLocation(Base):
     )
 
     emerging_id: Mapped[int] = mapped_column(UInt, primary_key=True, autoincrement=True)
-    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE"), nullable=False)
-    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE"), nullable=False)
+    location_id: Mapped[int] = mapped_column(UInt, ForeignKey("locations.location_id", ondelete="CASCADE", name="fk_emerging_location"), nullable=False)
+    failure_type_id: Mapped[int] = mapped_column(UTinyInt, ForeignKey("failure_types.failure_type_id", ondelete="CASCADE", name="fk_emerging_type"), nullable=False)
     detected_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     method: Mapped[EmergingMethod] = mapped_column(Enum(EmergingMethod, values_callable=lambda e: [m.value for m in e]), nullable=False)
     trend_statistic: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 5))
     p_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 7))
     changepoint_date: Mapped[Optional[date]] = mapped_column(Date)
     months_of_evidence: Mapped[Optional[int]] = mapped_column(USmallInt)
-    status: Mapped[EmergingStatus] = mapped_column(Enum(EmergingStatus, values_callable=lambda e: [m.value for m in e]), nullable=False, default=EmergingStatus.CANDIDATE)
+    status: Mapped[EmergingStatus] = mapped_column(Enum(EmergingStatus, values_callable=lambda e: [m.value for m in e]), nullable=False, default=EmergingStatus.CANDIDATE, server_default="candidate")
     confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     notes: Mapped[Optional[str]] = mapped_column(String(500))
 

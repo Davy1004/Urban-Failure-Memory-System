@@ -6,7 +6,7 @@ from app.models.geography import (  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.observation import (  # noqa: F401
     Complaint, ComplaintFailureLink, Failure, SanitationData, TrafficData,
-    WeatherDaily, WeatherObservation,
+    WardPeriodTotal, WeatherDaily, WeatherObservation,
 )
 from app.models.intelligence import (  # noqa: F401
     DailyRanking, DetectedPattern, EmergingLocation, FailureMemory, MLModel,
@@ -15,13 +15,20 @@ from app.models.intelligence import (  # noqa: F401
 from app.models.operations import (  # noqa: F401
     Alert, AlertRecipient, Intervention, InterventionEffect, PreventiveAction,
 )
+from app.models.derived import (  # noqa: F401
+    EmergingWatch, WardAllocation, WardQuarterIndex, WatchlistEntry,
+    WatchlistSnapshot,
+)
 
 __all__ = [
     "City", "WeatherCell", "DataSource", "IngestionRun", "FailureType",
     "Location", "InfrastructureAsset", "User", "WeatherObservation",
     "WeatherDaily", "Complaint", "Failure", "ComplaintFailureLink",
-    "SanitationData", "TrafficData", "FailureMemory", "DetectedPattern",
+    "SanitationData", "TrafficData", "WardPeriodTotal", "FailureMemory",
+    "DetectedPattern",
     "MLModel", "RiskPrediction", "DailyRanking", "EmergingLocation",
     "Intervention", "InterventionEffect", "Alert", "AlertRecipient",
     "PreventiveAction",
+    "WardQuarterIndex", "WatchlistSnapshot", "WatchlistEntry", "EmergingWatch",
+    "WardAllocation",
 ]

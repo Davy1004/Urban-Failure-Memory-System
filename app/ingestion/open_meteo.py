@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.ingestion.base import ingestion_run, resolve_city, upsert_chunk
+from app.models.enums import WeatherModel
 from app.models.geography import City, WeatherCell
 from app.models.observation import WeatherObservation
 
@@ -106,21 +107,31 @@ def default_cells_for(city: City) -> list[tuple[float, float]]:
 
 
 def ensure_cells(db: Session, city: City,
-                 coords: Optional[Iterable[tuple[float, float]]] = None) -> list[WeatherCell]:
-    """Create the city's grid cells if they don't exist yet."""
+                 coords: Optional[Iterable[tuple[float, float]]] = None,
+                 model: str = DEFAULT_MODEL) -> list[WeatherCell]:
+    """Create the city's grid cells for one model if they don't exist yet.
+
+    The lookup is keyed on (model, lat, lng), not on the coordinate alone.
+    Two reanalyses can snap to the same point, and treating those as one cell
+    would silently merge two different rainfall series into one.
+    """
     coords = list(coords) if coords is not None else default_cells_for(city)
+    wm = WeatherModel(model)
     cells: list[WeatherCell] = []
     for lat, lng in coords:
         cell = db.execute(
             select(WeatherCell).where(
-                WeatherCell.latitude == lat, WeatherCell.longitude == lng
+                WeatherCell.model == wm,
+                WeatherCell.latitude == lat, WeatherCell.longitude == lng,
             )
         ).scalar_one_or_none()
         if cell is None:
-            cell = WeatherCell(city_id=city.city_id, latitude=lat, longitude=lng)
+            cell = WeatherCell(city_id=city.city_id, model=wm,
+                               latitude=lat, longitude=lng)
             db.add(cell)
             db.flush()
-            logger.info("created weather cell (%s, %s) for %s", lat, lng, city.name)
+            logger.info("created %s weather cell (%s, %s) for %s",
+                        model, lat, lng, city.name)
         cells.append(cell)
     db.commit()
     return cells
@@ -211,7 +222,7 @@ def load_weather(db: Session, city_name: str, start: date,
     if start > end:
         raise ValueError(f"start {start} is after the latest available date {end}")
 
-    cells = ensure_cells(db, city, coords)
+    cells = ensure_cells(db, city, coords, model=model)
     total = 0
     source_name, source_kw = source_for(model)
 

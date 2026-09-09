@@ -223,18 +223,53 @@ city-invariant; the memory values themselves are recomputed per city.
 
 ---
 
-# Measured baselines (2026-09-07)
+# Measured baselines
 
-Everything below is computed from the real data, not assumed. Train through
-2023-12-31, test on the 138 rain days of 2024–25, ward level, strict event
-label, city-wide mean rainfall.
+**Restated on the ECMWF-IFS basis, 9 Sep 2026.** Everything below is computed
+from the real data, not assumed. Train through 2023-12-31, test on the held-out
+rain days of 2024-25, ward level, strict event label, city-mean rainfall.
+
+Two bases exist because the rainfall series was upgraded mid-project (§17): a
+rain day is a day whose city-mean daily rainfall clears 2.5 mm, and ERA5 and
+IFS disagree about which days those are — 138 days against 136. Every figure in
+a triple has to come from the same basis or the comparison is meaningless.
+
+**Quote the IFS triple. It is what `weather_cells` defaults to, what the
+database holds, and what `/api/v1/watchlist` serves.**
+
+| Benchmark | precision@20 | % of ceiling |
+|---|---:|---:|
+| **Random 20 wards** | **4.79%** | 12.7% |
+| Weather only — IFS, 14 cells | 5.63% | 14.9% |
+| **Static "20 historically worst"** | **14.08%** | **37.3%** |
+| **Oracle ceiling** | **37.72%** | 100% |
+
+136 held-out rain days, 1,289 strict events. The random floor is a closed form,
+not an estimate: k wards drawn without replacement from n catch `k × events/n`,
+so per-night precision is `events/n` exactly and independent of k. Profile
+§17.4's **4.80%** is a simulated estimate of the same quantity; the two agree to
+simulation noise, and 4.79% is the figure to publish.
+
+### The earlier ERA5 basis, kept for reference
+
+138 held-out rain days. Superseded, and quoted only where a §14 figure is being
+cited directly.
 
 | Benchmark | precision@20 |
 |---|---|
 | Random 20 wards | 4.72% |
-| **Static "20 historically worst"** | **13.55%** ← the number to beat |
+| Static "20 historically worst" | 13.55% |
 | Same list re-ranked daily on all prior history | 13.70% |
-| **Oracle ceiling** | **37.36%** |
+| Oracle ceiling | 37.36% |
+
+**The conclusions are unchanged between the two bases.** The static list scores
+36.3% of ceiling under ERA5 and 37.3% under IFS; memory beats weather by roughly
+threefold either way; the headroom argument (§19) was computed on IFS. Tripling
+the grid resolution moved no figure that changes a claim (χ², p = 0.877).
+
+**Never mix them.** 14.08% with 37.72% and 4.79% is one basis; 13.55% with
+37.36% and 4.72% is the other. A ceiling from one and a floor from the other
+puts a number on a scale it was not measured against.
 
 ## Rule: never report precision@k bare
 
@@ -242,7 +277,7 @@ A median rain day carries only 6 strict events citywide and just 14 of 138 test
 days have 20 or more, so 20 slots cannot all be right and a perfect oracle still
 scores under 50%. **Report the achieved figure, the static baseline, and the
 oracle ceiling together, every time.** A precision@20 of 22% reads as failure
-alone; against a 37.36% ceiling it is 59% of achievable.
+alone; against a 37.72% ceiling it is 58% of achievable.
 
 ## Rule: stratify by rainfall band
 
@@ -257,7 +292,7 @@ Day-to-day tau measures how much a model reorders; it is not a score on its own.
 
 - Low tau, flat precision → noise.
 - High tau, flat precision → the static list wearing a model.
-- Low tau, precision above 13.55% → genuine weather response. This is the target.
+- Low tau, precision above 14.08% → genuine weather response. This is the target.
 
 Separately, tau between the two halves of the period is **0.59** (top-20 overlap
 15/20). That is multi-year drift in the underlying ranking, a different quantity
@@ -266,7 +301,8 @@ Two: five wards changed between halves, so the danger set genuinely moves.
 
 ## Where the headroom is, and is not
 
-Re-ranking on more history added nothing (13.70 vs 13.55). **Count-based memory
+Re-ranking on more history added nothing (13.70 vs 13.55, ERA5 basis).
+**Count-based memory
 features are saturated** — `recurrence_count`, `recurrence_rate` and
 `recurrence_percentile` reproduce the static list and little else. If the
 Failure Memory Index is built mostly from those, M3 will not beat M2.
@@ -497,6 +533,34 @@ those 7 wards are not a valid control — they are untreated because BBMP judged
 they needed nothing. Their own deltas run from −1.55 to +1.49 with a mean CI of
 [−0.778, +1.280].
 
+### Rule: check that the treatment varies before fitting anything to it
+
+**Added 8 Sep 2026, profile §28.** Before a within-unit / fixed-effects design,
+report three things and stop if they fail:
+
+1. the distribution of each unit's **first** treatment period — not its modal
+   or largest one, because a before/after design needs the moment the unit
+   *switches*;
+2. how many distinct treatment periods carry a real cohort, **against the
+   number of periods available** (this project's window was 8 quarters long, so
+   "8 distinct quarters" was the ceiling, not a comfortable pass mark);
+3. how many units have enough outcome periods on each side of their own date.
+
+And two questions the three diagnostics do not ask, both of which killed this
+design on their own:
+
+- **Is the first treatment inside your window actually the unit's first
+  treatment?** Widen to the full history before believing a cohort. Here, 118
+  of 181 wards appeared to start in 2021Q1; across all 17,418 dated drainage
+  works, **zero** wards had a first-ever treatment inside the window. The
+  pile-up was the window edge.
+- **Does the "post" period contain observation of the treatment, or does your
+  treatment data just stop?** The work orders end 2023Q1 and the outcome panel
+  runs to 2025Q1, so 40% of the post period was censoring.
+
+A unit that is always treated has no before. That is not weak identification;
+it is no identification.
+
 ### Rule: refit any dose-response on treated units only, before reporting it
 
 If the coefficient does not survive dropping the zero-dose group, it is a
@@ -539,8 +603,13 @@ pre-period index therefore changes the coefficient not at all.
    among treated wards. The main specification reaches p = 0.014 by controlling
    for the pre-period index, which carries strong mean reversion (−0.788).
    Correct, but it means the relationship is not visible in a raw scatter.
-3. **Treated-versus-control is unavailable** — 103 of 110 eligible wards were
-   treated. Dose-response on log spend is the design.
+3. **Treated-versus-control is unavailable** — and worse than §25 thought.
+   Not only were 103 of 110 eligible wards treated inside the window, but
+   5 of the 7 that were not had ₹37–121 M of drainage work *before* it
+   (§28.5). "Untreated" meant "no work order ending inside an arbitrary
+   24-month box". **The treated indicator (−0.4497, p = 0.0084) is
+   therefore not a fallback estimate and must not be reported as one.**
+   **Effectiveness is closed: there is no outcome design left** (§28).
 
 **The targeting objection is answered, not deflected** (profile §26.5). Spend
 correlates with absolute complaint counts at ρ = +0.274, but **controlling for
