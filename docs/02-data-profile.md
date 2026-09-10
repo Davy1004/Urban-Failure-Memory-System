@@ -2030,7 +2030,7 @@ it, the label is tracking something real.
 | Hypergeometric p (enrichment) | **0.0060** |
 | Spearman ρ, complaint events vs register points (198 wards) | **0.334** (p = 1.5e-06) |
 | Kendall τ | 0.265 (p = 1.4e-06) |
-| Overlap of the two top-20 lists | 9 / 20 |
+| Overlap of the two top-20 lists | 9–10 / 20 — **tied, see below** |
 | Mean complaint events, register wards | 24.7 (median 13) |
 | Mean complaint events, non-register wards | 13.4 (median 7) |
 | Mann-Whitney one-sided p | 0.0001 |
@@ -2040,9 +2040,25 @@ complaint data ranks worst are wards BBMP independently lists as flood-prone,
 which is significant enrichment over the 52% base rate. So the label is not
 mostly reporting artefact: **it is finding places that genuinely flood.**
 
-But ρ = 0.334 and a 9/20 top-list overlap are not the numbers of a clean proxy.
+But ρ = 0.334 and a ~9/20 top-list overlap are not the numbers of a clean proxy.
 The complaint ranking and the agency register agree on *which wards are
 flood-prone* far more than on *how bad each one is*.
+
+**A caveat on that overlap figure, added 10 Sep 2026: it is not well defined.**
+Register points per ward is a small integer and the ranking is tied right at the
+cut — only **10** wards hold strictly more than the 20th-place value of 3 points,
+while **16** are tied at exactly 3. So "the top 20 by register points" means
+taking 10 arbitrary wards out of 16, and the overlap lands anywhere from **6 to
+11 of 20** depending purely on the tie-break. The 9 recorded here and the 10 a
+straightforward `nlargest` produces are both legitimate values of an ill-defined
+quantity.
+
+This does not weaken the reading — it strengthens it. Even the tie-break most
+favourable to agreement gives 11/20, so the two rankings genuinely disagree on
+severity ordering. But quote the overlap as approximate and do not put a single
+figure on a slide. The stable numbers here are the enrichment (16/20 against a
+52% base rate, p = 0.0060) and the rank correlations (ρ = 0.334, τ = 0.265), all
+of which `scripts/verify_documented_figures.py` reproduces exactly.
 
 That is consistent with §19: **the label's error is concentrated in timing and
 degree, not in place.** Which in turn supports the §19.6 decomposition — place

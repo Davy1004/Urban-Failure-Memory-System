@@ -97,7 +97,9 @@ built to answer a question their data cannot support."
 We tested whether individual wards were getting worse by asking "is this ward's
 flooding rate rising?" The answer came back: none are, ten are improving.
 
-That was wrong. Flooding complaints were falling city-wide by 22%. So a ward
+That was wrong. Flooding complaints were falling city-wide by 22% — comparing
+the first four quarters of the window against the last four, events over
+complaints in each block. So a ward
 that fell only slightly was actually getting *worse relative to the city* — but
 the test scored it as improving.
 

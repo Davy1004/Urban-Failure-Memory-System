@@ -81,7 +81,12 @@ Done:
   Raw event counts give 7 rising wards - all reporting-growth artefacts, so
   normalisation by each ward's own complaint volume is mandatory. But testing
   the normalised slope against **zero** is also wrong, because the citywide
-  share fell 22%: that gave a false 0-rising. Benchmarked to the **city trend**
+  share fell 22%: that gave a false 0-rising. **The instrument for that 22% is
+  the pooled first-four quarters against the last four** — total events over
+  total complaints in each block, from `ward_relative_trends.csv`'s
+  `ev_first4`/`co_first4` columns; it measures −21.8%. Say the instrument with
+  the number: the mean of the per-quarter shares gives −20.6%, and a fitted
+  trend gives −35% to −44%. Benchmarked to the **city trend**
   (`events / (complaints x city_share)`) the answer is **9 rising, 4 declining**,
   permutation p = 0.0010. **FDR leaves exactly one nameable ward: Jakkur**
   (pre-specified non-register pool, q <= 0.10); split-half slope correlation is

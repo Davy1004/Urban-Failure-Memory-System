@@ -26,9 +26,15 @@ What this does NOT cover
 ------------------------
 Figures that would need a retired analysis re-run — the pooled-AUC comparison,
 the weather-only ranking, the per-ward rainfall lift tables, the permutation
-null, the later profile sections on emergence and effectiveness. Those were computed in sessions whose scripts
-were never committed. They are listed as unverifiable in `REPORT.md` rather than
-silently trusted, and re-deriving them is a post-freeze job.
+null, the magnitude model, and the section 28 gate figures. Those were computed
+in sessions whose scripts were never committed. They are listed as unverifiable
+in `REPORT.md` rather than silently trusted, and re-deriving them is a
+post-freeze job.
+
+Three that *were* on that list are now covered: the section 21 register
+agreement (the paper's external check), the section 26.3 quintile table with its
+confidence intervals and quadratic F-test, and the citywide share decline with
+the instrument that produces it.
 
 `scripts/check_parity.py` covers the 27 figures the API serves. This covers the
 ones that live in the database and the reference files behind it. Between them
@@ -232,6 +238,170 @@ def _geojson(fn: str) -> Callable[[Any], Any]:
     return go
 
 
+def _register(fn: str) -> Callable[[Any], Any]:
+    """Profile section 21: does the complaint ranking agree with BBMP's own register?
+
+    This is the paper's independent external check and the strongest evidence in
+    it - two unrelated instruments converging - so it is worth being able to
+    reproduce on demand. Everything here comes from `ward_crosswalk.csv` and the
+    frozen watchlist, both committed, over the TRAIN window (the frozen list's own
+    window). Scored on the full window every figure moves, which is the sort of
+    basis slip the evaluation rules exist to prevent.
+    """
+    def go(db):
+        from scipy import stats
+
+        from app.derived import WATCHLIST_AS_OF, WATCHLIST_TRAIN_START
+        from app.derived.watchlist import _event_days
+        from app.ingestion.base import resolve_city
+
+        city = resolve_city(db, "Bengaluru")
+        cid = city.city_id
+        cw = pd.read_csv(ROOT / "data/reference/ward_crosswalk.csv")
+        on_reg = dict(zip(cw["bbmp_ward_no"].astype(int).astype(str),
+                          cw["in_flood_register"].astype(bool)))
+
+        w = pd.DataFrame(db.execute(text(
+            "SELECT location_id, ward_no, area_name FROM locations "
+            "WHERE city_id=:c AND geom_level='ward'"), {"c": cid}).all(),
+            columns=["location_id", "ward_no", "ward"])
+        w["ward_no"] = w["ward_no"].astype(str).str.strip()
+        w["on_reg"] = w["ward_no"].map(on_reg)
+
+        pts = pd.DataFrame(db.execute(text(
+            "SELECT ward_no, COUNT(*) n FROM locations WHERE geom_level<>'ward' "
+            "AND is_known_hotspot=1 AND ward_no IS NOT NULL GROUP BY ward_no")).all(),
+            columns=["ward_no", "pts"])
+        pts["ward_no"] = pts["ward_no"].astype(str).str.strip()
+        w = w.merge(pts, on="ward_no", how="left")
+        w["pts"] = w["pts"].fillna(0).astype(int)
+
+        ev = _event_days(db, cid, WATCHLIST_TRAIN_START, WATCHLIST_AS_OF)
+        w = w.merge(ev.groupby("location_id").size().rename("events"),
+                    left_on="location_id", right_index=True, how="left")
+        w["events"] = w["events"].fillna(0).astype(int)
+
+        top = [r.ward for r in db.execute(text(
+            "SELECT l.area_name ward FROM watchlist_entries e "
+            "JOIN locations l ON l.location_id=e.location_id "
+            "ORDER BY e.rank_position")).all()]
+        t20 = w[w["ward"].isin(top)]
+        hits = int(t20["on_reg"].sum())
+        n, kk, k = len(w), int(w["on_reg"].sum()), 20
+        r, nr = w[w["on_reg"]], w[~w["on_reg"]]
+
+        if fn == "hits":
+            return hits
+        if fn == "expected":
+            return k * kk / n
+        if fn == "p_hyper":
+            return float(stats.hypergeom.sf(hits - 1, n, kk, k))
+        if fn == "coverage_pct":
+            return kk / n * 100
+        if fn == "mean_reg":
+            return r["events"].mean()
+        if fn == "mean_nonreg":
+            return nr["events"].mean()
+        if fn == "spearman":
+            return float(stats.spearmanr(w["events"], w["pts"])[0])
+        if fn == "kendall":
+            return float(stats.kendalltau(w["events"], w["pts"])[0])
+        if fn == "mw_p":
+            return float(stats.mannwhitneyu(r["events"], nr["events"],
+                                            alternative="greater").pvalue)
+        if fn == "off_register":
+            return ", ".join(sorted(t20[~t20["on_reg"]]["ward"]))
+        raise KeyError(fn)
+    return go
+
+
+def _panel_ols(xs: list[str], term: str, want: str):
+    """OLS on the committed dose-response panel, returning one term's beta or p."""
+    def go(_db):
+        import numpy as np
+        from scipy import stats
+
+        d = pd.read_csv(ROOT / "data/reference/ward_dose_response_panel.csv")
+        d = d.assign(log_spend_sq=d["log_spend"] ** 2)
+        X = np.column_stack([np.ones(len(d))] + [d[x].to_numpy() for x in xs])
+        y = d["delta"].to_numpy()
+        beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+        resid = y - X @ beta
+        dof = X.shape[0] - X.shape[1]
+        cov = (resid @ resid / dof) * np.linalg.pinv(X.T @ X)
+        se = np.sqrt(np.diag(cov))
+        i = xs.index(term) + 1
+        if want == "beta":
+            return beta[i]
+        if want == "r2":
+            tss = ((y - y.mean()) ** 2).sum()
+            return 1 - (resid @ resid) / tss
+        t = beta[i] / se[i]
+        return 2 * (1 - stats.t.cdf(abs(t), dof))
+    return go
+
+
+def _quintile(q: str, fn: str) -> Callable[[Any], Any]:
+    """Profile section 26.3. DECISIONS.md says this table must never be published
+    without its confidence intervals, because only Q1 is distinguishable from
+    zero - so the CIs are checked here, not just the means."""
+    def go(_db):
+        from scipy import stats
+
+        d = pd.read_csv(ROOT / "data/reference/ward_dose_response_panel.csv")
+        tr = d[d["spend"] > 0].copy()
+        tr["q"] = pd.qcut(tr["spend"], 5, labels=["Q1", "Q2", "Q3", "Q4", "Q5"])
+        g = (d[d["spend"] <= 0] if q == "Untreated" else tr[tr["q"] == q])["delta"]
+        if fn == "n":
+            return len(g)
+        if fn == "mean":
+            return g.mean()
+        if fn == "p":
+            return float(stats.ttest_1samp(g, 0).pvalue)
+        lo, hi = stats.t.interval(0.95, len(g) - 1, loc=g.mean(), scale=stats.sem(g))
+        return lo if fn == "ci_lo" else hi
+    return go
+
+
+def _quadratic_f(_db) -> float:
+    """The F-test for the added quadratic term: 1.26, p = 0.265. This is the
+    figure that says the apparent non-monotonicity in the quintile table is not
+    real, so it carries the 'do not claim a U-shape' rule."""
+    import numpy as np
+
+    d = pd.read_csv(ROOT / "data/reference/ward_dose_response_panel.csv")
+    d = d.assign(log_spend_sq=d["log_spend"] ** 2)
+    y = d["delta"].to_numpy()
+
+    def rss(xs):
+        X = np.column_stack([np.ones(len(d))] + [d[x].to_numpy() for x in xs])
+        b, *_ = np.linalg.lstsq(X, y, rcond=None)
+        r = y - X @ b
+        return r @ r, X.shape[0] - X.shape[1]
+
+    r0, _ = rss(["log_spend", "log_area", "pre"])
+    r1, dof1 = rss(["log_spend", "log_spend_sq", "log_area", "pre"])
+    return ((r0 - r1) / 1) / (r1 / dof1)
+
+
+def _city_decline(_db) -> float:
+    """The citywide event-share decline over the window, as a percentage.
+
+    **The instrument is the point.** The documented "22%" is the POOLED first-four
+    against last-four quarters - total events over total complaints in each block,
+    which is the construction `ward_relative_trends.csv` was built around
+    (`ev_first4`, `co_first4`, ...). Taking the mean of the per-quarter shares
+    instead gives -20.6%, and endpoint or fitted-trend instruments give anything
+    from -35% to -59%. The figure is load-bearing: it is why Proof Two must be
+    benchmarked to the city trend rather than to zero, and testing against zero
+    gave a false 0-rising. So the estimator travels with it.
+    """
+    t = pd.read_csv(ROOT / "data/reference/ward_relative_trends.csv")
+    first = t["ev_first4"].sum() / t["co_first4"].sum()
+    last = t["ev_last4"].sum() / t["co_last4"].sum()
+    return (last / first - 1) * 100
+
+
 def _base_rate(_db) -> Any:
     from datetime import date
 
@@ -433,6 +603,69 @@ CHECKS: list[Check] = [
                               "watchlist_snapshots", "ward_quarter_index",
                               "watchlist_entries", "emerging_watch",
                               "ward_allocation"))),
+    # ---- profile sec 21: the agency-register agreement (it is in the paper) ---
+    ("register: frozen top-20 on the register", "02 sec 21, paper", 16, 0,
+     _register("hits")),
+    ("register: coverage across 198 wards (%)", "02 sec 21 ('52%')", 51.5, 0.1,
+     _register("coverage_pct")),
+    ("register: expected under independence", "02 sec 21 ('10.3/20')", 10.3, 0.05,
+     _register("expected")),
+    ("register: hypergeometric p", "02 sec 21, paper ('0.0060')", 0.0060, 0.0001,
+     _register("p_hyper")),
+    ("register: mean events, register wards", "02 sec 21 ('24.7')", 24.7, 0.05,
+     _register("mean_reg")),
+    ("register: mean events, non-register", "02 sec 21 ('13.4')", 13.4, 0.05,
+     _register("mean_nonreg")),
+    ("register: Spearman events vs points", "02 sec 21 ('0.334')", 0.3343, 0.0005,
+     _register("spearman")),
+    ("register: Kendall tau", "02 sec 21 ('0.265')", 0.2650, 0.0005,
+     _register("kendall")),
+    ("register: Mann-Whitney one-sided p", "02 sec 21 ('0.0001')", 0.000113, 5e-6,
+     _register("mw_p")),
+    ("register: the four off-register top-20 wards", "02 sec 21",
+     "Basavanapura, Hoodi, Jakkur, Someshwara", 0, _register("off_register")),
+
+    # ---- profile sec 26.3: the quintile table, with its CIs -----------------
+    ("quintile Q1 n / mean / p", "02 sec 26.3, DECISIONS.md", 21, 0,
+     _quintile("Q1", "n")),
+    ("quintile Q1 mean delta", "02 sec 26.3", 0.232, 0.0005, _quintile("Q1", "mean")),
+    ("quintile Q1 95% CI low", "02 sec 26.3 ('+0.038')", 0.038, 0.0005,
+     _quintile("Q1", "ci_lo")),
+    ("quintile Q1 95% CI high", "02 sec 26.3 ('+0.425')", 0.425, 0.0005,
+     _quintile("Q1", "ci_hi")),
+    ("quintile Q1 p vs 0 (the only one < 0.05)", "02 sec 26.3", 0.022, 0.0005,
+     _quintile("Q1", "p")),
+    ("quintile Q5 mean delta", "02 sec 26.3 ('+0.105')", 0.105, 0.0005,
+     _quintile("Q5", "mean")),
+    ("quintile Q5 95% CI spans zero (low)", "02 sec 26.3 ('-0.142')", -0.142, 0.0005,
+     _quintile("Q5", "ci_lo")),
+    ("quintile Q5 p vs 0 (not significant)", "02 sec 26.3 ('0.385')", 0.385, 0.0005,
+     _quintile("Q5", "p")),
+    ("quintile Q3 mean delta", "02 sec 26.3 ('-0.146')", -0.146, 0.0005,
+     _quintile("Q3", "mean")),
+    ("quintile Q4 mean delta", "02 sec 26.3 ('-0.162')", -0.162, 0.0005,
+     _quintile("Q4", "mean")),
+    ("untreated n (not a valid control)", "02 sec 26.3, CLAUDE.md", 7, 0,
+     _quintile("Untreated", "n")),
+    ("quadratic term F (no non-monotonicity)", "02 sec 26.3 ('F = 1.26')", 1.26, 0.005,
+     _quadratic_f),
+    ("quadratic term coefficient", "02 sec 26.3 ('+0.0021')", 0.0021, 0.0001,
+     _panel_ols(["log_spend", "log_spend_sq", "log_area", "pre"],
+                "log_spend_sq", "beta")),
+    ("baseline model R2", "02 sec 26.1 ('0.531')", 0.531, 0.0005,
+     _panel_ols(["log_spend", "log_area", "pre"], "log_spend", "r2")),
+    ("baseline: pre-period index coefficient", "02 sec 26.1 ('-0.7877')", -0.7877, 0.0001,
+     _panel_ols(["log_spend", "log_area", "pre"], "pre", "beta")),
+    ("baseline: log(area) coefficient", "02 sec 26.1 ('-0.0033')", -0.0033, 0.0001,
+     _panel_ols(["log_spend", "log_area", "pre"], "log_area", "beta")),
+    ("with growth control: log_spend", "02 sec 26.1 ('-0.0247')", -0.0247, 0.0001,
+     _panel_ols(["log_spend", "log_area", "pre", "log_growth"], "log_spend", "beta")),
+    ("with growth control: log_growth", "02 sec 26.1 ('-0.1065')", -0.1065, 0.0001,
+     _panel_ols(["log_spend", "log_area", "pre", "log_growth"], "log_growth", "beta")),
+
+    # ---- the citywide decline, with its instrument named -------------------
+    ("citywide share decline (%), pooled first4 vs last4",
+     "CLAUDE.md, DECISIONS.md, 01, 02 sec 22 ('22%')", -21.8, 0.05, _city_decline),
 ]
 
 SLOW: list[Check] = [
@@ -473,14 +706,14 @@ def main() -> int:
     db = SessionLocal()
     failures: list[str] = []
     try:
-        print(f"{'figure':<44}{'expected':>16}{'measured':>16}  where")
-        print("-" * 104)
+        print(f"{'figure':<52}{'expected':>18}{'measured':>18}  where")
+        print("-" * 116)
         for label, where, expected, tol, fn in checks:
             try:
                 got = fn(db)
             except Exception as e:  # noqa: BLE001
                 failures.append(f"{label}: could not compute ({type(e).__name__}: {e})")
-                print(f"{label:<44}{expected!s:>16}{'ERROR':>16}  {where}")
+                print(f"{label:<52}{expected!s:>18}{'ERROR':>18}  {where}")
                 continue
             if isinstance(expected, str):
                 ok = str(got) == expected
@@ -491,7 +724,7 @@ def main() -> int:
             shown = f"{got:,.4f}".rstrip("0").rstrip(".") if isinstance(got, float) \
                 else f"{got:,}" if isinstance(got, int) else str(got)
             exp = f"{expected:,}" if isinstance(expected, int) else str(expected)
-            print(f"{label:<44}{exp:>16}{shown:>16}  "
+            print(f"{label:<52}{exp:>18}{shown:>18}  "
                   f"{'' if ok else '<-- MISMATCH  '}{where}")
             if not ok:
                 failures.append(f"{label}: documented {expected!r}, measured {got!r} "

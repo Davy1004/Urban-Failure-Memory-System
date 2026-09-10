@@ -44,95 +44,71 @@ means anything.
 
 ---
 
-## Current task — the last sweep, then stop
+## Current task — close three figures, then the freeze is real
 
-**The system is finished and rehearsed. Read `REPORT.md` first; all five of your
-§5 questions are answered below and every one of your calls stands.**
+**Excellent sweep. 65 figures, 5 corrected, and a verifier that recomputes all of
+them from primary sources on demand — that last part is the durable bit.**
 
-That rehearsal was the right thing to have done early. The migrations test
-skipping everywhere but one disk is the third instance this week of the same
-failure — a check that reported success while checking nothing, alongside the
-`_env_file=None` trap and the original names-only schema comparison that missed
-178 differences. Three of one kind is not coincidence; it is the characteristic
-defect of this project, and it is worth saying so in the viva if the question
-comes.
+Your §3 is the most important thing found this week and you were right to lead
+with it. A headline coefficient whose specification lived only in a session
+transcript is worse than a wrong number, because it fails exactly under
+questioning: "what did you control for?" is the obvious follow-up and the
+repository could not answer it. The rule you wrote — *a coefficient must carry
+its specification wherever it is reported* — is the right generalisation. (For
+what it is worth, the paper does state "controlling for pre-period index and ward
+area", so the published claim was never wrong; it was unreproducible from the
+repo, which is a different and quieter failure.)
 
-### The task: one numbers sweep across every document, then the freeze
+You also named the pattern correctly, and it is now four: `_env_file=None`, the
+names-only schema comparison, the migrations test skipping everywhere, and a
+coefficient with no recorded model. Every one is *a check that reported success
+while checking nothing*. That is the sentence for the viva.
 
-Docs only. No code, no schema, no screens. The goal is that **no document
-contains a number that cannot be reproduced on demand**, because six days from
-now those numbers get read aloud to an examiner.
+### The task: pin the three verifiable figures that are still open, then stop
 
-We have now caught four separate stale-number classes: 31 tables against an
-actual 32; `TABLE_ROWS` estimates used as counts; 13.70% quoted on the wrong
-basis; test counts of 143/25 when they are 148/31. Each was found incidentally
-while doing something else. This is the pass that goes looking.
+Bounded deliberately. Read-only recomputation and documentation edits — no schema,
+no endpoints, no screens, no behaviour. **If any one of them resists, stop and
+report it rather than pushing on.** All three are in §5 of your report as
+recomputable from committed files.
 
-1. **Enumerate.** Every figure in `CLAUDE.md`, `DECISIONS.md`, `README.md`,
-   `docs/00`–`docs/04`, `frontend/README.md`, `docs/figures/README.md`, and the
-   root docstrings of anything under `scripts/`.
-2. **Verify each one** against the database, a reference CSV, a test, or a script
-   that recomputes it. Not against another document — that is how a wrong number
-   propagates.
-3. **Fix what is wrong. For anything you cannot verify**, do not guess and do not
-   quietly drop it: list it in the report with where it appears and what it would
-   take to check.
-4. **Every score keeps its basis label**, and no comparison may mix IFS with
-   ERA5. That rule has now been broken twice.
-5. **Report the count**: figures checked, figures corrected, figures unverifiable.
+**1. The register agreement (§21) — do this one first, it is the only one in the
+paper.** *16 of the frozen top-20 on the BBMP register, 52% base rate,
+hypergeometric p = 0.0060, Spearman 0.334, register wards 24.7 events against
+13.4.* This is the paper's independent external check and the strongest evidence
+in it — two unrelated methods converging. It runs off `ward_crosswalk.csv` and
+the frozen watchlist, both committed. Add it to the verifier.
 
-Two specific things to resolve while you are in there:
+**2. The §26 quintile table**, including F = 1.26, p = 0.265. You called it the
+cheapest, and it is the table `DECISIONS.md` says must never be published without.
+Refit off the committed panel with the specification you recovered in §3.
 
-- `DECISIONS.md` is the file Tanmay reads before the viva, and parts of it still
-  quote the ERA5 triple (13.6 / 37.4 / 4.7) in prose that reads as current. Give
-  every number in that file the IFS basis, or label it. **This one matters most**
-  — it is the file that turns into spoken sentences in a room.
-- `weather_observations` is 1,309,896 and `complaints` is 237,157. Wherever a
-  count appears, confirm it came from `COUNT(*)` and not `information_schema`.
+**3. The 22%, which you were right not to change.** Your −20.6% came from
+first-four against last-four quarters. Try the two or three other plausible
+instruments — the Theil–Sen slope on `city_share` across the 20 quarters, first
+quarter against last, and a linear fit — and report which, if any, gives 22%. If
+one does, record the instrument beside the figure. **If none does, change the
+documents to your reproducible number with its instrument named**, and say so in
+the report. Replacing a documented figure with a differently-derived one is how
+bases got mixed, so the instrument travels with the number either way.
 
-### And one more thing, because the machine question is now answered
+Then add whichever of the three you closed to `verify_documented_figures.py`, so
+the count goes up and stays up.
 
-**The demo runs on this laptop.** So the rehearsal covered it and §5.3 is closed.
+### Then genuinely stop
 
-But Tanmay asked the right follow-up: *what if I end up having to run it on
-somebody else's laptop?* The honest answer is that he does not — Docker, Python
-3.12, Node, a clone and a restore is thirty to forty-five minutes with a network
-dependency, and that is not something to attempt in a demo slot in front of an
-examiner. The answer is to have something that plays anywhere.
+After this the freeze is absolute: **no commits at all** unless something is
+found to be factually wrong. Not improvements, not tidying, not the remaining
+§5 items — those are post-16-September and belong in the queue. If you find
+yourself with time, the right use of it is nothing.
 
-**So record the demo.** Playwright and chromium are already installed for
-`visual-check`, and you already drove the exact five-minute path for the browser
-walk, so this is that walk again with `recordVideo` on:
+### A note on this file
 
-- The runbook's five-minute path, in the runbook's order, against the live local
-  stack: watchlist → index and map → emerging → allocation.
-- **1280×720**, so it projects without scaling artefacts.
-- Deliberate pacing. Pause on the precision scale long enough to read the floor
-  and the ceiling; hover a ward polygon so the tooltip shows; let the allocation
-  retraction sit on screen. A demo video that moves at a machine's speed is
-  useless to a room.
-- No login screen and no credentials on camera. Start from a signed-in state.
-- Write it to `docs/demo/ufms-demo.webm`, and produce an `.mp4` alongside if
-  `ffmpeg` is present, because a college projector laptop may not play webm.
-  If ffmpeg is absent, say so rather than shipping only webm.
-- Commit both. Together they should be a few megabytes; if the webm exceeds
-  roughly 25 MB, drop the frame rate rather than the resolution and say what you
-  chose.
-
-Add a short `docs/demo/README.md`: what the video shows, that it is a recording
-of the real system rather than a mockup, the date it was recorded, and the
-commit it was recorded at.
-
-This is the fallback for every failure mode that is not "the software is broken":
-a dead battery, no HDMI adapter, a projector that will not sync, being asked to
-present from the podium machine, Docker refusing to start on the morning. Twenty
-minutes of work against a whole class of risk.
-
-### Then stop
-
-From **13 September**: no commits at all except a documentation fix that this
-sweep turns up. The system as it stands is what gets demonstrated. If you find
-yourself wanting to improve something, write it in the queue instead.
+The sections below "Answers to your questions" — the schedule, the Tanmay-only
+list, the paper and deck notes — are written by the planning session, and they
+have now been reverted three times. They carry decisions that are not recorded
+anywhere else. **Please leave everything below this line alone**; if something in
+it is wrong or stale, say so in `REPORT.md` rather than rewriting it. You own
+"Current task" and "Queue".
 
 ---
 

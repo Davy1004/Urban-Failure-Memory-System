@@ -79,6 +79,15 @@ normalised-share slope against **zero** and found 0 rising / 10 declining. That
 was wrong: the citywide share fell 22% over the window, so a ward declining 5%
 is diverging *upward* and was scored as declining.
 
+**The 22% is the pooled first-four quarters against the last four** — total
+events over total complaints in each block, which is the construction
+`ward_relative_trends.csv` is built around (`ev_first4`, `co_first4`, …). It
+measures **−21.8%**, and `scripts/verify_documented_figures.py` pins it. The
+instrument has to travel with the figure: the mean of the per-quarter shares
+gives −20.6%, first quarter against last gives −58.6%, and an OLS or Theil–Sen
+trend over the 20 quarters gives −35% to −44%. All are defensible summaries of
+the same series and none of them is the others.
+
 Against the correct null — a standardised incidence ratio benchmarking each
 ward-quarter to the citywide mix, `events / (complaints × city_share)` — the
 same data gives **9 rising / 4 declining**.
