@@ -1,252 +1,199 @@
-# REPORT — 10 September 2026 (third session)
+# REPORT — 10 September 2026 (fourth session)
 
-Task: one numbers sweep across every document, then the demo recording, then
-stop.
+Task: close the three verifiable figures still open, then stop.
 
-**Both done.** One commit, `c083e07`, pushed. 148 backend tests, 31 frontend
-tests, 27/27 parity, and a new gate: **65/65 documented figures reproduce from
-primary sources.**
+**All three closed. None of them resisted.** The verifier goes from 65 figures
+to **90** (94 with `--slow`). One commit, `661e91f`, pushed. 148 backend tests,
+31 frontend tests, 27/27 parity.
+
+Read-only recomputation and documentation edits, as specified — no schema, no
+endpoints, no screens, no behaviour.
 
 ---
 
-## 1. The count you asked for
+## 1. The register agreement (profile §21)
 
-| | |
+Done first, as instructed. **It reproduces exactly — nine of its ten figures to
+the last digit.**
+
+| | documented | measured |
+|---|---:|---:|
+| Frozen top-20 on the register | 16 / 20 | **16 / 20** |
+| Register coverage, 198 wards | 52% | **51.52%** |
+| Expected under independence | 10.3 | **10.303** |
+| Hypergeometric p | 0.0060 | **0.0060** |
+| Mean events, register wards | 24.7 (median 13) | **24.71 (13)** |
+| Mean events, non-register | 13.4 (median 7) | **13.40 (7)** |
+| Spearman ρ, events vs register points | 0.334 (p = 1.5e-06) | **0.3343 (1.49e-06)** |
+| Kendall τ | 0.265 (p = 1.4e-06) | **0.2650 (1.37e-06)** |
+| Mann-Whitney one-sided p | 0.0001 | **0.000113** |
+| The four off-register top-20 wards | Hoodi, Someshwara, Jakkur, Basavanapura | **exactly those four** |
+
+The window matters and is now part of the check: these are all on the **train**
+window (2020-02-08 … 2023-12-31), the frozen list's own. Scored on the full
+window instead, every figure moves — the means go to 38.6 against 21.9 and ρ to
+0.354. That is precisely the kind of basis slip the evaluation rules exist to
+catch, so `_register()` pins the window explicitly.
+
+### The one figure that does not reproduce — and it is not a wrong number
+
+**"Overlap of the two top-20 lists: 9/20" is not a well-defined quantity.**
+
+I got 10, so I went looking for the tie-break rather than assuming a
+discrepancy. Register points per ward is a small integer, and the ranking is
+tied exactly at the cut:
+
+- **10** wards hold strictly more than the 20th-place value of 3 points;
+- **16** wards are tied at exactly 3.
+
+So "the top 20 by register points" means taking 10 arbitrary wards out of 16, and
+the overlap can be **anywhere from 6 to 11 of 20** depending purely on which. The
+documented 9 and the 10 a plain `nlargest` produces are both legitimate values.
+By contrast the events ranking is barely tied at all — 19 wards strictly above
+the cut, 2 tied.
+
+I recorded it as a caveat rather than changing the number, because there is no
+correct number to change it to. `docs/02` now shows the figure as 9–10 with the
+tie explained.
+
+**It does not weaken the §21 reading; it slightly strengthens it.** Even the
+tie-break most favourable to agreement gives 11/20, so the two rankings really do
+disagree on severity ordering — which is exactly the claim the paragraph makes.
+But it must not appear on a slide as a single number, and the stable figures
+(16/20, p = 0.0060, ρ = 0.334, τ = 0.265) carry the argument on their own.
+
+---
+
+## 2. The §26 quintile table
+
+**Reproduces perfectly. Every cell.**
+
+All five quintile n (21/20/21/20/21), all five means, **all five 95% confidence
+intervals**, all five p-values, and the untreated row (n = 7, +0.251,
+[−0.778, +1.280], p = 0.572). Q1 is the only one distinguishable from zero
+(+0.232, [+0.038, +0.425], p = 0.022); Q5's +0.105 has a CI spanning zero
+(p = 0.385).
+
+The CIs are pinned as well as the means, deliberately — `DECISIONS.md` says this
+table must never be published without them, and a check on the means alone would
+let the intervals drift unnoticed.
+
+The quadratic test reproduces too: coefficient **+0.0021**, **F = 1.2575,
+p = 0.265**. There is no statistical evidence of non-monotonicity.
+
+**This independently confirms the specification I recovered last session.**
+§26.1 carries its own coefficient table, and it lists `pre` = −0.7877,
+`log(area)` = −0.0033 and R² = 0.531 — which is exactly
+`delta ~ log_spend + log_area + pre`. I found the specification by search; the
+profile had been quietly holding the evidence for it in a different section all
+along. The growth-control model reproduces as well (log_spend −0.0247,
+p = 0.0118; log_growth −0.1065, p = 0.458; R² 0.533).
+
+Two independent routes to the same specification is a much better position than
+one recovered by search, and it means the answer to "what did you control for?"
+is now both correct and citable.
+
+---
+
+## 3. The 22% — it reproduces, and the instrument was the missing piece
+
+You were right that this was worth chasing rather than replacing.
+
+I tried eleven instruments on the citywide event share across the 20 quarters:
+
+| instrument | change |
 |---|---:|
-| Figures enumerated and checked | **65** |
-| Reproduced correctly, no change needed | **60** |
-| **Corrected** | **5** |
-| **Unverifiable without re-running a retired analysis** | **listed in §5** |
+| first quarter vs last quarter | −58.6% |
+| **pooled first 4 vs last 4 (events ÷ complaints per block)** | **−21.8%** |
+| mean of per-quarter shares, first 4 vs last 4 | −20.6% |
+| median of per-quarter shares, first 4 vs last 4 | −17.1% |
+| first 4 vs last 4, dropping the final quarter | −23.8% |
+| first half vs second half (10 quarters each) | −35.0% |
+| OLS fit, endpoint to endpoint | −38.9% |
+| Theil–Sen fit, endpoint to endpoint | −35.3% |
+| OLS on log(share), total change | −43.8% |
+| Theil–Sen on log(share), total change | −39.5% |
+| pooled events/complaints, half vs half | −36.7% |
 
-"Corrected" counts distinct wrong figures, not the places they appeared.
+**The pooled first-four against last-four gives −21.8%, which is the documented
+22%.** Total events over total complaints in each block — 862/100,990 against
+1,533/229,747.
 
-The check is not a one-off. `scripts/verify_documented_figures.py` recomputes
-every one of the 65 on demand — from the database, the reference CSVs and the
-hazard YAML, and **never from another document**, because copying between
-documents is precisely how all four stale-number classes propagated. Run it after
-touching any number in any doc; `--slow` adds the four re-ranked baselines.
+That instrument is not a guess: it is exactly what
+`data/reference/ward_relative_trends.csv` is built around, whose columns are
+`ev_first4, ev_last4, co_first4, co_last4, rel_first4, rel_last4`. First-four
+against last-four is already this project's standard comparison, so the citywide
+figure was computed the same way as every per-ward figure beside it. My earlier
+−20.6% took the mean of the per-quarter shares — a different estimator on the
+same series, which is why it was close but not equal.
 
----
+**The figure stays at 22% and the instrument now travels with it**, in all four
+places it appears: `CLAUDE.md`, `DECISIONS.md`, `docs/01-evaluation-rules.md`
+and the profile. I did not touch the two unrelated "a precision@20 of 22%"
+sentences, which are a hypothetical illustration of a different quantity.
 
-## 2. What was wrong
-
-**§2.1 — `DECISIONS.md` quoted the ERA5 triple as if current.** You flagged this
-and it was the worst of them, because it is the file that becomes spoken
-sentences. "A random guess scores about 5%. The city's own worst-twenty list
-scores 13.6%. A perfect oracle scores 37.4%." Those are ERA5 numbers. The
-database holds and the API serves the IFS ones. It now reads **4.8% / 14.1% /
-37.7%**, and says outright that the two bases exist, that the ERA5 set says the
-same thing, and that mixing them puts a number on a scale it was not measured
-against. The dependent sentence ("against a 37.4% ceiling it is nearly 60% of
-what is achievable") moved with it — 22/37.7 is still nearly 60%.
-
-**§2.2 — `DECISIONS.md` overstated the crosswalk.** "So all 198 were resolved by
-hand." The file says **106 exact, 44 normalised, 48 manual**. An examiner who
-opens the CSV sees `exact` on 106 rows and the claim collapses. It now says every
-one of the 198 was checked and carries a written reason, and gives the split. The
-substance — that automatic matching produced confident wrong answers — is
-untouched, because that part is true.
-
-**§2.3 — `CLAUDE.md` said 31 response-contract tests.** There are **39**.
-
-**§2.4 — `CLAUDE.md`'s 178-differences paragraph quotes the old schema shape.**
-"All 45 foreign keys and 27 indexes", "all 25 column comments" — true at the
-26-table baseline, and nothing said so. The schema now has **54 foreign keys and
-67 column comments**. Labelled as the baseline shape.
-
-**§2.5 — `docs/00-build-plan.md` read as current and is not.** It plans P0
-Sep 8–21 through P8 to April 2027, and sizes the database at "~600k complaints,
-~350k weather_observations, about 2M rows, 400–600 MB". Reality: Phases 0–4 all
-landed in September; complaints are **237,157** (40% of the estimate) and
-weather_observations **1,309,896** (nearly 4× it, because the grid was tripled in
-resolution after ERA5 resolved BBMP into three cells); `failure_memory`,
-`risk_predictions` and `daily_rankings` are **all empty**; the real totals are
-**1,610,832 rows, ≈218 MB**. It now opens with a planned-vs-measured table and a
-line saying not to read the schedule as current. The plan itself is kept — what
-was planned and why is worth having beside what happened.
+One thing worth knowing but not worth changing: the decline is **not a
+statistically significant monotonic trend** over the 20 quarters (Kendall
+τ = −0.232, p = 0.165). That does not undermine the argument it supports — the
+point is that the city baseline is not zero, and a −22% shift is large enough to
+flip Proof Two's verdict from 0 rising to 9 rising regardless of whether the
+quarter-to-quarter path is monotone.
 
 ---
 
-## 3. The finding that matters more than the five corrections
+## 4. What is in the verifier now
 
-**The retracted dose-response rests on a specification that was recorded
-nowhere.**
+**90 figures, 94 with `--slow`.** Up from 65. The three closed items added 25
+checks between them, including every cell of the quintile table with its
+intervals, the whole §21 table, and the citywide decline with its instrument
+documented in the function that computes it.
 
-The published pair is −0.0240 (p = 0.0138) over all 110 wards, collapsing to
-−0.0064 (p = 0.833) on treated wards only. I tried to verify it and could not:
-regressing `delta` on `log_spend` over the committed panel gives **−0.0159
-(p = 0.230)**, and on treated wards **−0.0381 (p = 0.301)**. Neither matches.
+Still not covered, and now down to **eight** items — all in
+`docs/02-data-profile.md`, all from sessions whose scripts were never committed:
 
-The panel was not wrong — the raw Spearman reproduced exactly (−0.1634,
-p = 0.0992 against a documented −0.163, p = 0.099). So the published figures had
-to be **multivariate**, and which controls they used existed only in a session
-transcript. I searched specifications until both reproduced to four decimals:
+| Figure | To check it |
+|---|---|
+| Pooled AUC 0.749 vs within-night 0.737 | Refit the ranking model. The model is not built. |
+| Weather-only ranking 5.63% | Rank wards by cell rainfall per night; the exact feature was never recorded. |
+| Per-ward rainfall lift (3.06 → 3.00, χ² p = 0.877) | Re-run the lift computation on both grids. Data present, script gone. |
+| Permutation null: 9 rising / 4 declining, p = 0.0010 | Re-run 2,000 permutations. Seed unrecorded, so p will be close, not identical. |
+| Magnitude R² = 0.196, 3-class 50.0% vs 39.6% | Refit the magnitude model. |
+| §28 gate figures (ρ = +0.505, 6 of 8 quarters, 51 of 196 wards) | Re-run the gate analysis off the raw work orders. |
+| Palette contrast ratios (2.06:1 … 2.21:1) | Re-run the data-viz palette validator, which is not in the repo. |
+| "309,012 rows, 40.31%" for the 96 off-register wards | A **pre-filter** number — 40.31% of the 766,648 raw grievance rows, not of the 237,157 loaded. Post-filter the same wards hold 98,156 = 41.39%. `DECISIONS.md` says "40% of the data", true either way, so left alone. |
 
-```
-delta ~ log_spend + log_area + pre
-```
-
-→ **−0.0240, p = 0.0138** over all 110; **−0.0064, p = 0.8334** on treated only.
-Both exact.
-
-Why this is the important one: this is the project's most significant negative
-result, it is rendered on a screen and printed in the paper, and **"we regressed
-the change in index on log spend" would have been the wrong answer to give under
-questioning** — that is a different, weaker, non-significant result. Someone
-asked "what did you control for?" could not have answered from this repository.
-
-It is now a rule in `docs/01-evaluation-rules.md` — *a coefficient must carry its
-specification wherever it is reported; a coefficient without the model that
-produced it is not a result, it is a number* — and both figures are pinned by the
-verifier.
-
-This is the fourth instance of the pattern you named: a check or a claim that
-looked sound and was not being verified. `_env_file=None`, the names-only schema
-comparison, the migrations test skipping everywhere, and now a headline
-coefficient with no recorded model.
+None is a headline. Everything the paper and the screens rest on is now checked.
 
 ---
 
-## 4. What reproduced exactly, and is now pinned
+## 5. Judgement calls
 
-Worth listing because the docs came out of this in better shape than I expected.
-Every one recomputed from a primary source:
+1. **I left the 9/20 overlap as a caveat rather than picking a number.** There is
+   no correct value to pick — the quantity is tie-dependent by construction. If
+   you would rather the profile state a single figure with a declared tie-break
+   (alphabetical, say), that is a one-line change, but I think "approximately
+   9–10, and here is why it cannot be exact" is the more honest thing for a
+   research log to say.
 
-- **The two triples**, both bases, plus both re-ranked figures: 13.55 / 13.70 /
-  37.36 / 4.72 (ERA5) and 14.08 / 14.23 / 37.72 / 4.79 (IFS).
-- **The headroom argument**: honest 14.0809%, perfect-foresight ward ranking
-  15.6618%, gain **+1.58** points against a **23.64**-point headroom — so
-  DECISIONS.md's "1.6 points out of 24" is right.
-- **Both base rates**: strict **1.5585%** (6,045 event ward-days of 387,882) and
-  broad **7.9903%**. Rule 3 quotes both; both hold.
-- **Kendall tau between the halves = 0.5884** with a **15/20** top-20 overlap,
-  against a documented 0.59 and 15/20.
-- **The allocation totals**: ₹6,677,331,368 total, ₹20,242,441 median treated,
-  Someshwara highest at ₹631,617,283, Jakkur ₹494,203,600 and **rank 2** —
-  confirming "2nd-highest drainage spender".
-- **The Jakkur series**: 20 quarters, 0.2179 → 1.6362, mean 1.0948, above the
-  norm in **10 of 20** — matching "0.22 → 1.64, mean 1.09, 10 of 20".
-- **The hazard YAML against the database**: its own `event_total_rows` 8,293 and
-  `broad_total_rows` 42,004 both equal `COUNT(*)` over those sub-categories.
-- **The crosswalk**: 198 rows, 106/44/48, 0 unresolved, 102 in register, 96 not.
-- **Generated artifacts**: the geojson is 661 KB / 198 features / 36,369 points,
-  and the dump is 612 KB / 30 INSERTs / 4,820 rows — all as documented.
-- **`/health` returns 503 when the database is unreachable.** Verified by
-  accident, against a genuinely broken instance. It does.
+2. **The 22% stays at 22%, not −21.8%.** The documented figure is a rounded form
+   of the reproducible one, and rounding is not an error. Changing it to −21.8%
+   would have gained precision the underlying data does not warrant and broken
+   every place the paper says 22%.
+
+3. **I did not touch anything below "Answers to your questions" in `NEXT.md`**,
+   as asked. Nothing in those sections looked wrong to me on this reading.
 
 ---
 
-## 5. What I could not verify — not guessed, not dropped
+## 6. State
 
-These appear in `docs/02-data-profile.md` and were computed in sessions whose
-scripts were never committed. Re-deriving them is a post-freeze job; each line
-says what it would take.
-
-| Figure | Where | To check it |
-|---|---|---|
-| Pooled AUC 0.749 vs within-night 0.737 | CLAUDE.md, 01, 02 §19.4 | Refit the ranking model and score both ways. Needs the model, which is not built. |
-| Weather-only ranking 5.63% | 01, 02 §17.4 | Rank wards by cell rainfall per night and score at k=20. Feasible from the DB; the exact feature was never recorded. |
-| Per-ward rainfall lift tables (3.06 → 3.00, χ² p = 0.877) | CLAUDE.md, 02 §16–17 | Re-run the lift computation on both grids. Data present; script gone. |
-| Permutation null: 9 rising / 4 declining, p = 0.0010, 2,000 draws | CLAUDE.md, 01, 02 §22–23 | Re-run the permutation. Seed unrecorded, so the p will be close but not identical. |
-| Citywide share fell 22% | 01, 02 §22 | My nearest reproduction is **−20.6%** (first-four vs last-four quarters); the exact instrument was not recorded. Close, not confirmed. |
-| Magnitude R² = 0.196, 3-class 50.0% vs 39.6% | CLAUDE.md, 02 §20 | Refit the magnitude model. |
-| Register agreement: 16 of 20, base rate 52%, p = 0.006, Spearman 0.334 | CLAUDE.md, 02 §21 | Recomputable from the crosswalk and the frozen list; not attempted this session. |
-| §26 quintile table, F = 1.26 p = 0.265 | CLAUDE.md, 02 §26.3 | Refit with a quadratic term on the panel. Panel is committed, so this one is genuinely cheap. |
-| §28 gate figures (ρ = +0.505, 6 of 8 quarters, 51 of 196 wards) | CLAUDE.md, 02 §28 | Re-run the gate analysis off the raw work orders. |
-| Palette contrast ratios (2.06:1 … 2.21:1) | frontend/README.md | Re-run the data-viz palette validator, which is not in the repo. |
-| "309,012 rows, 40.31%" for the 96 off-register wards | 02 §15 | **This is a pre-filter number** — it is 40.31% of the 766,648 raw grievance rows, not of the 237,157 loaded. Post-filter the same wards hold 98,156 rows = **41.39%**. DECISIONS.md says "40% of the data", which is true either way, so I left it; flagging the ambiguity. |
-
-None of these is a headline. The triples, the headroom, the allocation finding,
-the emerging evidence and the case study are all verified.
-
----
-
-## 6. The recording
-
-`docs/demo/ufms-demo.mp4` — **1:12, 1280×720, H.264, 1.06 MB**, with the webm it
-was transcoded from (4.56 MB). Both committed; `.gitattributes` marks them
-binary. Well inside 25 MB, so no frame-rate reduction was needed.
-
-`npm run record-demo` in `frontend/`. It walks the runbook's path in the
-runbook's order with explicit dwells — 6.5s on the precision scale, 5s on the
-ward tooltip, 6.5s on the retraction — because a demo video that moves at
-Playwright's speed is useless in a room.
-
-**No login screen and no credentials on camera.** It fetches a token from the API
-and injects it into `sessionStorage` via an init script that runs before first
-paint, so the app restores straight to the watchlist.
-
-**I checked frames rather than assuming.** At 0:05 the precision scale shows
-4.79% chance / 14.08% this list / 37.72% ceiling, legible at 720p. At 0:33 the
-choropleth draws 198 wards with no basemap and the tooltip reads *Basaveshwara
-Nagar / Ward 100 · West / Index 0.54, 2025Q1* — name, ward, index **and quarter**,
-which is the §9.5 condition, on video. At 0:52 the retraction renders in full
-above both scatter panels, neither with a trend line. Zero console errors across
-the whole recording.
-
-**On the mp4: ffmpeg was the interesting part.** Playwright bundles one, but it
-is a minimal build carrying **only VP8 and png** — it cannot encode H.264 at all,
-and the first attempt failed with a wall of configure flags. Rather than ship
-webm-only, I made the script ask each candidate for its encoder list and reject
-any without `libx264`. A full ffmpeg turned out to be already on this machine
-(bundled with a browser extension's companion app), so the mp4 exists. If a
-future run finds none, the script says so explicitly and prints
-`winget install Gyan.FFmpeg` rather than silently producing nothing.
-
-`docs/demo/README.md` records what it shows, that it is the real system and not a
-mockup, the date, the commit (`d2a619d` — no code under `app/` or `frontend/src/`
-changed between then and the recording), and a timestamped index of the path.
-
-The runbook's insurance section now leads with the video and keeps the
-screenshots as the second fallback.
-
----
-
-## 7. One more defect, found while setting up the recording
-
-Port 8000 was answering, `/health` said `database: unreachable`, and every panel
-would have rendered empty. The cause was an **orphaned `uvicorn --reload` worker**
-from the rehearsal clone, still holding the port and serving a database I had
-deleted an hour earlier. `netstat` attributed the socket to a PID that no longer
-existed, so `taskkill` on it reported "process not found" while the port kept
-responding. The live process was the reload *worker*, findable only by command
-line (`spawn_main(parent_pid=...)`).
-
-This is nastier than a plain port clash, because the port answers. On demo
-morning it would present as "the API is up but the dashboard is empty" — which
-the runbook's existing row sends you to re-run the restore, the wrong fix. Added
-as its own failure row with the PowerShell that finds it.
-
----
-
-## 8. Flagged, not acted on
-
-1. **`docs/02-data-profile.md` is 3,181 lines and is now the only document with
-   unverifiable numbers in it.** Everything in §5 above lives there. It is a
-   research log rather than a claims document, which is why I have not touched
-   it — but if an examiner reads a figure out of it, we cannot currently
-   reproduce it. Post-freeze, the §26 quintile refit and the §21 register
-   agreement are the two cheapest to close, because both run off committed files.
-
-2. **The "22%" citywide decline is the one figure I would still like to pin.** It
-   appears in `DECISIONS.md` in prose ("falling city-wide by 22%") and supports
-   the Proof Two null. My nearest reproduction is −20.6%. It is almost certainly
-   right and measured slightly differently; I did not change it, because
-   replacing a documented figure with a differently-derived one is how bases got
-   mixed in the first place.
-
-3. **Nothing else. The freeze starts on the 13th and I have nothing queued.**
-   What remains is Tanmay's: the supervisor on the 14th, names on the paper and
-   on slides 1 and 14, and the reference volume and page numbers.
-
----
-
-## 9. State
-
-- `origin/main` at `c083e07`; working tree clean; nothing unpushed.
-- 168 tracked files.
-- **148 backend tests, 31 frontend tests**, `npm run build` clean, lint warnings
-  unchanged (3, all pre-existing).
+- `origin/main` at `661e91f`; working tree clean; nothing unpushed.
+- **148 backend tests, 31 frontend tests**, `npm run build` clean.
 - `scripts/check_parity.py --base http://127.0.0.1:8000` → **27/27, PASSED**.
-- `scripts/verify_documented_figures.py --slow` → **65/65, PASSED**.
-- The demo stack is up on :8000 and :5173 and serving correct numbers.
+- `scripts/verify_documented_figures.py --slow` → **94/94, PASSED**.
+- The demo recording, the runbook, the deploy path and the parity gate are all
+  unchanged from the previous sessions and all still pass.
+
+**The freeze is now absolute on my side. Nothing is queued for before the 16th.**
+What remains is Tanmay's: the supervisor on the 14th, names on the paper and on
+slides 1 and 14, and the reference volume and page numbers.

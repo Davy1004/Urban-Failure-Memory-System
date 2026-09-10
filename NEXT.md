@@ -44,71 +44,46 @@ means anything.
 
 ---
 
-## Current task — close three figures, then the freeze is real
+## Current task — none. The freeze is absolute.
 
-**Excellent sweep. 65 figures, 5 corrected, and a verifier that recomputes all of
-them from primary sources on demand — that last part is the durable bit.**
+**All three figures are closed. `REPORT.md` has the detail; the short version:**
 
-Your §3 is the most important thing found this week and you were right to lead
-with it. A headline coefficient whose specification lived only in a session
-transcript is worse than a wrong number, because it fails exactly under
-questioning: "what did you control for?" is the obvious follow-up and the
-repository could not answer it. The rule you wrote — *a coefficient must carry
-its specification wherever it is reported* — is the right generalisation. (For
-what it is worth, the paper does state "controlling for pre-period index and ward
-area", so the published claim was never wrong; it was unreproducible from the
-repo, which is a different and quieter failure.)
+- **§21, the register agreement** — the paper's external check — reproduces
+  exactly, nine of ten figures to the last digit, on the **train** window. The
+  tenth, the "9/20 top-20 overlap", turns out **not to be a well-defined
+  quantity**: 10 wards sit strictly above the cut and 16 are tied at it, so the
+  overlap is 6–11 of 20 depending purely on tie-break. Recorded as a caveat
+  rather than changed, because there is no correct number to change it to. It
+  strengthens the reading rather than weakening it.
+- **§26.3, the quintile table** — reproduces perfectly, every cell including all
+  five confidence intervals, and the quadratic F = 1.26, p = 0.265. It also
+  **independently confirms the recovered specification**: §26.1's own coefficient
+  table lists `pre` −0.7877, `log(area)` −0.0033, R² 0.531, which is exactly
+  `delta ~ log_spend + log_area + pre`.
+- **The 22% reproduces, and the instrument was the missing piece.** It is the
+  **pooled** first-four quarters against the last four — events over complaints
+  in each block, which is what `ward_relative_trends.csv` is built around —
+  giving **−21.8%**. Eleven instruments were tried; the others give −17% to
+  −59%. The figure stays at 22%; the instrument now travels with it in all four
+  places.
 
-You also named the pattern correctly, and it is now four: `_env_file=None`, the
-names-only schema comparison, the migrations test skipping everywhere, and a
-coefficient with no recorded model. Every one is *a check that reported success
-while checking nothing*. That is the sentence for the viva.
+**The verifier is at 90 figures (94 with `--slow`), up from 65.** Eight remain
+unverifiable, all in the profile, all listed in `REPORT.md` §4 with what each
+would take. None is a headline.
 
-### The task: pin the three verifiable figures that are still open, then stop
+### Nothing is queued before the 16th
 
-Bounded deliberately. Read-only recomputation and documentation edits — no schema,
-no endpoints, no screens, no behaviour. **If any one of them resists, stop and
-report it rather than pushing on.** All three are in §5 of your report as
-recomputable from committed files.
+No commits unless something is found to be factually wrong. Not improvements,
+not tidying, not the eight remaining profile figures — those are
+post-16-September and are in the Queue. What is left is Tanmay's, and it is in
+the section below.
 
-**1. The register agreement (§21) — do this one first, it is the only one in the
-paper.** *16 of the frozen top-20 on the BBMP register, 52% base rate,
-hypergeometric p = 0.0060, Spearman 0.334, register wards 24.7 events against
-13.4.* This is the paper's independent external check and the strongest evidence
-in it — two unrelated methods converging. It runs off `ward_crosswalk.csv` and
-the frozen watchlist, both committed. Add it to the verifier.
+Before the demo, the two commands that matter:
 
-**2. The §26 quintile table**, including F = 1.26, p = 0.265. You called it the
-cheapest, and it is the table `DECISIONS.md` says must never be published without.
-Refit off the committed panel with the specification you recovered in §3.
-
-**3. The 22%, which you were right not to change.** Your −20.6% came from
-first-four against last-four quarters. Try the two or three other plausible
-instruments — the Theil–Sen slope on `city_share` across the 20 quarters, first
-quarter against last, and a linear fit — and report which, if any, gives 22%. If
-one does, record the instrument beside the figure. **If none does, change the
-documents to your reproducible number with its instrument named**, and say so in
-the report. Replacing a documented figure with a differently-derived one is how
-bases got mixed, so the instrument travels with the number either way.
-
-Then add whichever of the three you closed to `verify_documented_figures.py`, so
-the count goes up and stays up.
-
-### Then genuinely stop
-
-After this the freeze is absolute: **no commits at all** unless something is
-found to be factually wrong. Not improvements, not tidying, not the remaining
-§5 items — those are post-16-September and belong in the queue. If you find
-yourself with time, the right use of it is nothing.
-
-### A note on this file
-
-The sections below "Answers to your questions" — the schedule, the Tanmay-only
-list, the paper and deck notes — are written by the planning session, and they
-have now been reverted three times. They carry decisions that are not recorded
-anywhere else. **Please leave everything below this line alone**; if something in
-it is wrong or stale, say so in `REPORT.md` rather than rewriting it. You own
-"Current task" and "Queue".
+```bash
+python scripts/verify_documented_figures.py     # 90/90
+python scripts/check_parity.py --base http://127.0.0.1:8000   # 27/27
+```
 
 ---
 
@@ -203,8 +178,7 @@ before signing, not after. `DECISIONS.md`, first three entries, ten minutes.
 
 ## Queue
 
-Items 3, 4 and 5 were done on 10 Sep 2026 — see the Done log. Three left, none
-of them for this week.
+Nothing here is for this week. All of it is post-16-September.
 
 **1. Memory engine and the model ladder M0-M3** - to demonstrate the bound, not
 to beat it. Report within-night AUC or precision@k, never a pooled AUC.
@@ -229,7 +203,57 @@ database restored from `demo_data.sql` reproduces every figure to 1e-9, with no
 second copy of the numbers that could drift. Any change has to keep
 `scripts/check_parity.py` meaningful. Recorded in CLAUDE.md's deferred decisions.
 
+**5. The eight profile figures that are still unreproducible.** Listed in
+`REPORT.md` §4 with what each would take. All live in `docs/02-data-profile.md`
+and come from sessions whose scripts were never committed: the pooled-AUC
+comparison, the weather-only ranking, the per-ward rainfall lift tables, the
+permutation null, the magnitude model, the §28 gate figures, the palette
+contrast ratios, and the "309,012 rows / 40.31%" pre-filter ambiguity. None is a
+headline and none is on a screen — but the profile is the one document from
+which a number could be read aloud and not reproduced, so closing them is worth
+a session after the evaluation. The cheapest first: the permutation null and the
+magnitude model both run off committed files.
+
 ## Done log
+
+- **2026-09-10 (fourth session) — The three open figures are closed; the
+  verifier covers 90; the freeze is absolute.**
+  **§21, the register agreement — the paper's external check — reproduces
+  exactly**, nine of ten figures to the last digit, on the **train** window
+  (scored on the full window every figure moves, so the window is now part of
+  the check): 16/20 on the register against a 51.5% base rate, expected 10.3,
+  hypergeometric **p = 0.0060**; means **24.7 (13)** against **13.4 (7)**;
+  Spearman **0.3343** (1.49e-06), Kendall **0.2650**; Mann-Whitney
+  **p = 0.000113**; and the four off-register members are Basavanapura, Hoodi,
+  Jakkur and Someshwara, by name.
+  **The tenth figure is not a wrong number — it is an ill-defined one.** The
+  "9/20 overlap of the two top-20 lists" depends entirely on a tie-break: only
+  **10** wards hold strictly more than the 20th-place value of 3 register points
+  and **16** are tied at exactly 3, so the overlap is anywhere from **6 to 11 of
+  20**. Documented as a caveat rather than changed. It strengthens the reading —
+  even the friendliest tie-break gives 11/20, so the two rankings genuinely
+  disagree on severity — but it must never go on a slide as one number.
+  **§26.3 reproduces perfectly, every cell**: all five quintile n, means, **95%
+  CIs** and p-values, the untreated row, the quadratic coefficient **+0.0021**
+  and **F = 1.2575, p = 0.265**. The CIs are pinned as well as the means because
+  `DECISIONS.md` forbids publishing the table without them. **It also
+  independently confirms the specification recovered last session** — §26.1's own
+  table lists `pre` −0.7877, `log(area)` −0.0033, R² 0.531, i.e. exactly
+  `delta ~ log_spend + log_area + pre`. Two independent routes to the same model
+  is a far better position than one found by search.
+  **The 22% reproduces; the instrument was what was missing.** Eleven
+  instruments tried, giving −17% to −59%. The **pooled first-four against
+  last-four** — total events over total complaints in each block, which is what
+  `ward_relative_trends.csv`'s `ev_first4`/`co_first4` columns exist for — gives
+  **−21.8%**. The earlier −20.6% was the *mean of per-quarter shares*, a
+  different estimator on the same series. Figure stays at 22%; the instrument now
+  travels with it in all four places. (Aside: the decline is not a significant
+  monotonic trend, Kendall τ = −0.232, p = 0.165 — which does not matter, because
+  the claim is that the baseline is not zero, not that the path is monotone.)
+  **`scripts/verify_documented_figures.py` goes from 65 figures to 90** (94 with
+  `--slow`). Eight remain unverifiable, all in the profile, all listed in
+  `REPORT.md` §4 with what each would take; they are now Queue item 5.
+  **148 backend tests, 31 frontend tests, 27/27 parity, 90/90 figures.**
 
 - **2026-09-10 (third session) — Every documented number now reproduces on
   demand; the demo is recorded; the system is frozen.**
